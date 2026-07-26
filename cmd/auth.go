@@ -186,19 +186,15 @@ func validateCredential(ctx context.Context, c *api.ClientWithResponses, endpoin
 	if resp.JSON200 != nil {
 		return nil
 	}
+	e := client.Fail(resp, resp.Headers429)
 	if resp.JSON401 != nil {
-		e := client.Problem(resp.JSON401, resp.Body, resp.StatusCode())
 		e.Hint = "the credential was rejected — mint a fresh one and paste it again"
-		return e
 	}
 	// A 403 means the credential verified but its role is below the read floor.
 	// That is a real, storable credential, so the failure is reported and the
 	// token is NOT written: storing something that cannot read anything would
 	// only produce a confusing failure later.
-	if resp.JSON403 != nil {
-		return client.Problem(resp.JSON403, resp.Body, resp.StatusCode())
-	}
-	return client.Problem(firstProblem(resp.JSON400, resp.JSON500, resp.JSON503), resp.Body, resp.StatusCode())
+	return e
 }
 
 // readToken collects the credential without echoing it.
@@ -412,13 +408,4 @@ func emptyToNil(s string) any {
 		return nil
 	}
 	return s
-}
-
-func firstProblem(ps ...*api.ApiProblem) *api.ApiProblem {
-	for _, p := range ps {
-		if p != nil {
-			return p
-		}
-	}
-	return nil
 }

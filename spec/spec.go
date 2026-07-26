@@ -10,6 +10,7 @@ package spec
 import (
 	_ "embed"
 	"encoding/json"
+	"sort"
 	"sync"
 )
 
@@ -45,3 +46,34 @@ func OpenAPIVersion() string { load(); return parsed.OpenAPI }
 
 // Title is the document's title.
 func Title() string { load(); return parsed.Info.Title }
+
+// SchemaEnum returns the enum values a component schema declares for one of its
+// properties, sorted, or nil when there is no such enum.
+//
+// Exists for the state machines in `internal/wait`, which have to restate the
+// server's transition table because the contract publishes states but not
+// edges. Reading the states back out of the vendored document lets those tables
+// be asserted against the contract itself rather than against a second
+// hand-written list — so a state the server adds fails a test here instead of
+// being silently treated as unrecognised at runtime.
+func SchemaEnum(schema, property string) []string {
+	var doc struct {
+		Components struct {
+			Schemas map[string]struct {
+				Properties map[string]struct {
+					Enum []string `json:"enum"`
+				} `json:"properties"`
+			} `json:"schemas"`
+		} `json:"components"`
+	}
+	if err := json.Unmarshal(OpenAPI, &doc); err != nil {
+		return nil
+	}
+	values := doc.Components.Schemas[schema].Properties[property].Enum
+	if len(values) == 0 {
+		return nil
+	}
+	out := append([]string(nil), values...)
+	sort.Strings(out)
+	return out
+}

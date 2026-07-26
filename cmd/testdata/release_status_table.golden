@@ -1,0 +1,2 @@
+SERVICE  STG          STG HEALTH  RC          RC HEALTH
+widget   stg-abc1234  healthy     rc-9990000  progressing

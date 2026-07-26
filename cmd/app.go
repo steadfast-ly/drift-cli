@@ -61,6 +61,14 @@ type App struct {
 	// httptest server without a network.
 	HTTP *http.Client
 
+	// waitInterval overrides the poll period of `--wait`, and waitFailureWindow
+	// how long a failure state must persist before it is believed. Zero means
+	// the package default for each. They exist so the command-level tests can
+	// drive a real wait to completion without sleeping for real; nothing sets
+	// them in production.
+	waitInterval      time.Duration
+	waitFailureWindow time.Duration
+
 	// configDir is resolved once; the credential store and the discovery cache
 	// both hang off it.
 	configDir string
@@ -225,10 +233,13 @@ type Session struct {
 }
 
 // Connect resolves the target, discovers its capabilities, checks skew, gates on
-// a required feature and attaches a credential.
+// the required features and attaches a credential.
 //
-// `feature` may be empty for commands that need no particular capability.
-func (a *App) Connect(ctx context.Context, feature string) (*Session, error) {
+// `features` may be empty for commands that need no particular capability, and
+// carries more than one for commands that span surfaces — `env create` needs
+// both `environments.write` and `repositories.read`, because it resolves
+// repository names to ids before it can create anything.
+func (a *App) Connect(ctx context.Context, features ...string) (*Session, error) {
 	r, err := a.Resolve()
 	if err != nil {
 		return nil, err
@@ -250,7 +261,16 @@ func (a *App) Connect(ctx context.Context, feature string) (*Session, error) {
 	// help text that changes per server is undiscoverable. It fails here
 	// instead, naming the context and the server version so the operator knows
 	// which deployment said no.
-	if feature != "" && !doc.HasFeature(feature) {
+	//
+	// The document is the deployment's own statement about itself, so it is
+	// believed even when the CLI can see the operation in the contract it was
+	// built from: a server whose API has an endpoint its discovery document does
+	// not advertise is a server-side inconsistency, and papering over it here
+	// would make the mechanism worthless everywhere else.
+	for _, feature := range features {
+		if feature == "" || doc.HasFeature(feature) {
+			continue
+		}
 		where := r.Endpoint
 		if r.ContextName != "" {
 			where = fmt.Sprintf("%s (%s)", r.ContextName, r.Endpoint)

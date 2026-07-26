@@ -63,8 +63,17 @@ func isCI() bool {
 // The same predicate decides whether it is safe to PROMPT, and step 4's rule
 // that destructive commands refuse without --yes off a TTY rests on it, so
 // being wrong about /dev/null is not merely cosmetic.
-func IsTerminal(w io.Writer) bool {
-	f, ok := w.(*os.File)
+func IsTerminal(w io.Writer) bool { return isTerminalFile(w) }
+
+// IsTerminalReader is IsTerminal for an input stream.
+//
+// Separate only because `io.Reader` and `io.Writer` share no interface; it is
+// the same predicate on the same file descriptor, so a prompt and a colour
+// decision can never disagree about what a terminal is.
+func IsTerminalReader(r io.Reader) bool { return isTerminalFile(r) }
+
+func isTerminalFile(v any) bool {
+	f, ok := v.(*os.File)
 	if !ok {
 		return false
 	}

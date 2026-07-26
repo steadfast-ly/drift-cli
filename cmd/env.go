@@ -17,17 +17,38 @@ func newEnvCommand(app *App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "env",
 		Aliases: []string{"environment", "environments"},
-		Short:   "Inspect preview environments",
-		Long: "Inspect preview environments.\n\n" +
+		Short:   "Create, inspect and manage preview environments",
+		Long: "Create, inspect and manage preview environments.\n\n" +
 			"Environments are addressed by SLUG or by UUID and the server resolves\n" +
 			"both. A slug resolves only environments that are neither destroyed nor\n" +
 			"canceled, so a slug reused over time addresses the one live\n" +
 			"environment holding it; address a torn-down environment by id.\n\n" +
+			"Commands that start work BLOCK by default and take --no-wait:\n" +
+			"create, relaunch, wake, retry-build, add-service and swap-branch.\n" +
+			"Commands that end it return immediately and take --wait: rm, sleep\n" +
+			"and cancel. `drift env wait` follows either afterwards.\n\n" +
 			cliexit.Help,
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error { return c.Help() },
 	}
-	cmd.AddCommand(newEnvListCommand(app), newEnvGetCommand(app))
+	cmd.AddCommand(
+		newEnvListCommand(app),
+		newEnvGetCommand(app),
+		newEnvCreateCommand(app),
+		newEnvRmCommand(app),
+		newEnvCancelCommand(app),
+		newEnvRelaunchCommand(app),
+		newEnvSleepCommand(app),
+		newEnvWakeCommand(app),
+		newEnvExtendCommand(app),
+		newEnvVisibilityCommand(app, true),
+		newEnvVisibilityCommand(app, false),
+		newEnvAddServiceCommand(app),
+		newEnvRemoveServiceCommand(app),
+		newEnvSwapBranchCommand(app),
+		newEnvRetryBuildCommand(app),
+		newEnvWaitCommand(app),
+	)
 	return cmd
 }
 
@@ -118,9 +139,7 @@ func runEnvList(ctx context.Context, app *App, statuses []string, limit, offset 
 		return client.Transport(err, sess.Resolved.Endpoint)
 	}
 	if resp.JSON200 == nil {
-		return client.Problem(
-			firstProblem(resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON500, resp.JSON503),
-			resp.Body, resp.StatusCode())
+		return client.Fail(resp, resp.Headers429)
 	}
 
 	page := *resp.JSON200
@@ -220,16 +239,13 @@ func runEnvGet(ctx context.Context, app *App, ref string) error {
 	if err != nil {
 		return client.Transport(err, sess.Resolved.Endpoint)
 	}
-	if resp.JSON404 != nil {
-		e := client.Problem(resp.JSON404, resp.Body, resp.StatusCode())
-		e.Hint = fmt.Sprintf(
-			"a slug resolves only live environments; if %q was destroyed or canceled, address it by id", ref)
-		return e
-	}
 	if resp.JSON200 == nil {
-		return client.Problem(
-			firstProblem(resp.JSON400, resp.JSON401, resp.JSON403, resp.JSON500, resp.JSON503),
-			resp.Body, resp.StatusCode())
+		e := client.Fail(resp, resp.Headers429)
+		if resp.JSON404 != nil {
+			e.Hint = fmt.Sprintf(
+				"a slug resolves only live environments; if %q was destroyed or canceled, address it by id", ref)
+		}
+		return e
 	}
 
 	detail := *resp.JSON200

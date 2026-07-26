@@ -205,6 +205,11 @@ func (h *harness) run(args ...string) (string, string, int) {
 	app := &App{
 		Stdout: h.stdout, Stderr: h.stderr, Stdin: h.app.Stdin,
 		Version: h.app.Version, HTTP: h.app.HTTP, store: h.store,
+		// Carried over deliberately: a wait's poll period is process-level
+		// configuration, not per-invocation state, and forgetting it here makes
+		// every wait test sleep for real.
+		waitInterval:      h.app.waitInterval,
+		waitFailureWindow: h.app.waitFailureWindow,
 	}
 	root := NewRootCommand(app)
 	root.SetArgs(args)

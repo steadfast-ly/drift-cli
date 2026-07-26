@@ -10,6 +10,7 @@ package cliexit
 import (
 	"errors"
 	"fmt"
+	"time"
 )
 
 // The exit-code contract (DESIGN.md §5). Frozen — additive only.
@@ -30,15 +31,12 @@ const (
 	WaitTimeout = 6
 	// RateLimited is a per-credential rate limit, with a retry worth making.
 	//
-	// ALLOCATED AND CURRENTLY UNREACHABLE. Nothing on `/api/v1` can produce a
-	// 429 until per-credential limits land (DESIGN.md §7 step 5), and a 429 from
-	// an intermediary — an ALB, a WAF — is not drift rate-limiting the caller,
-	// so reporting it as one would be a lie. `FromProblem` is where it starts
-	// being emitted, in one line, when the server can actually mean it.
-	//
-	// Allocated now rather than later because adding a code is additive and
-	// nothing changes meaning, whereas re-pointing an existing code once scripts
-	// depend on it is not.
+	// REACHABLE as of the mutation surface: `/api/v1` limits per credential and
+	// answers 429 with a `Retry-After` in whole seconds, declared on every
+	// operation in the contract. A 429 that arrives without a decodable drift
+	// envelope is NOT reported as this code — an intermediary (an ALB, a WAF)
+	// throttling the connection is not drift rate-limiting the caller, and
+	// `Problem` keeps that case on the generic failure path.
 	RateLimited = 7
 )
 
@@ -52,7 +50,7 @@ const Help = `Exit codes:
   4   authentication required
   5   state conflict or operation failed
   6   wait timed out
-  7   rate limited (reserved; not yet emitted)`
+  7   rate limited (retry after the interval the server names)`
 
 // Error carries a message and the exit code the process should end with.
 //
@@ -70,6 +68,11 @@ type ExitError struct {
 	// printed: a raw Go error where the server gave a typed one is exactly what
 	// this type exists to prevent.
 	Err error
+	// RetryAfter is the interval the server asked the caller to wait, taken from
+	// the `Retry-After` response header on a 429. Zero when the server did not
+	// say. Rendered as advice, and consumed by `--wait` so a poll loop backs off
+	// to the server's number rather than its own.
+	RetryAfter time.Duration
 }
 
 func (e *ExitError) Error() string { return e.Message }
@@ -117,11 +120,12 @@ func CodeOf(err error) int {
 //     No code string is guessed here: the server has no promotion procedures
 //     yet, so there is nothing to match on and nothing is invented.
 //
-//   - **429.** Exit 7 is now ALLOCATED for it (see RateLimited) but deliberately
-//     not yet emitted: nothing on `/api/v1` can produce a 429 until step 5, and
-//     a 429 from an intermediary is not drift rate-limiting the caller. When the
-//     server can mean it, this function grows a `case 429: return RateLimited`
-//     and nothing else changes.
+//   - **429.** Now emitted as RateLimited, because the server means it: limits
+//     are per credential and every operation in the contract declares a 429
+//     carrying `Retry-After`. Reached only through this function, so a 429 that
+//     did not arrive as a drift envelope stays on the generic path — an
+//     intermediary throttling the connection is a different condition with a
+//     different remedy, and `Problem` keeps the two apart.
 func FromProblem(code string, status int) int {
 	// Reserved for the step-6 elevation case; deliberately empty rather than
 	// populated with a guess.
@@ -151,8 +155,9 @@ func FromHTTPStatus(status int) int {
 		return NotFound
 	case 409:
 		return Conflict
+	case 429:
+		return RateLimited
 	default:
-		// Includes 429: see FromProblem for why it stays here for now.
 		return Error
 	}
 }

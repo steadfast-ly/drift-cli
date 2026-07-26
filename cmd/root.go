@@ -14,7 +14,12 @@ import (
 // rather than literals at the call sites, because a typo in one of these is a
 // command that fails against every server with a confusing message.
 const (
-	FeatureEnvironmentsRead = "environments.read"
+	FeatureEnvironmentsRead  = "environments.read"
+	FeatureEnvironmentsWrite = "environments.write"
+	FeatureRepositoriesRead  = "repositories.read"
+	FeatureReleasesRead      = "releases.read"
+	FeaturePromotionsRc      = "promotions.rc"
+	FeaturePromotionsHotfix  = "promotions.hotfix"
 )
 
 // NewRootCommand builds the command tree.
@@ -61,6 +66,7 @@ func NewRootCommand(app *App) *cobra.Command {
 		newAuthCommand(app),
 		newContextCommand(app),
 		newEnvCommand(app),
+		newReleaseCommand(app),
 		newDoctorCommand(app),
 		newVersionCommand(app),
 		newCompletionCommand(app),

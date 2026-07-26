@@ -1,0 +1,19 @@
+{
+  "active": null,
+  "fetchedAt": {
+    "rc": "2026-07-26T10:00:00Z",
+    "stg": "2026-07-26T10:00:00Z"
+  },
+  "items": [
+    {
+      "rc_commit": "9990000",
+      "rc_health": "progressing",
+      "rc_replicas": "1/2",
+      "rc_tag": "rc-9990000",
+      "service": "widget",
+      "stg_commit": "abc1234",
+      "stg_health": "healthy",
+      "stg_tag": "stg-abc1234"
+    }
+  ]
+}

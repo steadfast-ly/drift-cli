@@ -40,7 +40,7 @@ func TestFromHTTPStatus(t *testing.T) {
 		{403, Error, "authenticated but not permitted; re-authenticating will not help"},
 		{404, NotFound, ""},
 		{409, Conflict, "state-machine conflict"},
-		{429, Error, "rate limited"},
+		{429, RateLimited, "the server rate-limits per credential and says how long to wait"},
 		{500, Error, ""},
 		{503, Error, ""},
 	}
@@ -138,11 +138,11 @@ func TestFromProblemMatchesStatusToday(t *testing.T) {
 		}
 	}
 	// Recorded decisions, so a change to either is deliberate:
-	//   Exit 7 is allocated for rate limiting but not yet emitted: nothing on
-	//   /api/v1 can produce a 429 until step 5, and a 429 from an intermediary is
-	//   not drift rate-limiting the caller.
-	if FromProblem("TOO_MANY_REQUESTS", 429) != Error {
-		t.Fatal("429 no longer maps to Error; update the decision recorded in FromProblem")
+	//   Exit 7 is now EMITTED: /api/v1 limits per credential and declares a 429
+	//   with Retry-After on every operation. Reached only through an envelope, so
+	//   an intermediary's 429 does not claim to be drift's rate limiter.
+	if FromProblem("TOO_MANY_REQUESTS", 429) != RateLimited {
+		t.Fatal("429 no longer maps to RateLimited; update the decision recorded in FromProblem")
 	}
 	if RateLimited != 7 {
 		t.Fatalf("RateLimited = %d, want 7", RateLimited)

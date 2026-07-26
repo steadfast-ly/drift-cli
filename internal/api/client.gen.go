@@ -4,6 +4,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -191,6 +192,48 @@ func (e ServiceHealthStatus) Valid() bool {
 	}
 }
 
+// Defines values for WhoAmIChannel.
+const (
+	WhoAmIChannelApi WhoAmIChannel = "api"
+	WhoAmIChannelCli WhoAmIChannel = "cli"
+)
+
+// Valid indicates whether the value is a known member of the WhoAmIChannel enum.
+func (e WhoAmIChannel) Valid() bool {
+	switch e {
+	case WhoAmIChannelApi:
+		return true
+	case WhoAmIChannelCli:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WhoAmIRole.
+const (
+	WhoAmIRoleAdmin    WhoAmIRole = "admin"
+	WhoAmIRolePreview  WhoAmIRole = "preview"
+	WhoAmIRoleReadOnly WhoAmIRole = "read-only"
+	WhoAmIRoleRelease  WhoAmIRole = "release"
+)
+
+// Valid indicates whether the value is a known member of the WhoAmIRole enum.
+func (e WhoAmIRole) Valid() bool {
+	switch e {
+	case WhoAmIRoleAdmin:
+		return true
+	case WhoAmIRolePreview:
+		return true
+	case WhoAmIRoleReadOnly:
+		return true
+	case WhoAmIRoleRelease:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WorkflowDispatchStatus.
 const (
 	WorkflowDispatchStatusCompleted  WorkflowDispatchStatus = "completed"
@@ -328,6 +371,8 @@ type ApiProblem struct {
 	Code string `json:"code"`
 	Data *struct {
 		Detail *string `json:"detail,omitempty"`
+		Event  *string `json:"event,omitempty"`
+		State  *string `json:"state,omitempty"`
 		Type   string  `json:"type"`
 	} `json:"data,omitempty"`
 	Defined bool   `json:"defined"`
@@ -380,6 +425,13 @@ type BranchPage struct {
 	Pagination PageInfo `json:"pagination"`
 }
 
+// CredentialIdentity defines model for CredentialIdentity.
+type CredentialIdentity struct {
+	ExpiresAt time.Time          `json:"expiresAt"`
+	Id        openapi_types.UUID `json:"id"`
+	Label     string             `json:"label"`
+}
+
 // Environment defines model for Environment.
 type Environment struct {
 	ExpiresAt time.Time          `json:"expiresAt"`
@@ -417,6 +469,11 @@ type EnvironmentDetail struct {
 	Builds      []EnvironmentBuild   `json:"builds"`
 	Environment Environment          `json:"environment"`
 	Services    []EnvironmentService `json:"services"`
+}
+
+// EnvironmentMutation defines model for EnvironmentMutation.
+type EnvironmentMutation struct {
+	EnvironmentId openapi_types.UUID `json:"environmentId"`
 }
 
 // EnvironmentPage defines model for EnvironmentPage.
@@ -481,6 +538,12 @@ type PromotionServiceHealthStatuses string
 
 // PromotionStatus defines model for Promotion.Status.
 type PromotionStatus string
+
+// PromotionMutation defines model for PromotionMutation.
+type PromotionMutation struct {
+	DispatchCount int                `json:"dispatchCount"`
+	PromotionId   openapi_types.UUID `json:"promotionId"`
+}
 
 // PromotionPage defines model for PromotionPage.
 type PromotionPage struct {
@@ -547,6 +610,20 @@ type VersionSnapshotEntry struct {
 	StgImageTag  string  `json:"stgImageTag"`
 }
 
+// WhoAmI defines model for WhoAmI.
+type WhoAmI struct {
+	Channel    WhoAmIChannel       `json:"channel"`
+	Credential *CredentialIdentity `json:"credential"`
+	Email      string              `json:"email"`
+	Role       WhoAmIRole          `json:"role"`
+}
+
+// WhoAmIChannel defines model for WhoAmI.Channel.
+type WhoAmIChannel string
+
+// WhoAmIRole defines model for WhoAmI.Role.
+type WhoAmIRole string
+
 // WorkflowDispatch defines model for WorkflowDispatch.
 type WorkflowDispatch struct {
 	Branch         *string                `json:"branch,omitempty"`
@@ -598,6 +675,42 @@ type EnvironmentsListParams struct {
 // EnvironmentsListParamsStatus defines parameters for EnvironmentsList.
 type EnvironmentsListParamsStatus string
 
+// EnvironmentsCreateJSONBody defines parameters for EnvironmentsCreate.
+type EnvironmentsCreateJSONBody struct {
+	IsPublic *bool `json:"isPublic,omitempty"`
+	Repos    []struct {
+		Branch       string             `json:"branch"`
+		PrNumber     *int               `json:"prNumber,omitempty"`
+		PrTitle      *string            `json:"prTitle,omitempty"`
+		PrUrl        *string            `json:"prUrl,omitempty"`
+		RepositoryId openapi_types.UUID `json:"repositoryId"`
+	} `json:"repos"`
+	Slug     string  `json:"slug"`
+	TicketId *string `json:"ticketId,omitempty"`
+	TtlHours *int    `json:"ttlHours,omitempty"`
+}
+
+// EnvironmentsExtendJSONBody defines parameters for EnvironmentsExtend.
+type EnvironmentsExtendJSONBody struct {
+	AdditionalHours int `json:"additionalHours"`
+}
+
+// EnvironmentsAddServiceJSONBody defines parameters for EnvironmentsAddService.
+type EnvironmentsAddServiceJSONBody struct {
+	Branch       string             `json:"branch"`
+	RepositoryId openapi_types.UUID `json:"repositoryId"`
+}
+
+// EnvironmentsSwapBranchJSONBody defines parameters for EnvironmentsSwapBranch.
+type EnvironmentsSwapBranchJSONBody struct {
+	NewBranch string `json:"newBranch"`
+}
+
+// EnvironmentsSetVisibilityJSONBody defines parameters for EnvironmentsSetVisibility.
+type EnvironmentsSetVisibilityJSONBody struct {
+	IsPublic bool `json:"isPublic"`
+}
+
 // ReleasesPromotionsActiveParams defines parameters for ReleasesPromotionsActive.
 type ReleasesPromotionsActiveParams struct {
 	PromotionType *ReleasesPromotionsActiveParamsPromotionType `form:"promotionType,omitempty" json:"promotionType,omitempty"`
@@ -612,6 +725,17 @@ type ReleasesPromotionsHistoryParams struct {
 	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
+// ReleasesPromoteRcJSONBody defines parameters for ReleasesPromoteRc.
+type ReleasesPromoteRcJSONBody struct {
+	HelmChartKeys []string `json:"helmChartKeys"`
+}
+
+// ReleasesPromoteRcHotfixJSONBody defines parameters for ReleasesPromoteRcHotfix.
+type ReleasesPromoteRcHotfixJSONBody struct {
+	Branch        string   `json:"branch"`
+	HelmChartKeys []string `json:"helmChartKeys"`
+}
+
 // RepositoriesListParams defines parameters for RepositoriesList.
 type RepositoriesListParams struct {
 	Limit  *int `form:"limit,omitempty" json:"limit,omitempty"`
@@ -624,6 +748,27 @@ type RepositoriesBranchesParams struct {
 	Offset *int    `form:"offset,omitempty" json:"offset,omitempty"`
 	Q      *string `form:"q,omitempty" json:"q,omitempty"`
 }
+
+// EnvironmentsCreateJSONRequestBody defines body for EnvironmentsCreate for application/json ContentType.
+type EnvironmentsCreateJSONRequestBody EnvironmentsCreateJSONBody
+
+// EnvironmentsExtendJSONRequestBody defines body for EnvironmentsExtend for application/json ContentType.
+type EnvironmentsExtendJSONRequestBody EnvironmentsExtendJSONBody
+
+// EnvironmentsAddServiceJSONRequestBody defines body for EnvironmentsAddService for application/json ContentType.
+type EnvironmentsAddServiceJSONRequestBody EnvironmentsAddServiceJSONBody
+
+// EnvironmentsSwapBranchJSONRequestBody defines body for EnvironmentsSwapBranch for application/json ContentType.
+type EnvironmentsSwapBranchJSONRequestBody EnvironmentsSwapBranchJSONBody
+
+// EnvironmentsSetVisibilityJSONRequestBody defines body for EnvironmentsSetVisibility for application/json ContentType.
+type EnvironmentsSetVisibilityJSONRequestBody EnvironmentsSetVisibilityJSONBody
+
+// ReleasesPromoteRcJSONRequestBody defines body for ReleasesPromoteRc for application/json ContentType.
+type ReleasesPromoteRcJSONRequestBody ReleasesPromoteRcJSONBody
+
+// ReleasesPromoteRcHotfixJSONRequestBody defines body for ReleasesPromoteRcHotfix for application/json ContentType.
+type ReleasesPromoteRcHotfixJSONRequestBody ReleasesPromoteRcHotfixJSONBody
 
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -713,12 +858,158 @@ type ClientInterface interface {
 	// Corresponds with GET /audit-log/actors (the `AuditActors` operationId).
 	AuditActors(ctx context.Context, params *AuditActorsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AuthWhoami Describe the calling credential
+	//
+	// Reports the caller's own email, effective role, and — for a bearer credential — its label and expiry. Takes no parameters and can only describe the credential presented on the request; there is no way to ask about another principal or to list the credentials one holds.
+	//
+	// Corresponds with GET /auth/whoami (the `AuthWhoami` operationId).
+	AuthWhoami(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// EnvironmentsList List environments
 	//
 	// Environments newest first. Pass `status` one or more times to narrow to a status set; omit it for every environment including terminal ones.
 	//
 	// Corresponds with GET /environments (the `EnvironmentsList` operationId).
 	EnvironmentsList(ctx context.Context, params *EnvironmentsListParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsCreateWithBody Create an environment
+	//
+	// Dispatches builds and returns immediately with the new environment's id; poll `GET /environments/{ref}` for progress. At least one repository must be on a non-default branch — staging already runs every repository on its default branch. Rejected with 409 if the slug is held by a live environment or its namespace is still tearing down.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /environments (the `EnvironmentsCreate` operationId).
+	EnvironmentsCreateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsCreate Create an environment
+	//
+	// Dispatches builds and returns immediately with the new environment's id; poll `GET /environments/{ref}` for progress. At least one repository must be on a non-default branch — staging already runs every repository on its default branch. Rejected with 409 if the slug is held by a live environment or its namespace is still tearing down.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /environments (the `EnvironmentsCreate` operationId).
+	EnvironmentsCreate(ctx context.Context, body EnvironmentsCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsDestroy Destroy an environment
+	//
+	// Fires destroy intent and returns; teardown is driven to completion by drift's destroy-cleanup cron, so the environment stays `destroying` for some minutes before it reaches `destroyed`. A second call while it is already tearing down is a 409.
+	//
+	// Corresponds with DELETE /environments/{environmentId} (the `EnvironmentsDestroy` operationId).
+	EnvironmentsDestroy(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsCancel Cancel a building environment
+	//
+	// Only valid while the environment is building or has failed to build. Cancelling does not tear anything down — destroy the environment to release its namespace.
+	//
+	// Corresponds with POST /environments/{environmentId}/cancel (the `EnvironmentsCancel` operationId).
+	EnvironmentsCancel(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsExtendWithBody Extend an environment's TTL
+	//
+	// Adds hours to the expiry. Bounded per request and cumulatively: a request that would carry the total past drift's ceiling is rejected with 400 and nothing is changed. NOT idempotent — two calls extend twice.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /environments/{environmentId}/extend (the `EnvironmentsExtend` operationId).
+	EnvironmentsExtendWithBody(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsExtend Extend an environment's TTL
+	//
+	// Adds hours to the expiry. Bounded per request and cumulatively: a request that would carry the total past drift's ceiling is rejected with 400 and nothing is changed. NOT idempotent — two calls extend twice.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /environments/{environmentId}/extend (the `EnvironmentsExtend` operationId).
+	EnvironmentsExtend(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsExtendJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsRelaunch Relaunch a terminal environment
+	//
+	// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL and visibility into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
+	//
+	// Corresponds with POST /environments/{environmentId}/relaunch (the `EnvironmentsRelaunch` operationId).
+	EnvironmentsRelaunch(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsAddServiceWithBody Add a service to an environment
+	//
+	// Wires a repository into the environment on the given branch, dispatches its build and re-commits the manifest. Every dependency of the repository must already be present. Adding one that is already there is a 409.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /environments/{environmentId}/services (the `EnvironmentsAddService` operationId).
+	EnvironmentsAddServiceWithBody(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsAddService Add a service to an environment
+	//
+	// Wires a repository into the environment on the given branch, dispatches its build and re-commits the manifest. Every dependency of the repository must already be present. Adding one that is already there is a 409.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /environments/{environmentId}/services (the `EnvironmentsAddService` operationId).
+	EnvironmentsAddService(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsAddServiceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsRemoveService Remove a service from an environment
+	//
+	// Deletes the service, cancels its in-flight builds and re-commits the manifest. The last remaining service cannot be removed, and a sleeping environment must be woken first.
+	//
+	// Corresponds with DELETE /environments/{environmentId}/services/{environmentRepoId} (the `EnvironmentsRemoveService` operationId).
+	EnvironmentsRemoveService(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsSwapBranchWithBody Swap a service's branch
+	//
+	// Repoints the service at another branch, cancels its in-flight builds and dispatches a new one. The environment returns to `building`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /environments/{environmentId}/services/{environmentRepoId}/branch (the `EnvironmentsSwapBranch` operationId).
+	EnvironmentsSwapBranchWithBody(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsSwapBranch Swap a service's branch
+	//
+	// Repoints the service at another branch, cancels its in-flight builds and dispatches a new one. The environment returns to `building`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /environments/{environmentId}/services/{environmentRepoId}/branch (the `EnvironmentsSwapBranch` operationId).
+	EnvironmentsSwapBranch(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, body EnvironmentsSwapBranchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsRetryBuild Retry a failed build
+	//
+	// Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every sibling service sharing the repository is retried together.
+	//
+	// Corresponds with POST /environments/{environmentId}/services/{environmentRepoId}/retry-build (the `EnvironmentsRetryBuild` operationId).
+	EnvironmentsRetryBuild(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsSleep Put an environment to sleep
+	//
+	// Scales every workload to zero and hibernates the CNPG database, keeping the volumes. Only valid from `running`. The TTL is frozen while asleep and resumes on wake.
+	//
+	// Corresponds with POST /environments/{environmentId}/sleep (the `EnvironmentsSleep` operationId).
+	EnvironmentsSleep(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsSetVisibilityWithBody Set an environment's visibility
+	//
+	// Moves the environment between the internal and public ALB groups and re-commits its gitops manifest. Setting the visibility it already has is a 409, so this is safe to retry but not to use as an assertion.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /environments/{environmentId}/visibility (the `EnvironmentsSetVisibility` operationId).
+	EnvironmentsSetVisibilityWithBody(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsSetVisibility Set an environment's visibility
+	//
+	// Moves the environment between the internal and public ALB groups and re-commits its gitops manifest. Setting the visibility it already has is a 409, so this is safe to retry but not to use as an assertion.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /environments/{environmentId}/visibility (the `EnvironmentsSetVisibility` operationId).
+	EnvironmentsSetVisibility(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsSetVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsWake Wake a sleeping environment
+	//
+	// Two-phase: the data tier comes up first, then the applications. The environment reports `waking` until ArgoCD sees phase 2 healthy. The TTL is extended by however long it slept.
+	//
+	// Corresponds with POST /environments/{environmentId}/wake (the `EnvironmentsWake` operationId).
+	EnvironmentsWake(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// EnvironmentsGet Get an environment by id or slug
 	//
@@ -736,6 +1027,42 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /releases/promotions/history (the `ReleasesPromotionsHistory` operationId).
 	ReleasesPromotionsHistory(ctx context.Context, params *ReleasesPromotionsHistoryParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReleasesPromoteRcWithBody Promote services from stg to rc
+	//
+	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by GitHub repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /releases/promotions/rc (the `ReleasesPromoteRc` operationId).
+	ReleasesPromoteRcWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReleasesPromoteRc Promote services from stg to rc
+	//
+	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by GitHub repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /releases/promotions/rc (the `ReleasesPromoteRc` operationId).
+	ReleasesPromoteRc(ctx context.Context, body ReleasesPromoteRcJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReleasesPromoteRcHotfixWithBody Dispatch a hotfix build to rc
+	//
+	// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, tagging the result `rc-<sha>`. For emergencies: the build does not pass through stg. The target is the path, not a parameter — a hotfix to production is a production promotion and is not on this surface.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /releases/promotions/rc/hotfix (the `ReleasesPromoteRcHotfix` operationId).
+	ReleasesPromoteRcHotfixWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReleasesPromoteRcHotfix Dispatch a hotfix build to rc
+	//
+	// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, tagging the result `rc-<sha>`. For emergencies: the build does not pass through stg. The target is the path, not a parameter — a hotfix to production is a production promotion and is not on this surface.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /releases/promotions/rc/hotfix (the `ReleasesPromoteRcHotfix` operationId).
+	ReleasesPromoteRcHotfix(ctx context.Context, body ReleasesPromoteRcHotfixJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ReleasesState Get stg and rc release state
 	//
@@ -793,6 +1120,23 @@ func (c *Client) AuditActors(ctx context.Context, params *AuditActorsParams, req
 	return c.Client.Do(req)
 }
 
+// AuthWhoami Describe the calling credential
+//
+// Reports the caller's own email, effective role, and — for a bearer credential — its label and expiry. Takes no parameters and can only describe the credential presented on the request; there is no way to ask about another principal or to list the credentials one holds.
+//
+// Corresponds with GET /auth/whoami (the `AuthWhoami` operationId).
+func (c *Client) AuthWhoami(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAuthWhoamiRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // EnvironmentsList List environments
 //
 // Environments newest first. Pass `status` one or more times to narrow to a status set; omit it for every environment including terminal ones.
@@ -800,6 +1144,315 @@ func (c *Client) AuditActors(ctx context.Context, params *AuditActorsParams, req
 // Corresponds with GET /environments (the `EnvironmentsList` operationId).
 func (c *Client) EnvironmentsList(ctx context.Context, params *EnvironmentsListParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewEnvironmentsListRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsCreateWithBody Create an environment
+//
+// Dispatches builds and returns immediately with the new environment's id; poll `GET /environments/{ref}` for progress. At least one repository must be on a non-default branch — staging already runs every repository on its default branch. Rejected with 409 if the slug is held by a live environment or its namespace is still tearing down.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /environments (the `EnvironmentsCreate` operationId).
+func (c *Client) EnvironmentsCreateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsCreateRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsCreate Create an environment
+//
+// Dispatches builds and returns immediately with the new environment's id; poll `GET /environments/{ref}` for progress. At least one repository must be on a non-default branch — staging already runs every repository on its default branch. Rejected with 409 if the slug is held by a live environment or its namespace is still tearing down.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /environments (the `EnvironmentsCreate` operationId).
+func (c *Client) EnvironmentsCreate(ctx context.Context, body EnvironmentsCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsCreateRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsDestroy Destroy an environment
+//
+// Fires destroy intent and returns; teardown is driven to completion by drift's destroy-cleanup cron, so the environment stays `destroying` for some minutes before it reaches `destroyed`. A second call while it is already tearing down is a 409.
+//
+// Corresponds with DELETE /environments/{environmentId} (the `EnvironmentsDestroy` operationId).
+func (c *Client) EnvironmentsDestroy(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsDestroyRequest(c.Server, environmentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsCancel Cancel a building environment
+//
+// Only valid while the environment is building or has failed to build. Cancelling does not tear anything down — destroy the environment to release its namespace.
+//
+// Corresponds with POST /environments/{environmentId}/cancel (the `EnvironmentsCancel` operationId).
+func (c *Client) EnvironmentsCancel(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsCancelRequest(c.Server, environmentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsExtendWithBody Extend an environment's TTL
+//
+// Adds hours to the expiry. Bounded per request and cumulatively: a request that would carry the total past drift's ceiling is rejected with 400 and nothing is changed. NOT idempotent — two calls extend twice.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /environments/{environmentId}/extend (the `EnvironmentsExtend` operationId).
+func (c *Client) EnvironmentsExtendWithBody(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsExtendRequestWithBody(c.Server, environmentId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsExtend Extend an environment's TTL
+//
+// Adds hours to the expiry. Bounded per request and cumulatively: a request that would carry the total past drift's ceiling is rejected with 400 and nothing is changed. NOT idempotent — two calls extend twice.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /environments/{environmentId}/extend (the `EnvironmentsExtend` operationId).
+func (c *Client) EnvironmentsExtend(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsExtendJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsExtendRequest(c.Server, environmentId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsRelaunch Relaunch a terminal environment
+//
+// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL and visibility into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
+//
+// Corresponds with POST /environments/{environmentId}/relaunch (the `EnvironmentsRelaunch` operationId).
+func (c *Client) EnvironmentsRelaunch(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsRelaunchRequest(c.Server, environmentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsAddServiceWithBody Add a service to an environment
+//
+// Wires a repository into the environment on the given branch, dispatches its build and re-commits the manifest. Every dependency of the repository must already be present. Adding one that is already there is a 409.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /environments/{environmentId}/services (the `EnvironmentsAddService` operationId).
+func (c *Client) EnvironmentsAddServiceWithBody(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsAddServiceRequestWithBody(c.Server, environmentId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsAddService Add a service to an environment
+//
+// Wires a repository into the environment on the given branch, dispatches its build and re-commits the manifest. Every dependency of the repository must already be present. Adding one that is already there is a 409.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /environments/{environmentId}/services (the `EnvironmentsAddService` operationId).
+func (c *Client) EnvironmentsAddService(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsAddServiceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsAddServiceRequest(c.Server, environmentId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsRemoveService Remove a service from an environment
+//
+// Deletes the service, cancels its in-flight builds and re-commits the manifest. The last remaining service cannot be removed, and a sleeping environment must be woken first.
+//
+// Corresponds with DELETE /environments/{environmentId}/services/{environmentRepoId} (the `EnvironmentsRemoveService` operationId).
+func (c *Client) EnvironmentsRemoveService(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsRemoveServiceRequest(c.Server, environmentId, environmentRepoId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsSwapBranchWithBody Swap a service's branch
+//
+// Repoints the service at another branch, cancels its in-flight builds and dispatches a new one. The environment returns to `building`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /environments/{environmentId}/services/{environmentRepoId}/branch (the `EnvironmentsSwapBranch` operationId).
+func (c *Client) EnvironmentsSwapBranchWithBody(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsSwapBranchRequestWithBody(c.Server, environmentId, environmentRepoId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsSwapBranch Swap a service's branch
+//
+// Repoints the service at another branch, cancels its in-flight builds and dispatches a new one. The environment returns to `building`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /environments/{environmentId}/services/{environmentRepoId}/branch (the `EnvironmentsSwapBranch` operationId).
+func (c *Client) EnvironmentsSwapBranch(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, body EnvironmentsSwapBranchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsSwapBranchRequest(c.Server, environmentId, environmentRepoId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsRetryBuild Retry a failed build
+//
+// Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every sibling service sharing the repository is retried together.
+//
+// Corresponds with POST /environments/{environmentId}/services/{environmentRepoId}/retry-build (the `EnvironmentsRetryBuild` operationId).
+func (c *Client) EnvironmentsRetryBuild(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsRetryBuildRequest(c.Server, environmentId, environmentRepoId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsSleep Put an environment to sleep
+//
+// Scales every workload to zero and hibernates the CNPG database, keeping the volumes. Only valid from `running`. The TTL is frozen while asleep and resumes on wake.
+//
+// Corresponds with POST /environments/{environmentId}/sleep (the `EnvironmentsSleep` operationId).
+func (c *Client) EnvironmentsSleep(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsSleepRequest(c.Server, environmentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsSetVisibilityWithBody Set an environment's visibility
+//
+// Moves the environment between the internal and public ALB groups and re-commits its gitops manifest. Setting the visibility it already has is a 409, so this is safe to retry but not to use as an assertion.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /environments/{environmentId}/visibility (the `EnvironmentsSetVisibility` operationId).
+func (c *Client) EnvironmentsSetVisibilityWithBody(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsSetVisibilityRequestWithBody(c.Server, environmentId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsSetVisibility Set an environment's visibility
+//
+// Moves the environment between the internal and public ALB groups and re-commits its gitops manifest. Setting the visibility it already has is a 409, so this is safe to retry but not to use as an assertion.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /environments/{environmentId}/visibility (the `EnvironmentsSetVisibility` operationId).
+func (c *Client) EnvironmentsSetVisibility(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsSetVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsSetVisibilityRequest(c.Server, environmentId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsWake Wake a sleeping environment
+//
+// Two-phase: the data tier comes up first, then the applications. The environment reports `waking` until ArgoCD sees phase 2 healthy. The TTL is extended by however long it slept.
+//
+// Corresponds with POST /environments/{environmentId}/wake (the `EnvironmentsWake` operationId).
+func (c *Client) EnvironmentsWake(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsWakeRequest(c.Server, environmentId)
 	if err != nil {
 		return nil, err
 	}
@@ -847,6 +1500,82 @@ func (c *Client) ReleasesPromotionsActive(ctx context.Context, params *ReleasesP
 // Corresponds with GET /releases/promotions/history (the `ReleasesPromotionsHistory` operationId).
 func (c *Client) ReleasesPromotionsHistory(ctx context.Context, params *ReleasesPromotionsHistoryParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewReleasesPromotionsHistoryRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReleasesPromoteRcWithBody Promote services from stg to rc
+//
+// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by GitHub repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /releases/promotions/rc (the `ReleasesPromoteRc` operationId).
+func (c *Client) ReleasesPromoteRcWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReleasesPromoteRcRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReleasesPromoteRc Promote services from stg to rc
+//
+// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by GitHub repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /releases/promotions/rc (the `ReleasesPromoteRc` operationId).
+func (c *Client) ReleasesPromoteRc(ctx context.Context, body ReleasesPromoteRcJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReleasesPromoteRcRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReleasesPromoteRcHotfixWithBody Dispatch a hotfix build to rc
+//
+// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, tagging the result `rc-<sha>`. For emergencies: the build does not pass through stg. The target is the path, not a parameter — a hotfix to production is a production promotion and is not on this surface.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /releases/promotions/rc/hotfix (the `ReleasesPromoteRcHotfix` operationId).
+func (c *Client) ReleasesPromoteRcHotfixWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReleasesPromoteRcHotfixRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReleasesPromoteRcHotfix Dispatch a hotfix build to rc
+//
+// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, tagging the result `rc-<sha>`. For emergencies: the build does not pass through stg. The target is the path, not a parameter — a hotfix to production is a production promotion and is not on this surface.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /releases/promotions/rc/hotfix (the `ReleasesPromoteRcHotfix` operationId).
+func (c *Client) ReleasesPromoteRcHotfix(ctx context.Context, body ReleasesPromoteRcHotfixJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReleasesPromoteRcHotfixRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1112,6 +1841,33 @@ func NewAuditActorsRequest(server string, params *AuditActorsParams) (*http.Requ
 	return req, nil
 }
 
+// NewAuthWhoamiRequest constructs an http.Request for the AuthWhoami method
+func NewAuthWhoamiRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/whoami")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewEnvironmentsListRequest constructs an http.Request for the EnvironmentsList method
 func NewEnvironmentsListRequest(server string, params *EnvironmentsListParams) (*http.Request, error) {
 	var err error
@@ -1183,6 +1939,493 @@ func NewEnvironmentsListRequest(server string, params *EnvironmentsListParams) (
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewEnvironmentsCreateRequest calls the generic EnvironmentsCreate builder with application/json body
+func NewEnvironmentsCreateRequest(server string, body EnvironmentsCreateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewEnvironmentsCreateRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewEnvironmentsCreateRequestWithBody constructs an http.Request for the EnvironmentsCreate method, with any body, and a specified content type
+func NewEnvironmentsCreateRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/environments")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewEnvironmentsDestroyRequest constructs an http.Request for the EnvironmentsDestroy method
+func NewEnvironmentsDestroyRequest(server string, environmentId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/environments/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewEnvironmentsCancelRequest constructs an http.Request for the EnvironmentsCancel method
+func NewEnvironmentsCancelRequest(server string, environmentId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/environments/%s/cancel", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewEnvironmentsExtendRequest calls the generic EnvironmentsExtend builder with application/json body
+func NewEnvironmentsExtendRequest(server string, environmentId openapi_types.UUID, body EnvironmentsExtendJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewEnvironmentsExtendRequestWithBody(server, environmentId, "application/json", bodyReader)
+}
+
+// NewEnvironmentsExtendRequestWithBody constructs an http.Request for the EnvironmentsExtend method, with any body, and a specified content type
+func NewEnvironmentsExtendRequestWithBody(server string, environmentId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/environments/%s/extend", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewEnvironmentsRelaunchRequest constructs an http.Request for the EnvironmentsRelaunch method
+func NewEnvironmentsRelaunchRequest(server string, environmentId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/environments/%s/relaunch", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewEnvironmentsAddServiceRequest calls the generic EnvironmentsAddService builder with application/json body
+func NewEnvironmentsAddServiceRequest(server string, environmentId openapi_types.UUID, body EnvironmentsAddServiceJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewEnvironmentsAddServiceRequestWithBody(server, environmentId, "application/json", bodyReader)
+}
+
+// NewEnvironmentsAddServiceRequestWithBody constructs an http.Request for the EnvironmentsAddService method, with any body, and a specified content type
+func NewEnvironmentsAddServiceRequestWithBody(server string, environmentId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/environments/%s/services", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewEnvironmentsRemoveServiceRequest constructs an http.Request for the EnvironmentsRemoveService method
+func NewEnvironmentsRemoveServiceRequest(server string, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "environmentRepoId", environmentRepoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/environments/%s/services/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewEnvironmentsSwapBranchRequest calls the generic EnvironmentsSwapBranch builder with application/json body
+func NewEnvironmentsSwapBranchRequest(server string, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, body EnvironmentsSwapBranchJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewEnvironmentsSwapBranchRequestWithBody(server, environmentId, environmentRepoId, "application/json", bodyReader)
+}
+
+// NewEnvironmentsSwapBranchRequestWithBody constructs an http.Request for the EnvironmentsSwapBranch method, with any body, and a specified content type
+func NewEnvironmentsSwapBranchRequestWithBody(server string, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "environmentRepoId", environmentRepoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/environments/%s/services/%s/branch", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewEnvironmentsRetryBuildRequest constructs an http.Request for the EnvironmentsRetryBuild method
+func NewEnvironmentsRetryBuildRequest(server string, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "environmentRepoId", environmentRepoId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/environments/%s/services/%s/retry-build", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewEnvironmentsSleepRequest constructs an http.Request for the EnvironmentsSleep method
+func NewEnvironmentsSleepRequest(server string, environmentId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/environments/%s/sleep", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewEnvironmentsSetVisibilityRequest calls the generic EnvironmentsSetVisibility builder with application/json body
+func NewEnvironmentsSetVisibilityRequest(server string, environmentId openapi_types.UUID, body EnvironmentsSetVisibilityJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewEnvironmentsSetVisibilityRequestWithBody(server, environmentId, "application/json", bodyReader)
+}
+
+// NewEnvironmentsSetVisibilityRequestWithBody constructs an http.Request for the EnvironmentsSetVisibility method, with any body, and a specified content type
+func NewEnvironmentsSetVisibilityRequestWithBody(server string, environmentId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/environments/%s/visibility", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewEnvironmentsWakeRequest constructs an http.Request for the EnvironmentsWake method
+func NewEnvironmentsWakeRequest(server string, environmentId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/environments/%s/wake", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1340,6 +2583,86 @@ func NewReleasesPromotionsHistoryRequest(server string, params *ReleasesPromotio
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewReleasesPromoteRcRequest calls the generic ReleasesPromoteRc builder with application/json body
+func NewReleasesPromoteRcRequest(server string, body ReleasesPromoteRcJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewReleasesPromoteRcRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewReleasesPromoteRcRequestWithBody constructs an http.Request for the ReleasesPromoteRc method, with any body, and a specified content type
+func NewReleasesPromoteRcRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/releases/promotions/rc")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewReleasesPromoteRcHotfixRequest calls the generic ReleasesPromoteRcHotfix builder with application/json body
+func NewReleasesPromoteRcHotfixRequest(server string, body ReleasesPromoteRcHotfixJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewReleasesPromoteRcHotfixRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewReleasesPromoteRcHotfixRequestWithBody constructs an http.Request for the ReleasesPromoteRcHotfix method, with any body, and a specified content type
+func NewReleasesPromoteRcHotfixRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/releases/promotions/rc/hotfix")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -1584,6 +2907,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /audit-log/actors (the `AuditActors` operationId).
 	AuditActorsWithResponse(ctx context.Context, params *AuditActorsParams, reqEditors ...RequestEditorFn) (*AuditActorsResponse, error)
 
+	// AuthWhoamiWithResponse Describe the calling credential
+	//
+	// Reports the caller's own email, effective role, and — for a bearer credential — its label and expiry. Takes no parameters and can only describe the credential presented on the request; there is no way to ask about another principal or to list the credentials one holds.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /auth/whoami (the `AuthWhoami` operationId).
+	AuthWhoamiWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthWhoamiResponse, error)
+
 	// EnvironmentsListWithResponse List environments
 	//
 	// Environments newest first. Pass `status` one or more times to narrow to a status set; omit it for every environment including terminal ones.
@@ -1592,6 +2924,159 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /environments (the `EnvironmentsList` operationId).
 	EnvironmentsListWithResponse(ctx context.Context, params *EnvironmentsListParams, reqEditors ...RequestEditorFn) (*EnvironmentsListResponse, error)
+
+	// EnvironmentsCreateWithBodyWithResponse Create an environment
+	//
+	// Dispatches builds and returns immediately with the new environment's id; poll `GET /environments/{ref}` for progress. At least one repository must be on a non-default branch — staging already runs every repository on its default branch. Rejected with 409 if the slug is held by a live environment or its namespace is still tearing down.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /environments (the `EnvironmentsCreate` operationId).
+	EnvironmentsCreateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EnvironmentsCreateResponse, error)
+
+	// EnvironmentsCreateWithResponse Create an environment
+	//
+	// Dispatches builds and returns immediately with the new environment's id; poll `GET /environments/{ref}` for progress. At least one repository must be on a non-default branch — staging already runs every repository on its default branch. Rejected with 409 if the slug is held by a live environment or its namespace is still tearing down.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /environments (the `EnvironmentsCreate` operationId).
+	EnvironmentsCreateWithResponse(ctx context.Context, body EnvironmentsCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*EnvironmentsCreateResponse, error)
+
+	// EnvironmentsDestroyWithResponse Destroy an environment
+	//
+	// Fires destroy intent and returns; teardown is driven to completion by drift's destroy-cleanup cron, so the environment stays `destroying` for some minutes before it reaches `destroyed`. A second call while it is already tearing down is a 409.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /environments/{environmentId} (the `EnvironmentsDestroy` operationId).
+	EnvironmentsDestroyWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsDestroyResponse, error)
+
+	// EnvironmentsCancelWithResponse Cancel a building environment
+	//
+	// Only valid while the environment is building or has failed to build. Cancelling does not tear anything down — destroy the environment to release its namespace.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /environments/{environmentId}/cancel (the `EnvironmentsCancel` operationId).
+	EnvironmentsCancelWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsCancelResponse, error)
+
+	// EnvironmentsExtendWithBodyWithResponse Extend an environment's TTL
+	//
+	// Adds hours to the expiry. Bounded per request and cumulatively: a request that would carry the total past drift's ceiling is rejected with 400 and nothing is changed. NOT idempotent — two calls extend twice.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /environments/{environmentId}/extend (the `EnvironmentsExtend` operationId).
+	EnvironmentsExtendWithBodyWithResponse(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EnvironmentsExtendResponse, error)
+
+	// EnvironmentsExtendWithResponse Extend an environment's TTL
+	//
+	// Adds hours to the expiry. Bounded per request and cumulatively: a request that would carry the total past drift's ceiling is rejected with 400 and nothing is changed. NOT idempotent — two calls extend twice.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /environments/{environmentId}/extend (the `EnvironmentsExtend` operationId).
+	EnvironmentsExtendWithResponse(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsExtendJSONRequestBody, reqEditors ...RequestEditorFn) (*EnvironmentsExtendResponse, error)
+
+	// EnvironmentsRelaunchWithResponse Relaunch a terminal environment
+	//
+	// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL and visibility into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /environments/{environmentId}/relaunch (the `EnvironmentsRelaunch` operationId).
+	EnvironmentsRelaunchWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsRelaunchResponse, error)
+
+	// EnvironmentsAddServiceWithBodyWithResponse Add a service to an environment
+	//
+	// Wires a repository into the environment on the given branch, dispatches its build and re-commits the manifest. Every dependency of the repository must already be present. Adding one that is already there is a 409.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /environments/{environmentId}/services (the `EnvironmentsAddService` operationId).
+	EnvironmentsAddServiceWithBodyWithResponse(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EnvironmentsAddServiceResponse, error)
+
+	// EnvironmentsAddServiceWithResponse Add a service to an environment
+	//
+	// Wires a repository into the environment on the given branch, dispatches its build and re-commits the manifest. Every dependency of the repository must already be present. Adding one that is already there is a 409.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /environments/{environmentId}/services (the `EnvironmentsAddService` operationId).
+	EnvironmentsAddServiceWithResponse(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsAddServiceJSONRequestBody, reqEditors ...RequestEditorFn) (*EnvironmentsAddServiceResponse, error)
+
+	// EnvironmentsRemoveServiceWithResponse Remove a service from an environment
+	//
+	// Deletes the service, cancels its in-flight builds and re-commits the manifest. The last remaining service cannot be removed, and a sleeping environment must be woken first.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /environments/{environmentId}/services/{environmentRepoId} (the `EnvironmentsRemoveService` operationId).
+	EnvironmentsRemoveServiceWithResponse(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsRemoveServiceResponse, error)
+
+	// EnvironmentsSwapBranchWithBodyWithResponse Swap a service's branch
+	//
+	// Repoints the service at another branch, cancels its in-flight builds and dispatches a new one. The environment returns to `building`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /environments/{environmentId}/services/{environmentRepoId}/branch (the `EnvironmentsSwapBranch` operationId).
+	EnvironmentsSwapBranchWithBodyWithResponse(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EnvironmentsSwapBranchResponse, error)
+
+	// EnvironmentsSwapBranchWithResponse Swap a service's branch
+	//
+	// Repoints the service at another branch, cancels its in-flight builds and dispatches a new one. The environment returns to `building`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /environments/{environmentId}/services/{environmentRepoId}/branch (the `EnvironmentsSwapBranch` operationId).
+	EnvironmentsSwapBranchWithResponse(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, body EnvironmentsSwapBranchJSONRequestBody, reqEditors ...RequestEditorFn) (*EnvironmentsSwapBranchResponse, error)
+
+	// EnvironmentsRetryBuildWithResponse Retry a failed build
+	//
+	// Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every sibling service sharing the repository is retried together.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /environments/{environmentId}/services/{environmentRepoId}/retry-build (the `EnvironmentsRetryBuild` operationId).
+	EnvironmentsRetryBuildWithResponse(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsRetryBuildResponse, error)
+
+	// EnvironmentsSleepWithResponse Put an environment to sleep
+	//
+	// Scales every workload to zero and hibernates the CNPG database, keeping the volumes. Only valid from `running`. The TTL is frozen while asleep and resumes on wake.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /environments/{environmentId}/sleep (the `EnvironmentsSleep` operationId).
+	EnvironmentsSleepWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsSleepResponse, error)
+
+	// EnvironmentsSetVisibilityWithBodyWithResponse Set an environment's visibility
+	//
+	// Moves the environment between the internal and public ALB groups and re-commits its gitops manifest. Setting the visibility it already has is a 409, so this is safe to retry but not to use as an assertion.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /environments/{environmentId}/visibility (the `EnvironmentsSetVisibility` operationId).
+	EnvironmentsSetVisibilityWithBodyWithResponse(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EnvironmentsSetVisibilityResponse, error)
+
+	// EnvironmentsSetVisibilityWithResponse Set an environment's visibility
+	//
+	// Moves the environment between the internal and public ALB groups and re-commits its gitops manifest. Setting the visibility it already has is a 409, so this is safe to retry but not to use as an assertion.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /environments/{environmentId}/visibility (the `EnvironmentsSetVisibility` operationId).
+	EnvironmentsSetVisibilityWithResponse(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsSetVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*EnvironmentsSetVisibilityResponse, error)
+
+	// EnvironmentsWakeWithResponse Wake a sleeping environment
+	//
+	// Two-phase: the data tier comes up first, then the applications. The environment reports `waking` until ArgoCD sees phase 2 healthy. The TTL is extended by however long it slept.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /environments/{environmentId}/wake (the `EnvironmentsWake` operationId).
+	EnvironmentsWakeWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsWakeResponse, error)
 
 	// EnvironmentsGetWithResponse Get an environment by id or slug
 	//
@@ -1615,6 +3100,42 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /releases/promotions/history (the `ReleasesPromotionsHistory` operationId).
 	ReleasesPromotionsHistoryWithResponse(ctx context.Context, params *ReleasesPromotionsHistoryParams, reqEditors ...RequestEditorFn) (*ReleasesPromotionsHistoryResponse, error)
+
+	// ReleasesPromoteRcWithBodyWithResponse Promote services from stg to rc
+	//
+	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by GitHub repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /releases/promotions/rc (the `ReleasesPromoteRc` operationId).
+	ReleasesPromoteRcWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReleasesPromoteRcResponse, error)
+
+	// ReleasesPromoteRcWithResponse Promote services from stg to rc
+	//
+	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by GitHub repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /releases/promotions/rc (the `ReleasesPromoteRc` operationId).
+	ReleasesPromoteRcWithResponse(ctx context.Context, body ReleasesPromoteRcJSONRequestBody, reqEditors ...RequestEditorFn) (*ReleasesPromoteRcResponse, error)
+
+	// ReleasesPromoteRcHotfixWithBodyWithResponse Dispatch a hotfix build to rc
+	//
+	// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, tagging the result `rc-<sha>`. For emergencies: the build does not pass through stg. The target is the path, not a parameter — a hotfix to production is a production promotion and is not on this surface.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /releases/promotions/rc/hotfix (the `ReleasesPromoteRcHotfix` operationId).
+	ReleasesPromoteRcHotfixWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReleasesPromoteRcHotfixResponse, error)
+
+	// ReleasesPromoteRcHotfixWithResponse Dispatch a hotfix build to rc
+	//
+	// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, tagging the result `rc-<sha>`. For emergencies: the build does not pass through stg. The target is the path, not a parameter — a hotfix to production is a production promotion and is not on this surface.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /releases/promotions/rc/hotfix (the `ReleasesPromoteRcHotfix` operationId).
+	ReleasesPromoteRcHotfixWithResponse(ctx context.Context, body ReleasesPromoteRcHotfixJSONRequestBody, reqEditors ...RequestEditorFn) (*ReleasesPromoteRcHotfixResponse, error)
 
 	// ReleasesStateWithResponse Get stg and rc release state
 	//
@@ -1644,6 +3165,11 @@ type ClientWithResponsesInterface interface {
 	RepositoriesBranchesWithResponse(ctx context.Context, id openapi_types.UUID, params *RepositoriesBranchesParams, reqEditors ...RequestEditorFn) (*RepositoriesBranchesResponse, error)
 }
 
+// AuditListResponse429Headers the declared response headers of an HTTP 429 response for AuditList
+type AuditListResponse429Headers struct {
+	RetryAfter int
+}
+
 type AuditListResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1655,10 +3181,14 @@ type AuditListResponse struct {
 	JSON401 *ApiProblem
 	// JSON403 the response for an HTTP 403 `application/json` response
 	JSON403 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *ApiProblem
 	// JSON503 the response for an HTTP 503 `application/json` response
 	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuditListResponse429Headers
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -1679,6 +3209,11 @@ func (r AuditListResponse) GetJSON401() *ApiProblem {
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
 func (r AuditListResponse) GetJSON403() *ApiProblem {
 	return r.JSON403
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r AuditListResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
@@ -1720,6 +3255,11 @@ func (r AuditListResponse) ContentType() string {
 	return ""
 }
 
+// AuditActorsResponse429Headers the declared response headers of an HTTP 429 response for AuditActors
+type AuditActorsResponse429Headers struct {
+	RetryAfter int
+}
+
 type AuditActorsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1731,10 +3271,14 @@ type AuditActorsResponse struct {
 	JSON401 *ApiProblem
 	// JSON403 the response for an HTTP 403 `application/json` response
 	JSON403 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *ApiProblem
 	// JSON503 the response for an HTTP 503 `application/json` response
 	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuditActorsResponse429Headers
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -1755,6 +3299,11 @@ func (r AuditActorsResponse) GetJSON401() *ApiProblem {
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
 func (r AuditActorsResponse) GetJSON403() *ApiProblem {
 	return r.JSON403
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r AuditActorsResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
@@ -1796,6 +3345,101 @@ func (r AuditActorsResponse) ContentType() string {
 	return ""
 }
 
+// AuthWhoamiResponse429Headers the declared response headers of an HTTP 429 response for AuthWhoami
+type AuthWhoamiResponse429Headers struct {
+	RetryAfter int
+}
+
+type AuthWhoamiResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *WhoAmI
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *AuthWhoamiResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AuthWhoamiResponse) GetJSON200() *WhoAmI {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r AuthWhoamiResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r AuthWhoamiResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r AuthWhoamiResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r AuthWhoamiResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r AuthWhoamiResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r AuthWhoamiResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r AuthWhoamiResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AuthWhoamiResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AuthWhoamiResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AuthWhoamiResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// EnvironmentsListResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsList
+type EnvironmentsListResponse429Headers struct {
+	RetryAfter int
+}
+
 type EnvironmentsListResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1807,10 +3451,14 @@ type EnvironmentsListResponse struct {
 	JSON401 *ApiProblem
 	// JSON403 the response for an HTTP 403 `application/json` response
 	JSON403 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *ApiProblem
 	// JSON503 the response for an HTTP 503 `application/json` response
 	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsListResponse429Headers
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -1831,6 +3479,11 @@ func (r EnvironmentsListResponse) GetJSON401() *ApiProblem {
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
 func (r EnvironmentsListResponse) GetJSON403() *ApiProblem {
 	return r.JSON403
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsListResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
@@ -1872,6 +3525,1315 @@ func (r EnvironmentsListResponse) ContentType() string {
 	return ""
 }
 
+// EnvironmentsCreateResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsCreate
+type EnvironmentsCreateResponse429Headers struct {
+	RetryAfter int
+}
+
+type EnvironmentsCreateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EnvironmentMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsCreateResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnvironmentsCreateResponse) GetJSON200() *EnvironmentMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EnvironmentsCreateResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnvironmentsCreateResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EnvironmentsCreateResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r EnvironmentsCreateResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r EnvironmentsCreateResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsCreateResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EnvironmentsCreateResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r EnvironmentsCreateResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EnvironmentsCreateResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r EnvironmentsCreateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnvironmentsCreateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnvironmentsCreateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnvironmentsCreateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// EnvironmentsDestroyResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsDestroy
+type EnvironmentsDestroyResponse429Headers struct {
+	RetryAfter int
+}
+
+type EnvironmentsDestroyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EnvironmentMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsDestroyResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnvironmentsDestroyResponse) GetJSON200() *EnvironmentMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EnvironmentsDestroyResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnvironmentsDestroyResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EnvironmentsDestroyResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r EnvironmentsDestroyResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r EnvironmentsDestroyResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsDestroyResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EnvironmentsDestroyResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EnvironmentsDestroyResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r EnvironmentsDestroyResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnvironmentsDestroyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnvironmentsDestroyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnvironmentsDestroyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// EnvironmentsCancelResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsCancel
+type EnvironmentsCancelResponse429Headers struct {
+	RetryAfter int
+}
+
+type EnvironmentsCancelResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EnvironmentMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsCancelResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnvironmentsCancelResponse) GetJSON200() *EnvironmentMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EnvironmentsCancelResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnvironmentsCancelResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EnvironmentsCancelResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r EnvironmentsCancelResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r EnvironmentsCancelResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsCancelResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EnvironmentsCancelResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EnvironmentsCancelResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r EnvironmentsCancelResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnvironmentsCancelResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnvironmentsCancelResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnvironmentsCancelResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// EnvironmentsExtendResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsExtend
+type EnvironmentsExtendResponse429Headers struct {
+	RetryAfter int
+}
+
+type EnvironmentsExtendResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EnvironmentMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsExtendResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnvironmentsExtendResponse) GetJSON200() *EnvironmentMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EnvironmentsExtendResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnvironmentsExtendResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EnvironmentsExtendResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r EnvironmentsExtendResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r EnvironmentsExtendResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsExtendResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EnvironmentsExtendResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EnvironmentsExtendResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r EnvironmentsExtendResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnvironmentsExtendResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnvironmentsExtendResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnvironmentsExtendResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// EnvironmentsRelaunchResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsRelaunch
+type EnvironmentsRelaunchResponse429Headers struct {
+	RetryAfter int
+}
+
+type EnvironmentsRelaunchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EnvironmentMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsRelaunchResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnvironmentsRelaunchResponse) GetJSON200() *EnvironmentMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EnvironmentsRelaunchResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnvironmentsRelaunchResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EnvironmentsRelaunchResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r EnvironmentsRelaunchResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r EnvironmentsRelaunchResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsRelaunchResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EnvironmentsRelaunchResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r EnvironmentsRelaunchResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EnvironmentsRelaunchResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r EnvironmentsRelaunchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnvironmentsRelaunchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnvironmentsRelaunchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnvironmentsRelaunchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// EnvironmentsAddServiceResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsAddService
+type EnvironmentsAddServiceResponse429Headers struct {
+	RetryAfter int
+}
+
+type EnvironmentsAddServiceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EnvironmentMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsAddServiceResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnvironmentsAddServiceResponse) GetJSON200() *EnvironmentMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EnvironmentsAddServiceResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnvironmentsAddServiceResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EnvironmentsAddServiceResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r EnvironmentsAddServiceResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r EnvironmentsAddServiceResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsAddServiceResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EnvironmentsAddServiceResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r EnvironmentsAddServiceResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EnvironmentsAddServiceResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r EnvironmentsAddServiceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnvironmentsAddServiceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnvironmentsAddServiceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnvironmentsAddServiceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// EnvironmentsRemoveServiceResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsRemoveService
+type EnvironmentsRemoveServiceResponse429Headers struct {
+	RetryAfter int
+}
+
+type EnvironmentsRemoveServiceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EnvironmentMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsRemoveServiceResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnvironmentsRemoveServiceResponse) GetJSON200() *EnvironmentMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EnvironmentsRemoveServiceResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnvironmentsRemoveServiceResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EnvironmentsRemoveServiceResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r EnvironmentsRemoveServiceResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r EnvironmentsRemoveServiceResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsRemoveServiceResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EnvironmentsRemoveServiceResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EnvironmentsRemoveServiceResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r EnvironmentsRemoveServiceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnvironmentsRemoveServiceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnvironmentsRemoveServiceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnvironmentsRemoveServiceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// EnvironmentsSwapBranchResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsSwapBranch
+type EnvironmentsSwapBranchResponse429Headers struct {
+	RetryAfter int
+}
+
+type EnvironmentsSwapBranchResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EnvironmentMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsSwapBranchResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnvironmentsSwapBranchResponse) GetJSON200() *EnvironmentMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EnvironmentsSwapBranchResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnvironmentsSwapBranchResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EnvironmentsSwapBranchResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r EnvironmentsSwapBranchResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r EnvironmentsSwapBranchResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsSwapBranchResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EnvironmentsSwapBranchResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r EnvironmentsSwapBranchResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EnvironmentsSwapBranchResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r EnvironmentsSwapBranchResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnvironmentsSwapBranchResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnvironmentsSwapBranchResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnvironmentsSwapBranchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// EnvironmentsRetryBuildResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsRetryBuild
+type EnvironmentsRetryBuildResponse429Headers struct {
+	RetryAfter int
+}
+
+type EnvironmentsRetryBuildResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EnvironmentMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsRetryBuildResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnvironmentsRetryBuildResponse) GetJSON200() *EnvironmentMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EnvironmentsRetryBuildResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnvironmentsRetryBuildResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EnvironmentsRetryBuildResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r EnvironmentsRetryBuildResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r EnvironmentsRetryBuildResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsRetryBuildResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EnvironmentsRetryBuildResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r EnvironmentsRetryBuildResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EnvironmentsRetryBuildResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r EnvironmentsRetryBuildResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnvironmentsRetryBuildResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnvironmentsRetryBuildResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnvironmentsRetryBuildResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// EnvironmentsSleepResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsSleep
+type EnvironmentsSleepResponse429Headers struct {
+	RetryAfter int
+}
+
+type EnvironmentsSleepResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EnvironmentMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsSleepResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnvironmentsSleepResponse) GetJSON200() *EnvironmentMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EnvironmentsSleepResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnvironmentsSleepResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EnvironmentsSleepResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r EnvironmentsSleepResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r EnvironmentsSleepResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsSleepResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EnvironmentsSleepResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r EnvironmentsSleepResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EnvironmentsSleepResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r EnvironmentsSleepResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnvironmentsSleepResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnvironmentsSleepResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnvironmentsSleepResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// EnvironmentsSetVisibilityResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsSetVisibility
+type EnvironmentsSetVisibilityResponse429Headers struct {
+	RetryAfter int
+}
+
+type EnvironmentsSetVisibilityResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EnvironmentMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsSetVisibilityResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnvironmentsSetVisibilityResponse) GetJSON200() *EnvironmentMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EnvironmentsSetVisibilityResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnvironmentsSetVisibilityResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EnvironmentsSetVisibilityResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r EnvironmentsSetVisibilityResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r EnvironmentsSetVisibilityResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsSetVisibilityResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EnvironmentsSetVisibilityResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r EnvironmentsSetVisibilityResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EnvironmentsSetVisibilityResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r EnvironmentsSetVisibilityResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnvironmentsSetVisibilityResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnvironmentsSetVisibilityResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnvironmentsSetVisibilityResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// EnvironmentsWakeResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsWake
+type EnvironmentsWakeResponse429Headers struct {
+	RetryAfter int
+}
+
+type EnvironmentsWakeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EnvironmentMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsWakeResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnvironmentsWakeResponse) GetJSON200() *EnvironmentMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EnvironmentsWakeResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnvironmentsWakeResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EnvironmentsWakeResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r EnvironmentsWakeResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r EnvironmentsWakeResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsWakeResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EnvironmentsWakeResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r EnvironmentsWakeResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EnvironmentsWakeResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r EnvironmentsWakeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnvironmentsWakeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnvironmentsWakeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnvironmentsWakeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// EnvironmentsGetResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsGet
+type EnvironmentsGetResponse429Headers struct {
+	RetryAfter int
+}
+
 type EnvironmentsGetResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1885,10 +4847,14 @@ type EnvironmentsGetResponse struct {
 	JSON403 *ApiProblem
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *ApiProblem
 	// JSON503 the response for an HTTP 503 `application/json` response
 	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsGetResponse429Headers
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -1914,6 +4880,11 @@ func (r EnvironmentsGetResponse) GetJSON403() *ApiProblem {
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
 func (r EnvironmentsGetResponse) GetJSON404() *ApiProblem {
 	return r.JSON404
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsGetResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
@@ -1955,6 +4926,11 @@ func (r EnvironmentsGetResponse) ContentType() string {
 	return ""
 }
 
+// ReleasesPromotionsActiveResponse429Headers the declared response headers of an HTTP 429 response for ReleasesPromotionsActive
+type ReleasesPromotionsActiveResponse429Headers struct {
+	RetryAfter int
+}
+
 type ReleasesPromotionsActiveResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1966,10 +4942,14 @@ type ReleasesPromotionsActiveResponse struct {
 	JSON401 *ApiProblem
 	// JSON403 the response for an HTTP 403 `application/json` response
 	JSON403 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *ApiProblem
 	// JSON503 the response for an HTTP 503 `application/json` response
 	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ReleasesPromotionsActiveResponse429Headers
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -1990,6 +4970,11 @@ func (r ReleasesPromotionsActiveResponse) GetJSON401() *ApiProblem {
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
 func (r ReleasesPromotionsActiveResponse) GetJSON403() *ApiProblem {
 	return r.JSON403
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r ReleasesPromotionsActiveResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
@@ -2031,6 +5016,11 @@ func (r ReleasesPromotionsActiveResponse) ContentType() string {
 	return ""
 }
 
+// ReleasesPromotionsHistoryResponse429Headers the declared response headers of an HTTP 429 response for ReleasesPromotionsHistory
+type ReleasesPromotionsHistoryResponse429Headers struct {
+	RetryAfter int
+}
+
 type ReleasesPromotionsHistoryResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2042,10 +5032,14 @@ type ReleasesPromotionsHistoryResponse struct {
 	JSON401 *ApiProblem
 	// JSON403 the response for an HTTP 403 `application/json` response
 	JSON403 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *ApiProblem
 	// JSON503 the response for an HTTP 503 `application/json` response
 	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ReleasesPromotionsHistoryResponse429Headers
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -2066,6 +5060,11 @@ func (r ReleasesPromotionsHistoryResponse) GetJSON401() *ApiProblem {
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
 func (r ReleasesPromotionsHistoryResponse) GetJSON403() *ApiProblem {
 	return r.JSON403
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r ReleasesPromotionsHistoryResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
@@ -2107,6 +5106,233 @@ func (r ReleasesPromotionsHistoryResponse) ContentType() string {
 	return ""
 }
 
+// ReleasesPromoteRcResponse429Headers the declared response headers of an HTTP 429 response for ReleasesPromoteRc
+type ReleasesPromoteRcResponse429Headers struct {
+	RetryAfter int
+}
+
+type ReleasesPromoteRcResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PromotionMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ReleasesPromoteRcResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ReleasesPromoteRcResponse) GetJSON200() *PromotionMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ReleasesPromoteRcResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ReleasesPromoteRcResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ReleasesPromoteRcResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ReleasesPromoteRcResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r ReleasesPromoteRcResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r ReleasesPromoteRcResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ReleasesPromoteRcResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r ReleasesPromoteRcResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r ReleasesPromoteRcResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r ReleasesPromoteRcResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ReleasesPromoteRcResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReleasesPromoteRcResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReleasesPromoteRcResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ReleasesPromoteRcHotfixResponse429Headers the declared response headers of an HTTP 429 response for ReleasesPromoteRcHotfix
+type ReleasesPromoteRcHotfixResponse429Headers struct {
+	RetryAfter int
+}
+
+type ReleasesPromoteRcHotfixResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PromotionMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ReleasesPromoteRcHotfixResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ReleasesPromoteRcHotfixResponse) GetJSON200() *PromotionMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ReleasesPromoteRcHotfixResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ReleasesPromoteRcHotfixResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ReleasesPromoteRcHotfixResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ReleasesPromoteRcHotfixResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r ReleasesPromoteRcHotfixResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r ReleasesPromoteRcHotfixResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ReleasesPromoteRcHotfixResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r ReleasesPromoteRcHotfixResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r ReleasesPromoteRcHotfixResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r ReleasesPromoteRcHotfixResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ReleasesPromoteRcHotfixResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReleasesPromoteRcHotfixResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReleasesPromoteRcHotfixResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ReleasesStateResponse429Headers the declared response headers of an HTTP 429 response for ReleasesState
+type ReleasesStateResponse429Headers struct {
+	RetryAfter int
+}
+
 type ReleasesStateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2118,10 +5344,14 @@ type ReleasesStateResponse struct {
 	JSON401 *ApiProblem
 	// JSON403 the response for an HTTP 403 `application/json` response
 	JSON403 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *ApiProblem
 	// JSON503 the response for an HTTP 503 `application/json` response
 	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ReleasesStateResponse429Headers
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -2142,6 +5372,11 @@ func (r ReleasesStateResponse) GetJSON401() *ApiProblem {
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
 func (r ReleasesStateResponse) GetJSON403() *ApiProblem {
 	return r.JSON403
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r ReleasesStateResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
@@ -2183,6 +5418,11 @@ func (r ReleasesStateResponse) ContentType() string {
 	return ""
 }
 
+// RepositoriesListResponse429Headers the declared response headers of an HTTP 429 response for RepositoriesList
+type RepositoriesListResponse429Headers struct {
+	RetryAfter int
+}
+
 type RepositoriesListResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2194,10 +5434,14 @@ type RepositoriesListResponse struct {
 	JSON401 *ApiProblem
 	// JSON403 the response for an HTTP 403 `application/json` response
 	JSON403 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *ApiProblem
 	// JSON503 the response for an HTTP 503 `application/json` response
 	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RepositoriesListResponse429Headers
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -2218,6 +5462,11 @@ func (r RepositoriesListResponse) GetJSON401() *ApiProblem {
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
 func (r RepositoriesListResponse) GetJSON403() *ApiProblem {
 	return r.JSON403
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r RepositoriesListResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
@@ -2259,6 +5508,11 @@ func (r RepositoriesListResponse) ContentType() string {
 	return ""
 }
 
+// RepositoriesBranchesResponse429Headers the declared response headers of an HTTP 429 response for RepositoriesBranches
+type RepositoriesBranchesResponse429Headers struct {
+	RetryAfter int
+}
+
 type RepositoriesBranchesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2272,10 +5526,14 @@ type RepositoriesBranchesResponse struct {
 	JSON403 *ApiProblem
 	// JSON404 the response for an HTTP 404 `application/json` response
 	JSON404 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *ApiProblem
 	// JSON503 the response for an HTTP 503 `application/json` response
 	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *RepositoriesBranchesResponse429Headers
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
@@ -2301,6 +5559,11 @@ func (r RepositoriesBranchesResponse) GetJSON403() *ApiProblem {
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
 func (r RepositoriesBranchesResponse) GetJSON404() *ApiProblem {
 	return r.JSON404
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r RepositoriesBranchesResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
@@ -2372,6 +5635,21 @@ func (c *ClientWithResponses) AuditActorsWithResponse(ctx context.Context, param
 	return ParseAuditActorsResponse(rsp)
 }
 
+// AuthWhoamiWithResponse Describe the calling credential
+//
+// Reports the caller's own email, effective role, and — for a bearer credential — its label and expiry. Takes no parameters and can only describe the credential presented on the request; there is no way to ask about another principal or to list the credentials one holds.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /auth/whoami (the `AuthWhoami` operationId).
+func (c *ClientWithResponses) AuthWhoamiWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*AuthWhoamiResponse, error) {
+	rsp, err := c.AuthWhoami(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAuthWhoamiResponse(rsp)
+}
+
 // EnvironmentsListWithResponse List environments
 //
 // Environments newest first. Pass `status` one or more times to narrow to a status set; omit it for every environment including terminal ones.
@@ -2385,6 +5663,261 @@ func (c *ClientWithResponses) EnvironmentsListWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseEnvironmentsListResponse(rsp)
+}
+
+// EnvironmentsCreateWithBodyWithResponse Create an environment
+//
+// Dispatches builds and returns immediately with the new environment's id; poll `GET /environments/{ref}` for progress. At least one repository must be on a non-default branch — staging already runs every repository on its default branch. Rejected with 409 if the slug is held by a live environment or its namespace is still tearing down.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /environments (the `EnvironmentsCreate` operationId).
+func (c *ClientWithResponses) EnvironmentsCreateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EnvironmentsCreateResponse, error) {
+	rsp, err := c.EnvironmentsCreateWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsCreateResponse(rsp)
+}
+
+// EnvironmentsCreateWithResponse Create an environment
+//
+// Dispatches builds and returns immediately with the new environment's id; poll `GET /environments/{ref}` for progress. At least one repository must be on a non-default branch — staging already runs every repository on its default branch. Rejected with 409 if the slug is held by a live environment or its namespace is still tearing down.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /environments (the `EnvironmentsCreate` operationId).
+func (c *ClientWithResponses) EnvironmentsCreateWithResponse(ctx context.Context, body EnvironmentsCreateJSONRequestBody, reqEditors ...RequestEditorFn) (*EnvironmentsCreateResponse, error) {
+	rsp, err := c.EnvironmentsCreate(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsCreateResponse(rsp)
+}
+
+// EnvironmentsDestroyWithResponse Destroy an environment
+//
+// Fires destroy intent and returns; teardown is driven to completion by drift's destroy-cleanup cron, so the environment stays `destroying` for some minutes before it reaches `destroyed`. A second call while it is already tearing down is a 409.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /environments/{environmentId} (the `EnvironmentsDestroy` operationId).
+func (c *ClientWithResponses) EnvironmentsDestroyWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsDestroyResponse, error) {
+	rsp, err := c.EnvironmentsDestroy(ctx, environmentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsDestroyResponse(rsp)
+}
+
+// EnvironmentsCancelWithResponse Cancel a building environment
+//
+// Only valid while the environment is building or has failed to build. Cancelling does not tear anything down — destroy the environment to release its namespace.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /environments/{environmentId}/cancel (the `EnvironmentsCancel` operationId).
+func (c *ClientWithResponses) EnvironmentsCancelWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsCancelResponse, error) {
+	rsp, err := c.EnvironmentsCancel(ctx, environmentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsCancelResponse(rsp)
+}
+
+// EnvironmentsExtendWithBodyWithResponse Extend an environment's TTL
+//
+// Adds hours to the expiry. Bounded per request and cumulatively: a request that would carry the total past drift's ceiling is rejected with 400 and nothing is changed. NOT idempotent — two calls extend twice.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /environments/{environmentId}/extend (the `EnvironmentsExtend` operationId).
+func (c *ClientWithResponses) EnvironmentsExtendWithBodyWithResponse(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EnvironmentsExtendResponse, error) {
+	rsp, err := c.EnvironmentsExtendWithBody(ctx, environmentId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsExtendResponse(rsp)
+}
+
+// EnvironmentsExtendWithResponse Extend an environment's TTL
+//
+// Adds hours to the expiry. Bounded per request and cumulatively: a request that would carry the total past drift's ceiling is rejected with 400 and nothing is changed. NOT idempotent — two calls extend twice.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /environments/{environmentId}/extend (the `EnvironmentsExtend` operationId).
+func (c *ClientWithResponses) EnvironmentsExtendWithResponse(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsExtendJSONRequestBody, reqEditors ...RequestEditorFn) (*EnvironmentsExtendResponse, error) {
+	rsp, err := c.EnvironmentsExtend(ctx, environmentId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsExtendResponse(rsp)
+}
+
+// EnvironmentsRelaunchWithResponse Relaunch a terminal environment
+//
+// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL and visibility into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /environments/{environmentId}/relaunch (the `EnvironmentsRelaunch` operationId).
+func (c *ClientWithResponses) EnvironmentsRelaunchWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsRelaunchResponse, error) {
+	rsp, err := c.EnvironmentsRelaunch(ctx, environmentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsRelaunchResponse(rsp)
+}
+
+// EnvironmentsAddServiceWithBodyWithResponse Add a service to an environment
+//
+// Wires a repository into the environment on the given branch, dispatches its build and re-commits the manifest. Every dependency of the repository must already be present. Adding one that is already there is a 409.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /environments/{environmentId}/services (the `EnvironmentsAddService` operationId).
+func (c *ClientWithResponses) EnvironmentsAddServiceWithBodyWithResponse(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EnvironmentsAddServiceResponse, error) {
+	rsp, err := c.EnvironmentsAddServiceWithBody(ctx, environmentId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsAddServiceResponse(rsp)
+}
+
+// EnvironmentsAddServiceWithResponse Add a service to an environment
+//
+// Wires a repository into the environment on the given branch, dispatches its build and re-commits the manifest. Every dependency of the repository must already be present. Adding one that is already there is a 409.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /environments/{environmentId}/services (the `EnvironmentsAddService` operationId).
+func (c *ClientWithResponses) EnvironmentsAddServiceWithResponse(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsAddServiceJSONRequestBody, reqEditors ...RequestEditorFn) (*EnvironmentsAddServiceResponse, error) {
+	rsp, err := c.EnvironmentsAddService(ctx, environmentId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsAddServiceResponse(rsp)
+}
+
+// EnvironmentsRemoveServiceWithResponse Remove a service from an environment
+//
+// Deletes the service, cancels its in-flight builds and re-commits the manifest. The last remaining service cannot be removed, and a sleeping environment must be woken first.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /environments/{environmentId}/services/{environmentRepoId} (the `EnvironmentsRemoveService` operationId).
+func (c *ClientWithResponses) EnvironmentsRemoveServiceWithResponse(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsRemoveServiceResponse, error) {
+	rsp, err := c.EnvironmentsRemoveService(ctx, environmentId, environmentRepoId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsRemoveServiceResponse(rsp)
+}
+
+// EnvironmentsSwapBranchWithBodyWithResponse Swap a service's branch
+//
+// Repoints the service at another branch, cancels its in-flight builds and dispatches a new one. The environment returns to `building`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /environments/{environmentId}/services/{environmentRepoId}/branch (the `EnvironmentsSwapBranch` operationId).
+func (c *ClientWithResponses) EnvironmentsSwapBranchWithBodyWithResponse(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EnvironmentsSwapBranchResponse, error) {
+	rsp, err := c.EnvironmentsSwapBranchWithBody(ctx, environmentId, environmentRepoId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsSwapBranchResponse(rsp)
+}
+
+// EnvironmentsSwapBranchWithResponse Swap a service's branch
+//
+// Repoints the service at another branch, cancels its in-flight builds and dispatches a new one. The environment returns to `building`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /environments/{environmentId}/services/{environmentRepoId}/branch (the `EnvironmentsSwapBranch` operationId).
+func (c *ClientWithResponses) EnvironmentsSwapBranchWithResponse(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, body EnvironmentsSwapBranchJSONRequestBody, reqEditors ...RequestEditorFn) (*EnvironmentsSwapBranchResponse, error) {
+	rsp, err := c.EnvironmentsSwapBranch(ctx, environmentId, environmentRepoId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsSwapBranchResponse(rsp)
+}
+
+// EnvironmentsRetryBuildWithResponse Retry a failed build
+//
+// Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every sibling service sharing the repository is retried together.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /environments/{environmentId}/services/{environmentRepoId}/retry-build (the `EnvironmentsRetryBuild` operationId).
+func (c *ClientWithResponses) EnvironmentsRetryBuildWithResponse(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsRetryBuildResponse, error) {
+	rsp, err := c.EnvironmentsRetryBuild(ctx, environmentId, environmentRepoId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsRetryBuildResponse(rsp)
+}
+
+// EnvironmentsSleepWithResponse Put an environment to sleep
+//
+// Scales every workload to zero and hibernates the CNPG database, keeping the volumes. Only valid from `running`. The TTL is frozen while asleep and resumes on wake.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /environments/{environmentId}/sleep (the `EnvironmentsSleep` operationId).
+func (c *ClientWithResponses) EnvironmentsSleepWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsSleepResponse, error) {
+	rsp, err := c.EnvironmentsSleep(ctx, environmentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsSleepResponse(rsp)
+}
+
+// EnvironmentsSetVisibilityWithBodyWithResponse Set an environment's visibility
+//
+// Moves the environment between the internal and public ALB groups and re-commits its gitops manifest. Setting the visibility it already has is a 409, so this is safe to retry but not to use as an assertion.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /environments/{environmentId}/visibility (the `EnvironmentsSetVisibility` operationId).
+func (c *ClientWithResponses) EnvironmentsSetVisibilityWithBodyWithResponse(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EnvironmentsSetVisibilityResponse, error) {
+	rsp, err := c.EnvironmentsSetVisibilityWithBody(ctx, environmentId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsSetVisibilityResponse(rsp)
+}
+
+// EnvironmentsSetVisibilityWithResponse Set an environment's visibility
+//
+// Moves the environment between the internal and public ALB groups and re-commits its gitops manifest. Setting the visibility it already has is a 409, so this is safe to retry but not to use as an assertion.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /environments/{environmentId}/visibility (the `EnvironmentsSetVisibility` operationId).
+func (c *ClientWithResponses) EnvironmentsSetVisibilityWithResponse(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsSetVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*EnvironmentsSetVisibilityResponse, error) {
+	rsp, err := c.EnvironmentsSetVisibility(ctx, environmentId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsSetVisibilityResponse(rsp)
+}
+
+// EnvironmentsWakeWithResponse Wake a sleeping environment
+//
+// Two-phase: the data tier comes up first, then the applications. The environment reports `waking` until ArgoCD sees phase 2 healthy. The TTL is extended by however long it slept.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /environments/{environmentId}/wake (the `EnvironmentsWake` operationId).
+func (c *ClientWithResponses) EnvironmentsWakeWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsWakeResponse, error) {
+	rsp, err := c.EnvironmentsWake(ctx, environmentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsWakeResponse(rsp)
 }
 
 // EnvironmentsGetWithResponse Get an environment by id or slug
@@ -2426,6 +5959,66 @@ func (c *ClientWithResponses) ReleasesPromotionsHistoryWithResponse(ctx context.
 		return nil, err
 	}
 	return ParseReleasesPromotionsHistoryResponse(rsp)
+}
+
+// ReleasesPromoteRcWithBodyWithResponse Promote services from stg to rc
+//
+// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by GitHub repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /releases/promotions/rc (the `ReleasesPromoteRc` operationId).
+func (c *ClientWithResponses) ReleasesPromoteRcWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReleasesPromoteRcResponse, error) {
+	rsp, err := c.ReleasesPromoteRcWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReleasesPromoteRcResponse(rsp)
+}
+
+// ReleasesPromoteRcWithResponse Promote services from stg to rc
+//
+// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by GitHub repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /releases/promotions/rc (the `ReleasesPromoteRc` operationId).
+func (c *ClientWithResponses) ReleasesPromoteRcWithResponse(ctx context.Context, body ReleasesPromoteRcJSONRequestBody, reqEditors ...RequestEditorFn) (*ReleasesPromoteRcResponse, error) {
+	rsp, err := c.ReleasesPromoteRc(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReleasesPromoteRcResponse(rsp)
+}
+
+// ReleasesPromoteRcHotfixWithBodyWithResponse Dispatch a hotfix build to rc
+//
+// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, tagging the result `rc-<sha>`. For emergencies: the build does not pass through stg. The target is the path, not a parameter — a hotfix to production is a production promotion and is not on this surface.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /releases/promotions/rc/hotfix (the `ReleasesPromoteRcHotfix` operationId).
+func (c *ClientWithResponses) ReleasesPromoteRcHotfixWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReleasesPromoteRcHotfixResponse, error) {
+	rsp, err := c.ReleasesPromoteRcHotfixWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReleasesPromoteRcHotfixResponse(rsp)
+}
+
+// ReleasesPromoteRcHotfixWithResponse Dispatch a hotfix build to rc
+//
+// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, tagging the result `rc-<sha>`. For emergencies: the build does not pass through stg. The target is the path, not a parameter — a hotfix to production is a production promotion and is not on this surface.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /releases/promotions/rc/hotfix (the `ReleasesPromoteRcHotfix` operationId).
+func (c *ClientWithResponses) ReleasesPromoteRcHotfixWithResponse(ctx context.Context, body ReleasesPromoteRcHotfixJSONRequestBody, reqEditors ...RequestEditorFn) (*ReleasesPromoteRcHotfixResponse, error) {
+	rsp, err := c.ReleasesPromoteRcHotfix(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReleasesPromoteRcHotfixResponse(rsp)
 }
 
 // ReleasesStateWithResponse Get stg and rc release state
@@ -2515,6 +6108,13 @@ func ParseAuditListResponse(rsp *http.Response) (*AuditListResponse, error) {
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ApiProblem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -2529,6 +6129,19 @@ func ParseAuditListResponse(rsp *http.Response) (*AuditListResponse, error) {
 		}
 		response.JSON503 = &dest
 
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers AuditListResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
 	}
 
 	return response, nil
@@ -2576,6 +6189,13 @@ func ParseAuditActorsResponse(rsp *http.Response) (*AuditActorsResponse, error) 
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ApiProblem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -2590,6 +6210,100 @@ func ParseAuditActorsResponse(rsp *http.Response) (*AuditActorsResponse, error) 
 		}
 		response.JSON503 = &dest
 
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers AuditActorsResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseAuthWhoamiResponse parses an HTTP response from a AuthWhoamiWithResponse call
+func ParseAuthWhoamiResponse(rsp *http.Response) (*AuthWhoamiResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AuthWhoamiResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WhoAmI
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers AuthWhoamiResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
 	}
 
 	return response, nil
@@ -2637,6 +6351,13 @@ func ParseEnvironmentsListResponse(rsp *http.Response) (*EnvironmentsListRespons
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ApiProblem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -2651,6 +6372,1215 @@ func ParseEnvironmentsListResponse(rsp *http.Response) (*EnvironmentsListRespons
 		}
 		response.JSON503 = &dest
 
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsListResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnvironmentsCreateResponse parses an HTTP response from a EnvironmentsCreateWithResponse call
+func ParseEnvironmentsCreateResponse(rsp *http.Response) (*EnvironmentsCreateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnvironmentsCreateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnvironmentMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsCreateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnvironmentsDestroyResponse parses an HTTP response from a EnvironmentsDestroyWithResponse call
+func ParseEnvironmentsDestroyResponse(rsp *http.Response) (*EnvironmentsDestroyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnvironmentsDestroyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnvironmentMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsDestroyResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnvironmentsCancelResponse parses an HTTP response from a EnvironmentsCancelWithResponse call
+func ParseEnvironmentsCancelResponse(rsp *http.Response) (*EnvironmentsCancelResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnvironmentsCancelResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnvironmentMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsCancelResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnvironmentsExtendResponse parses an HTTP response from a EnvironmentsExtendWithResponse call
+func ParseEnvironmentsExtendResponse(rsp *http.Response) (*EnvironmentsExtendResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnvironmentsExtendResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnvironmentMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsExtendResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnvironmentsRelaunchResponse parses an HTTP response from a EnvironmentsRelaunchWithResponse call
+func ParseEnvironmentsRelaunchResponse(rsp *http.Response) (*EnvironmentsRelaunchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnvironmentsRelaunchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnvironmentMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsRelaunchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnvironmentsAddServiceResponse parses an HTTP response from a EnvironmentsAddServiceWithResponse call
+func ParseEnvironmentsAddServiceResponse(rsp *http.Response) (*EnvironmentsAddServiceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnvironmentsAddServiceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnvironmentMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsAddServiceResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnvironmentsRemoveServiceResponse parses an HTTP response from a EnvironmentsRemoveServiceWithResponse call
+func ParseEnvironmentsRemoveServiceResponse(rsp *http.Response) (*EnvironmentsRemoveServiceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnvironmentsRemoveServiceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnvironmentMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsRemoveServiceResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnvironmentsSwapBranchResponse parses an HTTP response from a EnvironmentsSwapBranchWithResponse call
+func ParseEnvironmentsSwapBranchResponse(rsp *http.Response) (*EnvironmentsSwapBranchResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnvironmentsSwapBranchResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnvironmentMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsSwapBranchResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnvironmentsRetryBuildResponse parses an HTTP response from a EnvironmentsRetryBuildWithResponse call
+func ParseEnvironmentsRetryBuildResponse(rsp *http.Response) (*EnvironmentsRetryBuildResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnvironmentsRetryBuildResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnvironmentMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsRetryBuildResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnvironmentsSleepResponse parses an HTTP response from a EnvironmentsSleepWithResponse call
+func ParseEnvironmentsSleepResponse(rsp *http.Response) (*EnvironmentsSleepResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnvironmentsSleepResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnvironmentMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsSleepResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnvironmentsSetVisibilityResponse parses an HTTP response from a EnvironmentsSetVisibilityWithResponse call
+func ParseEnvironmentsSetVisibilityResponse(rsp *http.Response) (*EnvironmentsSetVisibilityResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnvironmentsSetVisibilityResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnvironmentMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsSetVisibilityResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnvironmentsWakeResponse parses an HTTP response from a EnvironmentsWakeWithResponse call
+func ParseEnvironmentsWakeResponse(rsp *http.Response) (*EnvironmentsWakeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnvironmentsWakeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnvironmentMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsWakeResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
 	}
 
 	return response, nil
@@ -2705,6 +7635,13 @@ func ParseEnvironmentsGetResponse(rsp *http.Response) (*EnvironmentsGetResponse,
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ApiProblem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -2719,6 +7656,19 @@ func ParseEnvironmentsGetResponse(rsp *http.Response) (*EnvironmentsGetResponse,
 		}
 		response.JSON503 = &dest
 
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsGetResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
 	}
 
 	return response, nil
@@ -2766,6 +7716,13 @@ func ParseReleasesPromotionsActiveResponse(rsp *http.Response) (*ReleasesPromoti
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ApiProblem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -2780,6 +7737,19 @@ func ParseReleasesPromotionsActiveResponse(rsp *http.Response) (*ReleasesPromoti
 		}
 		response.JSON503 = &dest
 
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers ReleasesPromotionsActiveResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
 	}
 
 	return response, nil
@@ -2827,6 +7797,13 @@ func ParseReleasesPromotionsHistoryResponse(rsp *http.Response) (*ReleasesPromot
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ApiProblem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -2841,6 +7818,223 @@ func ParseReleasesPromotionsHistoryResponse(rsp *http.Response) (*ReleasesPromot
 		}
 		response.JSON503 = &dest
 
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers ReleasesPromotionsHistoryResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseReleasesPromoteRcResponse parses an HTTP response from a ReleasesPromoteRcWithResponse call
+func ParseReleasesPromoteRcResponse(rsp *http.Response) (*ReleasesPromoteRcResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReleasesPromoteRcResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PromotionMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers ReleasesPromoteRcResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseReleasesPromoteRcHotfixResponse parses an HTTP response from a ReleasesPromoteRcHotfixWithResponse call
+func ParseReleasesPromoteRcHotfixResponse(rsp *http.Response) (*ReleasesPromoteRcHotfixResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReleasesPromoteRcHotfixResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PromotionMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers ReleasesPromoteRcHotfixResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
 	}
 
 	return response, nil
@@ -2888,6 +8082,13 @@ func ParseReleasesStateResponse(rsp *http.Response) (*ReleasesStateResponse, err
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ApiProblem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -2902,6 +8103,19 @@ func ParseReleasesStateResponse(rsp *http.Response) (*ReleasesStateResponse, err
 		}
 		response.JSON503 = &dest
 
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers ReleasesStateResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
 	}
 
 	return response, nil
@@ -2949,6 +8163,13 @@ func ParseRepositoriesListResponse(rsp *http.Response) (*RepositoriesListRespons
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ApiProblem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -2963,6 +8184,19 @@ func ParseRepositoriesListResponse(rsp *http.Response) (*RepositoriesListRespons
 		}
 		response.JSON503 = &dest
 
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers RepositoriesListResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
 	}
 
 	return response, nil
@@ -3017,6 +8251,13 @@ func ParseRepositoriesBranchesResponse(rsp *http.Response) (*RepositoriesBranche
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ApiProblem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -3031,6 +8272,19 @@ func ParseRepositoriesBranchesResponse(rsp *http.Response) (*RepositoriesBranche
 		}
 		response.JSON503 = &dest
 
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers RepositoriesBranchesResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
 	}
 
 	return response, nil

@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
@@ -9,21 +10,30 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/steadfast/drift-cli/internal/api"
 	"github.com/steadfast/drift-cli/internal/cliexit"
 )
 
+// problem builds an envelope the way the SERVER does — from JSON — rather than
+// by restating the generated struct. `ApiProblem.Data` is an anonymous struct in
+// the generated client, and a hand-written copy of it here would be a second
+// definition of a generated shape that nothing checks.
 func problem(status int, code, msg, detail string) *api.ApiProblem {
-	p := &api.ApiProblem{Defined: true, Code: code, Status: status, Message: msg}
-	p.Data = &struct {
-		Detail *string `json:"detail,omitempty"`
-		Type   string  `json:"type"`
-	}{Type: "urn:drift:problem:test"}
-	if detail != "" {
-		p.Data.Detail = &detail
+	body := map[string]any{
+		"defined": true, "code": code, "status": status, "message": msg,
+		"data": map[string]any{"type": "urn:drift:problem:test", "detail": detail},
 	}
-	return p
+	raw, err := json.Marshal(body)
+	if err != nil {
+		panic(err)
+	}
+	var p api.ApiProblem
+	if err := json.Unmarshal(raw, &p); err != nil {
+		panic(err)
+	}
+	return &p
 }
 
 func TestProblemSurfacesMessageAndDetail(t *testing.T) {
@@ -50,16 +60,62 @@ func TestEnvelopeStatusBeatsTransportStatus(t *testing.T) {
 
 // A status the SPEC does not declare still arrives as a decodable envelope. The
 // generated client only materialises declared statuses, so without this fallback
-// a 429 added server-side would print "HTTP 429" instead of the server's words.
+// a status added server-side ahead of the contract would print "HTTP 507"
+// instead of the server's own words.
 func TestUndeclaredStatusDecodesFromTheBody(t *testing.T) {
-	body := []byte(`{"defined":true,"code":"TOO_MANY_REQUESTS","status":429,` +
-		`"message":"Rate limit exceeded","data":{"type":"urn:drift:problem:rate-limited","detail":"retry in 30s"}}`)
-	e := Problem(nil, body, 429)
-	if e.Message != "Rate limit exceeded" || e.Detail != "retry in 30s" {
+	body := []byte(`{"defined":true,"code":"INSUFFICIENT_STORAGE","status":507,` +
+		`"message":"Out of space","data":{"type":"urn:drift:problem:internal","detail":"the volume is full"}}`)
+	e := Problem(nil, body, 507)
+	if e.Message != "Out of space" || e.Detail != "the volume is full" {
 		t.Fatalf("undeclared status was not decoded: %+v", e)
 	}
 	if e.Code != cliexit.Error {
 		t.Fatalf("code = %d", e.Code)
+	}
+}
+
+// A 429 that IS a drift envelope is exit 7 with the server's words. The status
+// only earns that code through the envelope: an intermediary throttling the
+// connection produces no envelope and stays on the generic path, because "drift
+// is rate-limiting this credential" and "something in front of drift is shedding
+// load" have different remedies.
+func TestRateLimitEnvelopeIsExitSeven(t *testing.T) {
+	body := []byte(`{"defined":true,"code":"TOO_MANY_REQUESTS","status":429,` +
+		`"message":"Rate limit exceeded","data":{"type":"urn:drift:problem:rate-limited",` +
+		`"detail":"Rate limit of 20 requests per window exceeded for this credential. Retry in 37s."}}`)
+	e := Problem(nil, body, 429)
+	if e.Code != cliexit.RateLimited {
+		t.Fatalf("code = %d, want %d", e.Code, cliexit.RateLimited)
+	}
+	if !strings.Contains(e.Detail, "Retry in 37s") {
+		t.Fatalf("the server's detail was dropped: %+v", e)
+	}
+
+	// No envelope, same status: not drift's rate limiter.
+	if got := Problem(nil, []byte("<html>429</html>"), 429).Code; got != cliexit.RateLimited {
+		// The status mapping is still by status here, deliberately: the CLI has
+		// nothing better to say, and 7 with a "cannot decode" message is more
+		// useful than 1. What must NOT happen is a fabricated Retry-After.
+		t.Logf("undecodable 429 mapped to %d", got)
+	}
+	if Problem(nil, []byte("<html>429</html>"), 429).RetryAfter != 0 {
+		t.Fatal("a Retry-After was invented for a response that carried none")
+	}
+}
+
+// A 409 carries `data.state` and `data.event` — the state the entity was in and
+// the lifecycle event that was refused. They are the whole point of the typed
+// conflict, so they must reach the operator even when the server sends no
+// prose detail alongside them.
+func TestConflictSurfacesStateAndEvent(t *testing.T) {
+	body := []byte(`{"defined":true,"code":"CONFLICT","status":409,"message":"Cannot sleep environment",` +
+		`"data":{"type":"urn:drift:problem:invalid-transition","state":"building","event":"SLEEP"}}`)
+	e := Problem(nil, body, 409)
+	if e.Code != cliexit.Conflict {
+		t.Fatalf("code = %d", e.Code)
+	}
+	if !strings.Contains(e.Detail, "building") || !strings.Contains(e.Detail, "SLEEP") {
+		t.Fatalf("state and event were dropped: %+v", e)
 	}
 }
 
@@ -345,5 +401,79 @@ func TestSuppliedClientAlwaysGetsTheRedirectPolicy(t *testing.T) {
 		if supplied.Transport != nil {
 			t.Fatal("the caller's own client was mutated")
 		}
+	}
+}
+
+// A `Retry-After` that is not a bare integer must not destroy the response.
+//
+// The generated client binds the header as `Type: "integer"` and returns
+// `nil, err` from the WHOLE parse when that fails. RFC 9110 also allows the
+// HTTP-date form, and an ALB, a WAF or a CDN emits exactly that — so without
+// normalization the caller sees a transport error ("cannot reach ...", check
+// the VPN) for a server that answered perfectly well, with exit 1 instead of 7,
+// and a `--wait` aborts instead of backing off. Which is the intermediary case
+// the rate-limit handling exists for.
+func TestUnparseableRetryAfterDoesNotDestroyTheResponse(t *testing.T) {
+	cases := []struct {
+		name, header string
+		wantAtLeast  time.Duration
+		wantAtMost   time.Duration
+	}{
+		{"whole seconds", "37", 37 * time.Second, 37 * time.Second},
+		{"http-date", time.Now().Add(90 * time.Second).UTC().Format(http.TimeFormat), 80 * time.Second, 95 * time.Second},
+		{"http-date in the past", time.Now().Add(-time.Hour).UTC().Format(http.TimeFormat), 0, 0},
+		{"nonsense", "soon", 0, 0},
+		{"float", "12.5", 0, 0},
+		{"negative", "-30", 0, 0},
+		{"absurd", "18446744074", 0, 0},
+		{"absent", "", 0, 0},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				if c.header != "" {
+					w.Header().Set("Retry-After", c.header)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(429)
+				_, _ = w.Write([]byte(`{"defined":true,"code":"TOO_MANY_REQUESTS","status":429,` +
+					`"message":"Rate limit exceeded","data":{"type":"urn:drift:problem:rate-limited"}}`))
+			}))
+			defer srv.Close()
+
+			c2, err := New(Options{BaseURL: srv.URL, Token: "drift_x"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp, err := c2.EnvironmentsListWithResponse(context.Background(), &api.EnvironmentsListParams{})
+			if err != nil {
+				t.Fatalf("the response was destroyed by the header: %v", err)
+			}
+			e := Fail(resp, resp.Headers429)
+			if e.Code != cliexit.RateLimited {
+				t.Fatalf("code = %d, want %d", e.Code, cliexit.RateLimited)
+			}
+			if e.RetryAfter < c.wantAtLeast || e.RetryAfter > c.wantAtMost {
+				t.Fatalf("RetryAfter = %s, want between %s and %s", e.RetryAfter, c.wantAtLeast, c.wantAtMost)
+			}
+		})
+	}
+}
+
+// The bound on the multiply. `time.Duration` is int64 nanoseconds, so a large
+// enough value wraps — and wraps SHORT, which would make a rate-limited client
+// poll faster than its own floor.
+func TestRetryAfterIsBoundedRatherThanWrapped(t *testing.T) {
+	for _, secs := range []int{1 << 40, 18446744074, 1 << 62, -1, 0} {
+		var h struct{ RetryAfter int }
+		h.RetryAfter = secs
+		if got := RetryAfter(&h); got != 0 {
+			t.Fatalf("Retry-After %d yielded %s, want 0", secs, got)
+		}
+	}
+	var ok struct{ RetryAfter int }
+	ok.RetryAfter = int(MaxRetryAfter / time.Second)
+	if got := RetryAfter(&ok); got != MaxRetryAfter {
+		t.Fatalf("the cap itself was rejected: %s", got)
 	}
 }

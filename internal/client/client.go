@@ -17,6 +17,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -99,6 +100,10 @@ func (t *noRedirectTransport) RoundTrip(req *http.Request) (*http.Response, erro
 	if err != nil {
 		return nil, err
 	}
+	// Every request the CLI makes goes through this transport, including the
+	// discovery fetch, so one call here covers all twenty-five operations that
+	// declare a 429.
+	normalizeRetryAfter(resp)
 	switch resp.StatusCode {
 	case http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther,
 		http.StatusTemporaryRedirect, http.StatusPermanentRedirect:
@@ -126,6 +131,60 @@ func (t *noRedirectTransport) RoundTrip(req *http.Request) (*http.Response, erro
 func hasNoRedirects(rt http.RoundTripper) bool {
 	_, ok := rt.(*noRedirectTransport)
 	return ok
+}
+
+// MaxRetryAfter caps how long a `Retry-After` may ask the CLI to wait.
+//
+// Twenty-four hours is far beyond anything a per-credential window can
+// legitimately need and far below the point at which the arithmetic below
+// stops being meaningful. Anything larger is a broken or hostile intermediary,
+// not a rate limiter with a plan.
+const MaxRetryAfter = 24 * time.Hour
+
+// normalizeRetryAfter rewrites a 429's `Retry-After` into the whole-seconds
+// form the generated parser can read, and drops it when it cannot.
+//
+// This exists because of how the generated client fails. It binds the header as
+// `Type: "integer"` and returns `nil, err` from the WHOLE response parse when
+// that fails — so an RFC 9110 HTTP-date, which is legal and is what an ALB, a
+// WAF or a CDN emits, does not merely lose the hint: it destroys the response.
+// The caller then sees a transport error ("cannot reach ...", check the VPN) for
+// a server that answered perfectly well, with the wrong exit code, and inside a
+// `--wait` the loop aborts instead of backing off — defeating the backoff in
+// exactly the intermediary case it was designed for.
+//
+// Done at the transport rather than by editing the generated code, which is
+// never hand-edited. The rewrite is meaning-preserving: an HTTP-date becomes
+// the delta in seconds it denotes. Anything else — a negative, a float, a word
+// — is REMOVED rather than guessed at, so the response still parses and
+// `RetryAfter` reports zero, which callers already floor to their own interval.
+func normalizeRetryAfter(resp *http.Response) {
+	if resp == nil || resp.StatusCode != http.StatusTooManyRequests {
+		return
+	}
+	raw := strings.TrimSpace(resp.Header.Get("Retry-After"))
+	if raw == "" {
+		return
+	}
+	if secs, err := strconv.Atoi(raw); err == nil {
+		if secs < 0 || secs > int(MaxRetryAfter/time.Second) {
+			resp.Header.Del("Retry-After")
+		}
+		return
+	}
+	if when, err := http.ParseTime(raw); err == nil {
+		secs := int(time.Until(when).Round(time.Second) / time.Second)
+		if secs < 0 {
+			secs = 0
+		}
+		if secs > int(MaxRetryAfter/time.Second) {
+			resp.Header.Del("Retry-After")
+			return
+		}
+		resp.Header.Set("Retry-After", strconv.Itoa(secs))
+		return
+	}
+	resp.Header.Del("Retry-After")
 }
 
 // Options configures a client.
@@ -227,6 +286,16 @@ func Problem(p *api.ApiProblem, body []byte, transportStatus int) *cliexit.ExitE
 	if p.Data != nil && p.Data.Detail != nil {
 		e.Detail = *p.Data.Detail
 	}
+	// A 409 from the lifecycle machine carries the state the entity was in and
+	// the event that was refused. Rendered only when the server sent no prose
+	// of its own, so the two are never printed twice — but rendered, because
+	// "the environment is building, which does not accept SLEEP" is the entire
+	// content of a typed invalid-transition and losing it leaves the operator
+	// with a bare "Cannot sleep environment".
+	if e.Detail == "" && p.Data != nil && p.Data.State != nil && p.Data.Event != nil {
+		e.Detail = fmt.Sprintf("the environment is %s, which does not accept %s",
+			*p.Data.State, *p.Data.Event)
+	}
 	if e.Message == "" {
 		e.Message = fmt.Sprintf("request failed (%s)", p.Code)
 	}
@@ -234,6 +303,117 @@ func Problem(p *api.ApiProblem, body []byte, transportStatus int) *cliexit.ExitE
 		e.Hint = "run `drift auth login`, or set DRIFT_TOKEN"
 	}
 	return e
+}
+
+// Response is the part of every generated `*Response` type that exists on all
+// of them, regardless of which statuses an operation declares.
+//
+// It exists so that error handling is written ONCE rather than once per
+// operation. The generated code emits these accessors for every operation; a
+// contract change that removed one would fail this build, which is the point.
+//
+// 404, 409 and 502 are deliberately NOT here: `environments.list` declares no
+// 404, so requiring `GetJSON404` would exclude it. They are picked up through
+// the optional interfaces below, which is the same shape the contract has.
+type Response interface {
+	GetBody() []byte
+	StatusCode() int
+	GetJSON400() *api.ApiProblem
+	GetJSON401() *api.ApiProblem
+	GetJSON403() *api.ApiProblem
+	GetJSON429() *api.ApiProblem
+	GetJSON500() *api.ApiProblem
+	GetJSON503() *api.ApiProblem
+}
+
+type withNotFound interface{ GetJSON404() *api.ApiProblem }
+type withConflict interface{ GetJSON409() *api.ApiProblem }
+type withBadGateway interface{ GetJSON502() *api.ApiProblem }
+
+// RetryAfterHeader constrains the per-operation 429 header structs the
+// generator emits.
+//
+// oapi-codegen names one type per operation — `EnvironmentsCreateResponse429Headers`,
+// `EnvironmentsSleepResponse429Headers`, and so on — with identical contents.
+// The underlying-type constraint accepts all of them without naming any, so
+// adding an operation to the contract needs no change here, while a change to
+// the header's SHAPE (a rename, a second header, a different type) stops
+// compiling rather than silently returning zero.
+type RetryAfterHeader interface {
+	~struct{ RetryAfter int }
+}
+
+// RetryAfter reads the server's `Retry-After` off a typed 429 header struct.
+//
+// Read from the parsed header rather than from `HTTPResponse.Header`, so the
+// contract's declaration ("whole seconds, always present on a 429") is what the
+// CLI depends on, not a string lookup that would silently yield zero if the
+// server ever moved to the HTTP-date form.
+// The multiply is GUARDED, and the guard is not theoretical. `time.Duration` is
+// an int64 of nanoseconds, so `time.Duration(secs) * time.Second` wraps for any
+// value above about 292 years — and a wrapped result is not merely wrong, it is
+// wrong in the dangerous direction: `Retry-After: 18446744074` came back as
+// 0.29s, which would make a rate-limited client poll FASTER than its own floor.
+// Values past the cap are treated as "the server did not say".
+func RetryAfter[H RetryAfterHeader](h *H) time.Duration {
+	if h == nil {
+		return 0
+	}
+	secs := (struct{ RetryAfter int })(*h).RetryAfter
+	if secs <= 0 || secs > int(MaxRetryAfter/time.Second) {
+		return 0
+	}
+	return time.Duration(secs) * time.Second
+}
+
+// Fail turns any non-2xx generated response into an ExitError.
+//
+// One function for every operation, so a new command cannot forget a status:
+// the envelope is picked from whichever typed field the generator populated,
+// and `Problem` still decodes the raw body when the server answered with a
+// status the contract does not declare.
+func Fail[H RetryAfterHeader](r Response, retry *H) *cliexit.ExitError {
+	problems := []*api.ApiProblem{
+		r.GetJSON400(), r.GetJSON401(), r.GetJSON403(), r.GetJSON429(),
+		r.GetJSON500(), r.GetJSON503(),
+	}
+	if v, ok := r.(withNotFound); ok {
+		problems = append(problems, v.GetJSON404())
+	}
+	if v, ok := r.(withConflict); ok {
+		problems = append(problems, v.GetJSON409())
+	}
+	if v, ok := r.(withBadGateway); ok {
+		problems = append(problems, v.GetJSON502())
+	}
+
+	e := Problem(first(problems...), r.GetBody(), r.StatusCode())
+	if e.Code == cliexit.RateLimited {
+		e.RetryAfter = RetryAfter(retry)
+		e.Hint = rateLimitHint(e.RetryAfter)
+	}
+	return e
+}
+
+// rateLimitHint states what to do about a 429 in the caller's own terms.
+//
+// No header changes the answer — the limit is per credential, not per request
+// shape — so the advice is to wait, and the CLI says exactly how long rather
+// than leaving the operator to guess an interval and get throttled again.
+func rateLimitHint(d time.Duration) string {
+	if d <= 0 {
+		return "the limit is per credential; wait and retry"
+	}
+	return fmt.Sprintf("the limit is per credential; retry in %s", d.Round(time.Second))
+}
+
+func first(ps ...*api.ApiProblem) *api.ApiProblem {
+	for _, p := range ps {
+		if p != nil {
+			return p
+		}
+	}
+	return nil
 }
 
 // valid reports whether a decoded value is actually the drift error envelope.

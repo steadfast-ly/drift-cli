@@ -1,0 +1,4 @@
+Error: production promotion is not available from the CLI
+  it requires a short-lived credential scoped to `promote:prd`, minted through an interactive browser sign-in; neither that mint nor the operation is on /api/v1 yet
+
+Hint: promote from the web UI at https://drift.example.com/releases
