@@ -1,0 +1,15 @@
+{
+  "expires": "2026-07-25T14:30:00Z",
+  "id": "b92b68a9-877a-4f14-a92e-db1a62b803d9",
+  "public": true,
+  "services": [
+    {
+      "branch": "main",
+      "pr": null
+    }
+  ],
+  "slept_at": null,
+  "slug": "proof-alpha",
+  "status": "running",
+  "ticket": "AUS-10001"
+}

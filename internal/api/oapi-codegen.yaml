@@ -1,0 +1,22 @@
+# Generation settings for the drift API client.
+#
+# Reused verbatim from the server repo's contract proof, because the two
+# settings below are load-bearing rather than cosmetic:
+#
+# `always-prefix-enum-values` — without it oapi-codegen emits enum constants
+# unprefixed at package scope (`Rc`, `Prd`, `Healthy`, `Running`), which collide
+# the moment two schemas share a value. The spec already shares `canceled`
+# between the environment-status and build-status enums, so an unprefixed
+# generation does not compile.
+#
+# `skip-prune` keeps every component schema even when no operation references it
+# directly, so the CLI can name them.
+package: api
+output: client.gen.go
+generate:
+  models: true
+  client: true
+output-options:
+  skip-prune: true
+compatibility:
+  always-prefix-enum-values: true

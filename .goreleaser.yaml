@@ -1,0 +1,74 @@
+version: 2
+
+project_name: drift-cli
+
+before:
+  hooks:
+    # The contract gate runs before a release is cut, not only on pull
+    # requests: a tag that ships a client disagreeing with its vendored spec is
+    # exactly the artifact nobody can debug later.
+    - go mod download
+    - make check-generated
+    - make test
+
+builds:
+  - id: drift
+    main: .
+    binary: drift
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      # The version an operator reports in an incident has to be the tag that
+      # was built, never a constant somebody forgot to bump.
+      - -s -w
+      - -X github.com/steadfast/drift-cli/cmd.Version={{ .Version }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: drift
+    # `mise use -g github:...` and the curl installer both expect the binary at
+    # the archive root under a predictable name.
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - LICENSE*
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+release:
+  draft: false
+  prerelease: auto
+  footer: |
+    ## Install
+
+    ```sh
+    mise use -g github:steadfast/drift-cli
+    ```
+
+    Then point it at a deployment:
+
+    ```sh
+    drift context add <name> --endpoint https://drift.example.com
+    drift auth login
+    drift doctor
+    ```

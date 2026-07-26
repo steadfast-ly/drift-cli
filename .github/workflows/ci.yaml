@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.5"
+          cache: true
+
+      # Pinned exactly. A floating generator would make `check-generated`
+      # fail on an unrelated upstream release and turn the contract gate into
+      # noise nobody trusts.
+      - name: Install oapi-codegen
+        run: go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0
+
+      - name: gofmt
+        run: make fmt-check
+
+      - name: go vet
+        run: make vet
+
+      # The gate the whole generated-client rule rests on: if the committed
+      # client and the vendored spec disagree, the build fails here rather than
+      # at runtime against a live server.
+      - name: Generated client matches the vendored spec
+        run: make check-generated
+
+      - name: Tests
+        run: make test
+
+      - name: Tests (race detector)
+        run: make test-race
+
+      - name: Build
+        run: make build

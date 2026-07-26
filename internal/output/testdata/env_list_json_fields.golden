@@ -1,0 +1,12 @@
+{
+  "items": [
+    {
+      "slug": "proof-alpha",
+      "status": "running"
+    },
+    {
+      "slug": "a-much-longer-environment-slug",
+      "status": "deploy_failed"
+    }
+  ]
+}
