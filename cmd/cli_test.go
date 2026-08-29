@@ -6,8 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -29,6 +32,7 @@ type fakeServer struct {
 	discoveryRevalidations int
 	authHeaders            []string
 	clientVers             []string
+	lastAuditQuery         url.Values
 }
 
 // newFakeDrift serves the discovery document and just enough of /api/v1 to
@@ -144,6 +148,110 @@ func newFakeDrift(t *testing.T, doc map[string]any) *fakeServer {
 		})
 	})
 
+	// --- repositories ---
+	mux.HandleFunc("/api/v1/repositories", func(w http.ResponseWriter, r *http.Request) {
+		if !authed(r) {
+			problem(w, 401, "UNAUTHORIZED", "Authentication required",
+				"urn:drift:problem:unauthenticated", "")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"items": []map[string]any{{
+				"id": "11111111-1111-1111-1111-111111111111", "owner": "auditsight",
+				"name": "nodus", "fullName": "auditsight/nodus", "displayName": "Nodus",
+				"description": nil, "defaultBranch": "main", "helmChartKey": "nodus",
+				"isActive": true, "stgUrl": nil, "rcUrl": nil, "prdUrl": nil,
+				"applicationGroupId": "22222222-2222-2222-2222-222222222222",
+				"applicationGroup": map[string]any{
+					"id": "22222222-2222-2222-2222-222222222222", "fullName": "core",
+					"displayName": "Core", "atomic": true,
+				},
+			}},
+			"pagination": map[string]any{"limit": 20, "offset": 0, "hasMore": false},
+		})
+	})
+
+	mux.HandleFunc("/api/v1/repositories/", func(w http.ResponseWriter, r *http.Request) {
+		if !authed(r) {
+			problem(w, 401, "UNAUTHORIZED", "Authentication required",
+				"urn:drift:problem:unauthenticated", "")
+			return
+		}
+		rest := strings.TrimPrefix(r.URL.Path, "/api/v1/repositories/")
+		parts := strings.SplitN(rest, "/", 2)
+		repoID := parts[0]
+		if len(parts) == 2 && parts[1] == "branches" {
+			if repoID == "11111111-1111-1111-1111-111111111111" {
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"items": []map[string]any{
+						{"name": "main", "protected": true, "lastCommitDate": "2026-08-27"},
+						{"name": "feature/login", "protected": false, "lastCommitDate": "2026-08-25"},
+					},
+					"pagination": map[string]any{"limit": 20, "offset": 0, "hasMore": false},
+				})
+			} else {
+				problem(w, 404, "NOT_FOUND", "Repository not found",
+					"urn:drift:problem:not-found", "No such repository.")
+			}
+		} else {
+			problem(w, 404, "NOT_FOUND", "Not found", "urn:drift:problem:not-found", "")
+		}
+	})
+
+	// --- audit log ---
+	mux.HandleFunc("/api/v1/audit-log/actors", func(w http.ResponseWriter, r *http.Request) {
+		if !authed(r) {
+			problem(w, 401, "UNAUTHORIZED", "Authentication required",
+				"urn:drift:problem:unauthenticated", "")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"actors": []string{"alice@example.com", "bob@example.com"},
+		})
+	})
+
+	mux.HandleFunc("/api/v1/audit-log", func(w http.ResponseWriter, r *http.Request) {
+		if !authed(r) {
+			problem(w, 401, "UNAUTHORIZED", "Authentication required",
+				"urn:drift:problem:unauthenticated", "")
+			return
+		}
+		// Record which query params arrived so tests can assert them.
+		fs.lastAuditQuery = r.URL.Query()
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"items": []map[string]any{{
+				"id": 1, "timestamp": "2026-08-28T10:00:00Z",
+				"action": "environment.created", "actor": "alice@example.com",
+				"actorUserId": nil, "environmentId": "b92b68a9-877a-4f14-a92e-db1a62b803d9",
+				"environmentSlug": "proof-alpha", "buildId": nil, "repositoryId": nil,
+				"promotionId": nil, "details": map[string]any{"slug": "proof-alpha"},
+			}},
+			"pagination": map[string]any{"limit": 20, "offset": 0, "hasMore": false},
+		})
+	})
+
+	// --- generic echo for api passthrough tests ---
+	mux.HandleFunc("/api/v1/echo", func(w http.ResponseWriter, r *http.Request) {
+		if !authed(r) {
+			problem(w, 401, "UNAUTHORIZED", "Authentication required",
+				"urn:drift:problem:unauthenticated", "")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		body, _ := io.ReadAll(r.Body)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"method":      r.Method,
+			"path":        r.URL.Path,
+			"query":       r.URL.RawQuery,
+			"contentType": r.Header.Get("Content-Type"),
+			"body":        string(body),
+		})
+	})
+
 	fs.Server = httptest.NewServer(mux)
 	t.Cleanup(fs.Close)
 	return fs
@@ -154,7 +262,7 @@ func defaultDoc(endpoint string) map[string]any {
 	return map[string]any{
 		"org": "acme", "version": "1.0.0", "auth": "sso",
 		"services":               map[string]string{"api.v1": "/api/v1"},
-		"features_supported":     []string{"environments.read", "releases.read"},
+		"features_supported":     []string{"environments.read", "releases.read", "repositories.read", "audit-log.read"},
 		"minimum_client_version": "0.1.0",
 	}
 }
@@ -1373,5 +1481,447 @@ func TestAuthStatusWhoamiExpiredCredential(t *testing.T) {
 	}
 	if strings.Contains(errOut, "within 24 hours") {
 		t.Fatalf("'within 24 hours' should not appear for an already-expired credential:\n%s", errOut)
+	}
+}
+
+// --- repo tests -------------------------------------------------------------
+
+func TestRepoListTableAndJSON(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	out, _, code := h.run("repo", "list")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, h.stderr.String())
+	}
+	for _, want := range []string{"auditsight/nodus", "Nodus", "main", "nodus", "Core"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("table output missing %q:\n%s", want, out)
+		}
+	}
+
+	out, _, code = h.run("repo", "list", "--json", "id,fullName")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d", code)
+	}
+	var resp struct {
+		Items []map[string]any `json:"items"`
+	}
+	if err := json.Unmarshal([]byte(out), &resp); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, out)
+	}
+	if len(resp.Items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(resp.Items))
+	}
+	if resp.Items[0]["fullName"] != "auditsight/nodus" {
+		t.Fatalf("wrong fullName: %v", resp.Items[0]["fullName"])
+	}
+}
+
+func TestRepoBranchesOKAnd404(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	out, _, code := h.run("repo", "branches", "11111111-1111-1111-1111-111111111111")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, h.stderr.String())
+	}
+	if !strings.Contains(out, "main") || !strings.Contains(out, "feature/login") {
+		t.Fatalf("branch names missing:\n%s", out)
+	}
+
+	// Unknown repo → exit 3.
+	_, errOut, code := h.run("repo", "branches", "99999999-9999-9999-9999-999999999999")
+	if code != cliexit.NotFound {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.NotFound, errOut)
+	}
+	if !strings.Contains(errOut, "repo list") {
+		t.Fatalf("hint missing:\n%s", errOut)
+	}
+}
+
+func TestRepoBranchesBadUUID(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	_, _, code := h.run("repo", "branches", "not-a-uuid")
+	if code != cliexit.Usage {
+		t.Fatalf("exit %d, want %d", code, cliexit.Usage)
+	}
+}
+
+func TestRepoFeatureGate(t *testing.T) {
+	doc := defaultDoc("")
+	doc["features_supported"] = []string{"environments.read"}
+	srv := newFakeDrift(t, doc)
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	_, errOut, code := h.run("repo", "list")
+	if code == cliexit.OK {
+		t.Fatal("an unsupported feature must fail")
+	}
+	if !strings.Contains(errOut, "repositories.read") {
+		t.Fatalf("the failure does not mention the feature: %s", errOut)
+	}
+}
+
+// --- audit tests ------------------------------------------------------------
+
+func TestAuditListWithFilters(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	out, _, code := h.run("audit", "list")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, h.stderr.String())
+	}
+	if !strings.Contains(out, "environment.created") {
+		t.Fatalf("action missing:\n%s", out)
+	}
+
+	// Verify each filter arrives as the correct query param.
+	_, _, code = h.run("audit", "list",
+		"--action", "environment.created",
+		"--actor", "alice",
+		"--sort", "action",
+		"--sort-dir", "asc",
+		"--since", "2026-08-01",
+		"--until", "2026-08-29",
+		"--limit", "5",
+		"--offset", "10",
+	)
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, h.stderr.String())
+	}
+	q := srv.lastAuditQuery
+	if q.Get("action") != "environment.created" {
+		t.Fatalf("action param: %q", q.Get("action"))
+	}
+	if q.Get("actor") != "alice" {
+		t.Fatalf("actor param: %q", q.Get("actor"))
+	}
+	if q.Get("sortBy") != "action" {
+		t.Fatalf("sortBy param: %q", q.Get("sortBy"))
+	}
+	if q.Get("sortDir") != "asc" {
+		t.Fatalf("sortDir param: %q", q.Get("sortDir"))
+	}
+	if q.Get("limit") != "5" {
+		t.Fatalf("limit param: %q", q.Get("limit"))
+	}
+	if q.Get("offset") != "10" {
+		t.Fatalf("offset param: %q", q.Get("offset"))
+	}
+	if q.Get("startDate") == "" {
+		t.Fatal("startDate param missing")
+	}
+	if q.Get("endDate") == "" {
+		t.Fatal("endDate param missing")
+	}
+}
+
+func TestAuditActors(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	out, _, code := h.run("audit", "actors")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, h.stderr.String())
+	}
+	if !strings.Contains(out, "alice@example.com") || !strings.Contains(out, "bob@example.com") {
+		t.Fatalf("actors missing:\n%s", out)
+	}
+}
+
+func TestAuditFeatureGate(t *testing.T) {
+	doc := defaultDoc("")
+	doc["features_supported"] = []string{"environments.read"}
+	srv := newFakeDrift(t, doc)
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	_, errOut, code := h.run("audit", "list")
+	if code == cliexit.OK {
+		t.Fatal("an unsupported feature must fail")
+	}
+	if !strings.Contains(errOut, "audit-log.read") {
+		t.Fatalf("the failure does not mention the feature: %s", errOut)
+	}
+}
+
+// --- api tests --------------------------------------------------------------
+
+func TestAPIPassthroughGET(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	// GET /repositories prints the raw body byte-exact.
+	out, _, code := h.run("api", "GET", "/repositories")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, h.stderr.String())
+	}
+	// Verify the response is valid JSON.
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(out), &raw); err != nil {
+		t.Fatalf("response is not valid JSON: %v\n%s", err, out)
+	}
+	if _, ok := raw["items"]; !ok {
+		t.Fatalf("expected items key:\n%s", out)
+	}
+}
+
+func TestAPIPassthroughPOSTWithBodyFile(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	// Write a body file.
+	bodyFile := filepath.Join(t.TempDir(), "body.json")
+	_ = os.WriteFile(bodyFile, []byte(`{"hello":"world"}`), 0o644)
+
+	out, _, code := h.run("api", "POST", "/echo", "--body", "@"+bodyFile)
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, h.stderr.String())
+	}
+	var resp map[string]any
+	if err := json.Unmarshal([]byte(out), &resp); err != nil {
+		t.Fatalf("response is not valid JSON: %v\n%s", err, out)
+	}
+	if resp["method"] != "POST" {
+		t.Fatalf("method mismatch: %v", resp["method"])
+	}
+	if ct, _ := resp["contentType"].(string); ct != "application/json" {
+		t.Fatalf("content-type: %q", ct)
+	}
+	if body, _ := resp["body"].(string); body != `{"hello":"world"}` {
+		t.Fatalf("body not forwarded: %q", body)
+	}
+}
+
+func TestAPIAbsoluteURLRefused(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	_, _, code := h.run("api", "GET", "https://example.com/x")
+	if code != cliexit.Usage {
+		t.Fatalf("exit %d, want %d", code, cliexit.Usage)
+	}
+}
+
+func TestAPIProblemMapsExitCode(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	// /environments/nope returns a 404 problem envelope.
+	_, _, code := h.run("api", "GET", "/environments/nope")
+	if code != cliexit.NotFound {
+		t.Fatalf("exit %d, want %d", code, cliexit.NotFound)
+	}
+}
+
+func TestAPIIncludeFlag(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	_, errOut, code := h.run("api", "GET", "/repositories", "--include")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if !strings.Contains(errOut, "HTTP/") || !strings.Contains(errOut, "200") {
+		t.Fatalf("--include did not print status line:\n%s", errOut)
+	}
+	if !strings.Contains(errOut, "Content-Type") {
+		t.Fatalf("--include did not print headers:\n%s", errOut)
+	}
+}
+
+func TestAPIPathTraversalRefused(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	// Each of these resolves outside /api/v1 after JoinPath resolves `..`.
+	for _, path := range []string{"/../x", "/../../admin", "/a/../../x"} {
+		t.Run(path, func(t *testing.T) {
+			_, _, code := h.run("api", "GET", path)
+			if code != cliexit.Usage {
+				t.Fatalf("path %q: exit %d, want %d", path, code, cliexit.Usage)
+			}
+		})
+	}
+
+	// /a/../b stays inside /api/v1 — must be allowed.
+	t.Run("/a/../b stays inside", func(t *testing.T) {
+		// The echo handler is at /api/v1/echo; /echo/../echo resolves to /api/v1/echo.
+		out, _, code := h.run("api", "GET", "/echo/../echo")
+		if code != cliexit.OK {
+			t.Fatalf("exit %d, want %d\n%s", code, cliexit.OK, h.stderr.String())
+		}
+		var resp map[string]any
+		if err := json.Unmarshal([]byte(out), &resp); err != nil {
+			t.Fatalf("invalid JSON: %v\n%s", err, out)
+		}
+	})
+}
+
+func TestAPIQueryStringPassthrough(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	out, _, code := h.run("api", "GET", "/echo?status=running&limit=2")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, h.stderr.String())
+	}
+	var resp map[string]any
+	if err := json.Unmarshal([]byte(out), &resp); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, out)
+	}
+	q, _ := resp["query"].(string)
+	if !strings.Contains(q, "status=running") || !strings.Contains(q, "limit=2") {
+		t.Fatalf("query string not passed through: %q", q)
+	}
+}
+
+func TestAPIQueryStringWithInclude(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	out, errOut, code := h.run("api", "GET", "/echo?foo=bar", "--include")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if !strings.Contains(errOut, "HTTP/") || !strings.Contains(errOut, "200") {
+		t.Fatalf("--include did not print status line:\n%s", errOut)
+	}
+	var resp map[string]any
+	if err := json.Unmarshal([]byte(out), &resp); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, out)
+	}
+	if q, _ := resp["query"].(string); q != "foo=bar" {
+		t.Fatalf("query string not passed through: %q", q)
+	}
+}
+
+// --- iteration 3 tests ------------------------------------------------------
+
+func TestAPIBackslashRefused(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	for _, path := range []string{`/..\admin`, `/%5c..%5cadmin`} {
+		t.Run(path, func(t *testing.T) {
+			_, _, code := h.run("api", "GET", path)
+			if code != cliexit.Usage {
+				t.Fatalf("path %q: exit %d, want %d", path, code, cliexit.Usage)
+			}
+		})
+	}
+}
+
+func TestAPIStdoutWriteError(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	// Build a fresh App with a stdout that always fails, bypassing the
+	// harness run() which uses h.stdout (*bytes.Buffer).
+	broken := &brokenWriter{}
+	app := &App{
+		Stdout: broken, Stderr: &bytes.Buffer{}, Stdin: strings.NewReader(""),
+		Version: h.app.Version, HTTP: h.app.HTTP, store: h.store,
+	}
+	root := NewRootCommand(app)
+	root.SetArgs([]string{"api", "GET", "/repositories"})
+	root.SetOut(broken)
+	root.SetErr(&bytes.Buffer{})
+
+	err := root.Execute()
+	code := cliexit.CodeOf(err)
+	if code == cliexit.OK {
+		t.Fatal("a stdout write failure must not exit 0")
+	}
+}
+
+// brokenWriter satisfies io.Writer but fails every Write.
+type brokenWriter struct{}
+
+func (b *brokenWriter) Write(_ []byte) (int, error) {
+	return 0, fmt.Errorf("broken pipe")
+}
+
+func TestAPIAuthorizationHeaderRefused(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	_, errOut, code := h.run("api", "GET", "/repositories", "-H", "authorization=Bearer evil")
+	if code != cliexit.Usage {
+		t.Fatalf("exit %d, want %d", code, cliexit.Usage)
+	}
+	if !strings.Contains(errOut, "DRIFT_TOKEN") {
+		t.Fatalf("hint missing:\n%s", errOut)
+	}
+}
+
+func TestRepoListLimitOffsetValidation(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	cases := []struct {
+		name string
+		args []string
+		want int
+	}{
+		{"negative limit", []string{"repo", "list", "--limit", "-1"}, cliexit.Usage},
+		{"limit too high", []string{"repo", "list", "--limit", "51"}, cliexit.Usage},
+		{"negative offset", []string{"repo", "list", "--offset", "-1"}, cliexit.Usage},
+		{"valid limit", []string{"repo", "list", "--limit", "50"}, cliexit.OK},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, _, code := h.run(c.args...)
+			if code != c.want {
+				t.Fatalf("exit %d, want %d\n%s", code, c.want, h.stderr.String())
+			}
+		})
+	}
+}
+
+func TestAuditListLimitOffsetValidation(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	cases := []struct {
+		name string
+		args []string
+		want int
+	}{
+		{"negative limit", []string{"audit", "list", "--limit", "-1"}, cliexit.Usage},
+		{"limit too high", []string{"audit", "list", "--limit", "51"}, cliexit.Usage},
+		{"negative offset", []string{"audit", "list", "--offset", "-1"}, cliexit.Usage},
+		{"valid limit", []string{"audit", "list", "--limit", "50"}, cliexit.OK},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, _, code := h.run(c.args...)
+			if code != c.want {
+				t.Fatalf("exit %d, want %d\n%s", code, c.want, h.stderr.String())
+			}
+		})
 	}
 }

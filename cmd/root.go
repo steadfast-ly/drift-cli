@@ -69,6 +69,9 @@ func NewRootCommand(app *App) *cobra.Command {
 		newContextCommand(app),
 		newEnvCommand(app),
 		newReleaseCommand(app),
+		newRepoCommand(app),
+		newAuditCommand(app),
+		newAPICommand(app),
 		newDoctorCommand(app),
 		newVersionCommand(app),
 		newCompletionCommand(app),
@@ -167,6 +170,23 @@ func usageArgs(inner cobra.PositionalArgs) cobra.PositionalArgs {
 		}
 		return &cliexit.ExitError{Code: cliexit.Usage, Message: err.Error()}
 	}
+}
+
+// maxPageSize is the contract-wide ceiling for `--limit`, verified against the
+// vendored spec's `limit.maximum` on every paginated operation.
+const maxPageSize = 50
+
+// validatePage checks the pagination flags the server will reject. Validating
+// client-side so the error names the flag rather than coming back as a 400 the
+// user has to interpret.
+func validatePage(limit, offset int) error {
+	if limit < 0 || limit > maxPageSize {
+		return usageErrorf("--limit must be 1–%d (got %d)", maxPageSize, limit)
+	}
+	if offset < 0 {
+		return usageErrorf("--offset must be >= 0 (got %d)", offset)
+	}
+	return nil
 }
 
 // applyUsageArgs walks the assembled tree and wraps every argument validator.
