@@ -21,8 +21,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/steadfast/drift-cli/internal/api"
-	"github.com/steadfast/drift-cli/internal/cliexit"
+	"github.com/steadfast-ly/drift-cli/internal/api"
+	"github.com/steadfast-ly/drift-cli/internal/cliexit"
 )
 
 // ClientVersionHeader is the attribution header the server records in the audit

@@ -12,7 +12,7 @@ OAPI_VERSION  := v2.8.0
 SPEC          := spec/openapi.json
 GENERATED     := internal/api/client.gen.go
 VERSION       ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.0-dev)
-LDFLAGS       := -X github.com/steadfast/drift-cli/cmd.Version=$(VERSION)
+LDFLAGS       := -X github.com/steadfast-ly/drift-cli/cmd.Version=$(VERSION)
 
 .DEFAULT_GOAL := check
 

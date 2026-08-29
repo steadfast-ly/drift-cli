@@ -3,14 +3,16 @@
 Command-line client for [drift](docs/DESIGN.md), the preview-environment and
 release-management service. One binary talks to every deployment.
 
-Status: **v0.2** — the write surface. The full environment lifecycle, rc and
-hotfix promotions, and `--wait` on top of v0.1's reads, contexts, paste-based
-login and diagnostics.
+Status: **v0.2** — the write surface. The full environment lifecycle, rc,
+hotfix and prd promotions, and `--wait` on top of v0.1's reads, contexts,
+paste-based login and diagnostics. P6 added `repo list`, `audit list|actors`,
+`api` (raw escape hatch), `release promote prd` and whoami-backed
+`auth status`.
 
 ## Install
 
 ```sh
-mise use -g github:steadfast/drift-cli
+mise use -g github:steadfast-ly/drift-cli
 ```
 
 or build from source:
@@ -36,7 +38,10 @@ drift context     list | use <name> | current | add <name> | remove <name>
 drift env         list | get | create | rm | cancel | relaunch | sleep | wake |
                   extend | share | unshare | add-service | remove-service |
                   swap-branch | retry-build | wait
-drift release     status | history | promote rc | promote hotfix
+drift release     status | history | promote rc | promote hotfix | promote prd
+drift repo        list
+drift audit       list | actors
+drift api         <method> <path>
 drift doctor      reachability, VPN, auth validity, version skew, capabilities
 drift version     client, API contract, server and API versions, context
 drift completion  bash | zsh | fish
@@ -308,14 +313,6 @@ for finished work:
   gating refuses every mutation and promotion against a real deployment. The
   server's `FEATURES_SUPPORTED` has to gain `environments.write`, `promotions.rc`
   and `promotions.hotfix`.
-- **`drift release promote prd` does not promote.** It explains that production
-  promotion requires an elevated short-TTL credential and points at the web UI.
-  Neither the operation nor the mint is on `/api/v1` (§7 step 6).
-- **No `drift repo`, `drift audit` or `drift api`.** The contract has the
-  operations; the commands are not built. Repository listing exists only as the
-  name resolution behind `--repo`.
-- **`auth status` still cannot report the credential's owner, role or expiry**,
-  even though `GET /auth/whoami` now exists in the contract.
 - **An inferred slug can collide silently.** Two branches that differ only past
   the 29-character limit produce the same slug. The server's uniqueness index
   among live environments catches it and the CLI turns that 409 into a hint
@@ -326,6 +323,15 @@ for finished work:
   stuck in `queued` keeps a genuinely failed environment from being reported
   until the wait times out. Exit 6 rather than exit 5, with the state visible in
   the progress output.
+
+## Licence
+
+Apache-2.0 — see [`LICENSE`](LICENSE).
+
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md). External contributions are not
+accepted.
 
 ## Development
 

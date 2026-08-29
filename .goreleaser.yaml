@@ -23,7 +23,7 @@ builds:
       # The version an operator reports in an incident has to be the tag that
       # was built, never a constant somebody forgot to bump.
       - -s -w
-      - -X github.com/steadfast/drift-cli/cmd.Version={{ .Version }}
+      - -X github.com/steadfast-ly/drift-cli/cmd.Version={{ .Version }}
     mod_timestamp: "{{ .CommitTimestamp }}"
 
 archives:
@@ -62,7 +62,7 @@ release:
     ## Install
 
     ```sh
-    mise use -g github:steadfast/drift-cli
+    mise use -g github:steadfast-ly/drift-cli
     ```
 
     Then point it at a deployment:

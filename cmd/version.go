@@ -5,9 +5,9 @@ import (
 	"runtime"
 
 	"github.com/spf13/cobra"
-	"github.com/steadfast/drift-cli/internal/cliexit"
-	"github.com/steadfast/drift-cli/internal/output"
-	"github.com/steadfast/drift-cli/spec"
+	"github.com/steadfast-ly/drift-cli/internal/cliexit"
+	"github.com/steadfast-ly/drift-cli/internal/output"
+	"github.com/steadfast-ly/drift-cli/spec"
 )
 
 func newVersionCommand(app *App) *cobra.Command {

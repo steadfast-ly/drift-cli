@@ -146,7 +146,14 @@ Version skew **warns loudly, does not refuse**. A hard floor means a server upgr
 
 ### Spec transport across orgs
 
-Servers are VPN-gated and the CLI repo lives in a neutral organisation whose CI can reach neither. Each drift repo's CI generates and commits `openapi.json` in-repo as a build artifact; a sync step vendors both specs into the CLI repo. Conformance tests run against the vendored copies, asserting each server's spec is a superset of the CLI's pinned contract. This is the only durable guard against the two forks diverging on the shared surface.
+The canonical server's release workflow pushes `openapi.json` to
+`spec/openapi.json` in this repository via a fine-grained PAT
+(`CLI_SPEC_PUSH_TOKEN`, contents:write on `drift-cli` only). The commit lands
+on `main` and triggers CI, where `make check-generated` fails the build if the
+committed generated client no longer matches the spec — that is the mismatch
+rule from ADR-0015. If the spec is unchanged, the step is a no-op. The push
+direction is server-to-CLI because the server is VPN-gated and this
+repository's CI can reach neither deployment.
 
 ## 5. CLI
 

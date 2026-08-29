@@ -9,11 +9,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
-	"github.com/steadfast/drift-cli/internal/api"
-	"github.com/steadfast/drift-cli/internal/client"
-	"github.com/steadfast/drift-cli/internal/cliexit"
-	"github.com/steadfast/drift-cli/internal/output"
-	"github.com/steadfast/drift-cli/internal/wait"
+	"github.com/steadfast-ly/drift-cli/internal/api"
+	"github.com/steadfast-ly/drift-cli/internal/client"
+	"github.com/steadfast-ly/drift-cli/internal/cliexit"
+	"github.com/steadfast-ly/drift-cli/internal/output"
+	"github.com/steadfast-ly/drift-cli/internal/wait"
 )
 
 // waitPolicy is a command's default answer to "should this block?".

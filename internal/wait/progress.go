@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/steadfast/drift-cli/internal/api"
+	"github.com/steadfast-ly/drift-cli/internal/api"
 )
 
 // Progress reports what a wait is seeing.

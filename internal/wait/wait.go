@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/steadfast/drift-cli/internal/api"
-	"github.com/steadfast/drift-cli/internal/cliexit"
+	"github.com/steadfast-ly/drift-cli/internal/api"
+	"github.com/steadfast-ly/drift-cli/internal/cliexit"
 )
 
 // DefaultInterval is how often a wait polls.

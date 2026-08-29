@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/steadfast/drift-cli/internal/api"
-	"github.com/steadfast/drift-cli/internal/client"
-	"github.com/steadfast/drift-cli/internal/cliexit"
+	"github.com/steadfast-ly/drift-cli/internal/api"
+	"github.com/steadfast-ly/drift-cli/internal/client"
+	"github.com/steadfast-ly/drift-cli/internal/cliexit"
 )
 
 // fakeClock advances only when the wait sleeps, so a test covering half an hour

@@ -23,7 +23,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/steadfast/drift-cli/internal/api"
+	"github.com/steadfast-ly/drift-cli/internal/api"
 )
 
 // Origin says who raises an event.

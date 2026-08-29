@@ -7,7 +7,7 @@ package main
 import (
 	"os"
 
-	"github.com/steadfast/drift-cli/cmd"
+	"github.com/steadfast-ly/drift-cli/cmd"
 )
 
 func main() {

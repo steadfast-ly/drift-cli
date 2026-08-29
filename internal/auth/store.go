@@ -28,7 +28,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/steadfast/drift-cli/internal/config"
+	"github.com/steadfast-ly/drift-cli/internal/config"
 	"github.com/zalando/go-keyring"
 	"gopkg.in/yaml.v3"
 )

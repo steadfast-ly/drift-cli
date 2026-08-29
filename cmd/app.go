@@ -17,13 +17,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/steadfast/drift-cli/internal/api"
-	"github.com/steadfast/drift-cli/internal/auth"
-	"github.com/steadfast/drift-cli/internal/client"
-	"github.com/steadfast/drift-cli/internal/cliexit"
-	"github.com/steadfast/drift-cli/internal/config"
-	"github.com/steadfast/drift-cli/internal/discovery"
-	"github.com/steadfast/drift-cli/internal/output"
+	"github.com/steadfast-ly/drift-cli/internal/api"
+	"github.com/steadfast-ly/drift-cli/internal/auth"
+	"github.com/steadfast-ly/drift-cli/internal/client"
+	"github.com/steadfast-ly/drift-cli/internal/cliexit"
+	"github.com/steadfast-ly/drift-cli/internal/config"
+	"github.com/steadfast-ly/drift-cli/internal/discovery"
+	"github.com/steadfast-ly/drift-cli/internal/output"
 )
 
 func init() {

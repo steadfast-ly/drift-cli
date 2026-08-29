@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/steadfast/drift-cli/internal/cliexit"
+	"github.com/steadfast-ly/drift-cli/internal/cliexit"
 )
 
 // Feature strings, as advertised by `/.well-known/drift.json`. Named constants

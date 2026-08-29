@@ -7,8 +7,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/steadfast/drift-cli/internal/cliexit"
-	"github.com/steadfast/drift-cli/internal/output"
+	"github.com/steadfast-ly/drift-cli/internal/cliexit"
+	"github.com/steadfast-ly/drift-cli/internal/output"
 )
 
 // Interactive reports whether this invocation may prompt a human.

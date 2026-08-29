@@ -1,4 +1,4 @@
-module github.com/steadfast/drift-cli
+module github.com/steadfast-ly/drift-cli
 
 go 1.26.5
 

@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/steadfast/drift-cli/internal/auth"
-	"github.com/steadfast/drift-cli/internal/cliexit"
+	"github.com/steadfast-ly/drift-cli/internal/auth"
+	"github.com/steadfast-ly/drift-cli/internal/cliexit"
 )
 
 var updateGolden = flag.Bool("update", false, "rewrite the golden files in cmd/testdata")

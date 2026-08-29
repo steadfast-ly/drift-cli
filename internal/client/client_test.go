@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/steadfast/drift-cli/internal/api"
-	"github.com/steadfast/drift-cli/internal/cliexit"
+	"github.com/steadfast-ly/drift-cli/internal/api"
+	"github.com/steadfast-ly/drift-cli/internal/cliexit"
 )
 
 // problem builds an envelope the way the SERVER does — from JSON — rather than

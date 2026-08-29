@@ -4,8 +4,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/steadfast/drift-cli/internal/api"
-	"github.com/steadfast/drift-cli/spec"
+	"github.com/steadfast-ly/drift-cli/internal/api"
+	"github.com/steadfast-ly/drift-cli/spec"
 )
 
 // The transition tables restate a server fact — the contract publishes states

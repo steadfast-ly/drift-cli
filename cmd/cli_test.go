@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/steadfast/drift-cli/internal/auth"
-	"github.com/steadfast/drift-cli/internal/cliexit"
+	"github.com/steadfast-ly/drift-cli/internal/auth"
+	"github.com/steadfast-ly/drift-cli/internal/cliexit"
 )
 
 // These tests drive the REAL cobra tree against a fake drift, so the exit-code
