@@ -18,6 +18,21 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for CredentialIdentityScopes.
+const (
+	CredentialIdentityScopesPromotePrd CredentialIdentityScopes = "promote:prd"
+)
+
+// Valid indicates whether the value is a known member of the CredentialIdentityScopes enum.
+func (e CredentialIdentityScopes) Valid() bool {
+	switch e {
+	case CredentialIdentityScopesPromotePrd:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for EnvironmentStatus.
 const (
 	EnvironmentStatusBuildFailed  EnvironmentStatus = "build_failed"
@@ -382,6 +397,7 @@ type ApiProblem struct {
 
 // ApplicationGroup defines model for ApplicationGroup.
 type ApplicationGroup struct {
+	Atomic      bool               `json:"atomic"`
 	DisplayName string             `json:"displayName"`
 	FullName    string             `json:"fullName"`
 	Id          openapi_types.UUID `json:"id"`
@@ -396,6 +412,7 @@ type AuditActors struct {
 type AuditLogEntry struct {
 	Action          string                  `json:"action"`
 	Actor           *string                 `json:"actor"`
+	ActorUserId     *string                 `json:"actorUserId"`
 	BuildId         *openapi_types.UUID     `json:"buildId"`
 	Details         *map[string]interface{} `json:"details"`
 	EnvironmentId   *openapi_types.UUID     `json:"environmentId"`
@@ -427,10 +444,14 @@ type BranchPage struct {
 
 // CredentialIdentity defines model for CredentialIdentity.
 type CredentialIdentity struct {
-	ExpiresAt time.Time          `json:"expiresAt"`
-	Id        openapi_types.UUID `json:"id"`
-	Label     string             `json:"label"`
+	ExpiresAt time.Time                  `json:"expiresAt"`
+	Id        openapi_types.UUID         `json:"id"`
+	Label     string                     `json:"label"`
+	Scopes    []CredentialIdentityScopes `json:"scopes"`
 }
+
+// CredentialIdentityScopes defines model for CredentialIdentity.Scopes.
+type CredentialIdentityScopes string
 
 // Environment defines model for Environment.
 type Environment struct {
@@ -634,7 +655,7 @@ type WorkflowDispatch struct {
 	StartedAt      *string                `json:"startedAt,omitempty"`
 	Status         WorkflowDispatchStatus `json:"status"`
 	WorkflowFile   string                 `json:"workflowFile"`
-	WorkflowRunId  *int                   `json:"workflowRunId,omitempty"`
+	WorkflowRunId  *string                `json:"workflowRunId,omitempty"`
 	WorkflowRunUrl *string                `json:"workflowRunUrl,omitempty"`
 }
 
@@ -725,6 +746,17 @@ type ReleasesPromotionsHistoryParams struct {
 	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
+// ReleasesPromotePrdJSONBody defines parameters for ReleasesPromotePrd.
+type ReleasesPromotePrdJSONBody struct {
+	HelmChartKeys []string `json:"helmChartKeys"`
+}
+
+// ReleasesPromotePrdHotfixJSONBody defines parameters for ReleasesPromotePrdHotfix.
+type ReleasesPromotePrdHotfixJSONBody struct {
+	Branch        string   `json:"branch"`
+	HelmChartKeys []string `json:"helmChartKeys"`
+}
+
 // ReleasesPromoteRcJSONBody defines parameters for ReleasesPromoteRc.
 type ReleasesPromoteRcJSONBody struct {
 	HelmChartKeys []string `json:"helmChartKeys"`
@@ -763,6 +795,12 @@ type EnvironmentsSwapBranchJSONRequestBody EnvironmentsSwapBranchJSONBody
 
 // EnvironmentsSetVisibilityJSONRequestBody defines body for EnvironmentsSetVisibility for application/json ContentType.
 type EnvironmentsSetVisibilityJSONRequestBody EnvironmentsSetVisibilityJSONBody
+
+// ReleasesPromotePrdJSONRequestBody defines body for ReleasesPromotePrd for application/json ContentType.
+type ReleasesPromotePrdJSONRequestBody ReleasesPromotePrdJSONBody
+
+// ReleasesPromotePrdHotfixJSONRequestBody defines body for ReleasesPromotePrdHotfix for application/json ContentType.
+type ReleasesPromotePrdHotfixJSONRequestBody ReleasesPromotePrdHotfixJSONBody
 
 // ReleasesPromoteRcJSONRequestBody defines body for ReleasesPromoteRc for application/json ContentType.
 type ReleasesPromoteRcJSONRequestBody ReleasesPromoteRcJSONBody
@@ -1028,9 +1066,45 @@ type ClientInterface interface {
 	// Corresponds with GET /releases/promotions/history (the `ReleasesPromotionsHistory` operationId).
 	ReleasesPromotionsHistory(ctx context.Context, params *ReleasesPromotionsHistoryParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ReleasesPromotePrdWithBody Promote services from rc to production
+	//
+	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` from the drift credentials page (`drift auth elevate`). Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /releases/promotions/prd (the `ReleasesPromotePrd` operationId).
+	ReleasesPromotePrdWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReleasesPromotePrd Promote services from rc to production
+	//
+	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` from the drift credentials page (`drift auth elevate`). Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /releases/promotions/prd (the `ReleasesPromotePrd` operationId).
+	ReleasesPromotePrd(ctx context.Context, body ReleasesPromotePrdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReleasesPromotePrdHotfixWithBody Dispatch a hotfix build to production
+	//
+	// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /releases/promotions/prd/hotfix (the `ReleasesPromotePrdHotfix` operationId).
+	ReleasesPromotePrdHotfixWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReleasesPromotePrdHotfix Dispatch a hotfix build to production
+	//
+	// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /releases/promotions/prd/hotfix (the `ReleasesPromotePrdHotfix` operationId).
+	ReleasesPromotePrdHotfix(ctx context.Context, body ReleasesPromotePrdHotfixJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ReleasesPromoteRcWithBody Promote services from stg to rc
 	//
-	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by GitHub repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1039,7 +1113,7 @@ type ClientInterface interface {
 
 	// ReleasesPromoteRc Promote services from stg to rc
 	//
-	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by GitHub repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1510,9 +1584,85 @@ func (c *Client) ReleasesPromotionsHistory(ctx context.Context, params *Releases
 	return c.Client.Do(req)
 }
 
+// ReleasesPromotePrdWithBody Promote services from rc to production
+//
+// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` from the drift credentials page (`drift auth elevate`). Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /releases/promotions/prd (the `ReleasesPromotePrd` operationId).
+func (c *Client) ReleasesPromotePrdWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReleasesPromotePrdRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReleasesPromotePrd Promote services from rc to production
+//
+// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` from the drift credentials page (`drift auth elevate`). Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /releases/promotions/prd (the `ReleasesPromotePrd` operationId).
+func (c *Client) ReleasesPromotePrd(ctx context.Context, body ReleasesPromotePrdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReleasesPromotePrdRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReleasesPromotePrdHotfixWithBody Dispatch a hotfix build to production
+//
+// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /releases/promotions/prd/hotfix (the `ReleasesPromotePrdHotfix` operationId).
+func (c *Client) ReleasesPromotePrdHotfixWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReleasesPromotePrdHotfixRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReleasesPromotePrdHotfix Dispatch a hotfix build to production
+//
+// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /releases/promotions/prd/hotfix (the `ReleasesPromotePrdHotfix` operationId).
+func (c *Client) ReleasesPromotePrdHotfix(ctx context.Context, body ReleasesPromotePrdHotfixJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReleasesPromotePrdHotfixRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ReleasesPromoteRcWithBody Promote services from stg to rc
 //
-// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by GitHub repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
 //
 // Takes any type of body and a specified content type.
 //
@@ -1531,7 +1681,7 @@ func (c *Client) ReleasesPromoteRcWithBody(ctx context.Context, contentType stri
 
 // ReleasesPromoteRc Promote services from stg to rc
 //
-// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by GitHub repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -2587,6 +2737,86 @@ func NewReleasesPromotionsHistoryRequest(server string, params *ReleasesPromotio
 	return req, nil
 }
 
+// NewReleasesPromotePrdRequest calls the generic ReleasesPromotePrd builder with application/json body
+func NewReleasesPromotePrdRequest(server string, body ReleasesPromotePrdJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewReleasesPromotePrdRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewReleasesPromotePrdRequestWithBody constructs an http.Request for the ReleasesPromotePrd method, with any body, and a specified content type
+func NewReleasesPromotePrdRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/releases/promotions/prd")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewReleasesPromotePrdHotfixRequest calls the generic ReleasesPromotePrdHotfix builder with application/json body
+func NewReleasesPromotePrdHotfixRequest(server string, body ReleasesPromotePrdHotfixJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewReleasesPromotePrdHotfixRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewReleasesPromotePrdHotfixRequestWithBody constructs an http.Request for the ReleasesPromotePrdHotfix method, with any body, and a specified content type
+func NewReleasesPromotePrdHotfixRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/releases/promotions/prd/hotfix")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewReleasesPromoteRcRequest calls the generic ReleasesPromoteRc builder with application/json body
 func NewReleasesPromoteRcRequest(server string, body ReleasesPromoteRcJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -3101,9 +3331,45 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /releases/promotions/history (the `ReleasesPromotionsHistory` operationId).
 	ReleasesPromotionsHistoryWithResponse(ctx context.Context, params *ReleasesPromotionsHistoryParams, reqEditors ...RequestEditorFn) (*ReleasesPromotionsHistoryResponse, error)
 
+	// ReleasesPromotePrdWithBodyWithResponse Promote services from rc to production
+	//
+	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` from the drift credentials page (`drift auth elevate`). Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /releases/promotions/prd (the `ReleasesPromotePrd` operationId).
+	ReleasesPromotePrdWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReleasesPromotePrdResponse, error)
+
+	// ReleasesPromotePrdWithResponse Promote services from rc to production
+	//
+	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` from the drift credentials page (`drift auth elevate`). Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /releases/promotions/prd (the `ReleasesPromotePrd` operationId).
+	ReleasesPromotePrdWithResponse(ctx context.Context, body ReleasesPromotePrdJSONRequestBody, reqEditors ...RequestEditorFn) (*ReleasesPromotePrdResponse, error)
+
+	// ReleasesPromotePrdHotfixWithBodyWithResponse Dispatch a hotfix build to production
+	//
+	// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /releases/promotions/prd/hotfix (the `ReleasesPromotePrdHotfix` operationId).
+	ReleasesPromotePrdHotfixWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReleasesPromotePrdHotfixResponse, error)
+
+	// ReleasesPromotePrdHotfixWithResponse Dispatch a hotfix build to production
+	//
+	// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /releases/promotions/prd/hotfix (the `ReleasesPromotePrdHotfix` operationId).
+	ReleasesPromotePrdHotfixWithResponse(ctx context.Context, body ReleasesPromotePrdHotfixJSONRequestBody, reqEditors ...RequestEditorFn) (*ReleasesPromotePrdHotfixResponse, error)
+
 	// ReleasesPromoteRcWithBodyWithResponse Promote services from stg to rc
 	//
-	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by GitHub repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -3112,7 +3378,7 @@ type ClientWithResponsesInterface interface {
 
 	// ReleasesPromoteRcWithResponse Promote services from stg to rc
 	//
-	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by GitHub repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -5106,6 +5372,242 @@ func (r ReleasesPromotionsHistoryResponse) ContentType() string {
 	return ""
 }
 
+// ReleasesPromotePrdResponse403Headers the declared response headers of an HTTP 403 response for ReleasesPromotePrd
+type ReleasesPromotePrdResponse403Headers struct {
+	WWWAuthenticate *string
+}
+
+// ReleasesPromotePrdResponse429Headers the declared response headers of an HTTP 429 response for ReleasesPromotePrd
+type ReleasesPromotePrdResponse429Headers struct {
+	RetryAfter int
+}
+
+type ReleasesPromotePrdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PromotionMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers403 the parsed response headers for an HTTP 403 response
+	Headers403 *ReleasesPromotePrdResponse403Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ReleasesPromotePrdResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ReleasesPromotePrdResponse) GetJSON200() *PromotionMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ReleasesPromotePrdResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ReleasesPromotePrdResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ReleasesPromotePrdResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ReleasesPromotePrdResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r ReleasesPromotePrdResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r ReleasesPromotePrdResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ReleasesPromotePrdResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r ReleasesPromotePrdResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r ReleasesPromotePrdResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r ReleasesPromotePrdResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ReleasesPromotePrdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReleasesPromotePrdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReleasesPromotePrdResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// ReleasesPromotePrdHotfixResponse403Headers the declared response headers of an HTTP 403 response for ReleasesPromotePrdHotfix
+type ReleasesPromotePrdHotfixResponse403Headers struct {
+	WWWAuthenticate *string
+}
+
+// ReleasesPromotePrdHotfixResponse429Headers the declared response headers of an HTTP 429 response for ReleasesPromotePrdHotfix
+type ReleasesPromotePrdHotfixResponse429Headers struct {
+	RetryAfter int
+}
+
+type ReleasesPromotePrdHotfixResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PromotionMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers403 the parsed response headers for an HTTP 403 response
+	Headers403 *ReleasesPromotePrdHotfixResponse403Headers
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ReleasesPromotePrdHotfixResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ReleasesPromotePrdHotfixResponse) GetJSON200() *PromotionMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ReleasesPromotePrdHotfixResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ReleasesPromotePrdHotfixResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ReleasesPromotePrdHotfixResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ReleasesPromotePrdHotfixResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r ReleasesPromotePrdHotfixResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r ReleasesPromotePrdHotfixResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ReleasesPromotePrdHotfixResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r ReleasesPromotePrdHotfixResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r ReleasesPromotePrdHotfixResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r ReleasesPromotePrdHotfixResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ReleasesPromotePrdHotfixResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReleasesPromotePrdHotfixResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReleasesPromotePrdHotfixResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ReleasesPromoteRcResponse429Headers the declared response headers of an HTTP 429 response for ReleasesPromoteRc
 type ReleasesPromoteRcResponse429Headers struct {
 	RetryAfter int
@@ -5961,9 +6463,69 @@ func (c *ClientWithResponses) ReleasesPromotionsHistoryWithResponse(ctx context.
 	return ParseReleasesPromotionsHistoryResponse(rsp)
 }
 
+// ReleasesPromotePrdWithBodyWithResponse Promote services from rc to production
+//
+// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` from the drift credentials page (`drift auth elevate`). Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /releases/promotions/prd (the `ReleasesPromotePrd` operationId).
+func (c *ClientWithResponses) ReleasesPromotePrdWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReleasesPromotePrdResponse, error) {
+	rsp, err := c.ReleasesPromotePrdWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReleasesPromotePrdResponse(rsp)
+}
+
+// ReleasesPromotePrdWithResponse Promote services from rc to production
+//
+// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` from the drift credentials page (`drift auth elevate`). Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /releases/promotions/prd (the `ReleasesPromotePrd` operationId).
+func (c *ClientWithResponses) ReleasesPromotePrdWithResponse(ctx context.Context, body ReleasesPromotePrdJSONRequestBody, reqEditors ...RequestEditorFn) (*ReleasesPromotePrdResponse, error) {
+	rsp, err := c.ReleasesPromotePrd(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReleasesPromotePrdResponse(rsp)
+}
+
+// ReleasesPromotePrdHotfixWithBodyWithResponse Dispatch a hotfix build to production
+//
+// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /releases/promotions/prd/hotfix (the `ReleasesPromotePrdHotfix` operationId).
+func (c *ClientWithResponses) ReleasesPromotePrdHotfixWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReleasesPromotePrdHotfixResponse, error) {
+	rsp, err := c.ReleasesPromotePrdHotfixWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReleasesPromotePrdHotfixResponse(rsp)
+}
+
+// ReleasesPromotePrdHotfixWithResponse Dispatch a hotfix build to production
+//
+// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /releases/promotions/prd/hotfix (the `ReleasesPromotePrdHotfix` operationId).
+func (c *ClientWithResponses) ReleasesPromotePrdHotfixWithResponse(ctx context.Context, body ReleasesPromotePrdHotfixJSONRequestBody, reqEditors ...RequestEditorFn) (*ReleasesPromotePrdHotfixResponse, error) {
+	rsp, err := c.ReleasesPromotePrdHotfix(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReleasesPromotePrdHotfixResponse(rsp)
+}
+
 // ReleasesPromoteRcWithBodyWithResponse Promote services from stg to rc
 //
-// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by GitHub repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -5978,7 +6540,7 @@ func (c *ClientWithResponses) ReleasesPromoteRcWithBodyWithResponse(ctx context.
 
 // ReleasesPromoteRcWithResponse Promote services from stg to rc
 //
-// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by GitHub repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -7823,6 +8385,230 @@ func ParseReleasesPromotionsHistoryResponse(rsp *http.Response) (*ReleasesPromot
 	switch {
 	case rsp.StatusCode == 429:
 		var headers ReleasesPromotionsHistoryResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseReleasesPromotePrdResponse parses an HTTP response from a ReleasesPromotePrdWithResponse call
+func ParseReleasesPromotePrdResponse(rsp *http.Response) (*ReleasesPromotePrdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReleasesPromotePrdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PromotionMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 403:
+		var headers ReleasesPromotePrdResponse403Headers
+		if values := rsp.Header.Values("WWW-Authenticate"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "WWW-Authenticate", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.WWWAuthenticate = &value
+		}
+		response.Headers403 = &headers
+	case rsp.StatusCode == 429:
+		var headers ReleasesPromotePrdResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseReleasesPromotePrdHotfixResponse parses an HTTP response from a ReleasesPromotePrdHotfixWithResponse call
+func ParseReleasesPromotePrdHotfixResponse(rsp *http.Response) (*ReleasesPromotePrdHotfixResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReleasesPromotePrdHotfixResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PromotionMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 403:
+		var headers ReleasesPromotePrdHotfixResponse403Headers
+		if values := rsp.Header.Values("WWW-Authenticate"); len(values) > 0 {
+			var value string
+			if err := runtime.BindStyledParameterWithOptions("simple", "WWW-Authenticate", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.WWWAuthenticate = &value
+		}
+		response.Headers403 = &headers
+	case rsp.StatusCode == 429:
+		var headers ReleasesPromotePrdHotfixResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {

@@ -148,6 +148,40 @@ func TestUnauthorizedCarriesALoginHint(t *testing.T) {
 	}
 }
 
+func TestElevationHintRequiresBoth403AndType(t *testing.T) {
+	// Helper: build an envelope with a specific data.type.
+	withType := func(status int, code, msg, ptype string) *api.ApiProblem {
+		body := map[string]any{
+			"defined": true, "code": code, "status": status, "message": msg,
+			"data": map[string]any{"type": ptype},
+		}
+		raw, _ := json.Marshal(body)
+		var p api.ApiProblem
+		_ = json.Unmarshal(raw, &p)
+		return &p
+	}
+
+	// 403 + elevation-required -> AuthRequired, elevation hint.
+	e := Problem(withType(403, "FORBIDDEN", "Elevated credential required",
+		cliexit.ElevationRequiredType), nil, 403)
+	if e.Code != cliexit.AuthRequired {
+		t.Fatalf("403+elevation: code = %d, want %d", e.Code, cliexit.AuthRequired)
+	}
+	if !strings.Contains(e.Hint, "/credentials") {
+		t.Fatalf("403+elevation: hint = %q", e.Hint)
+	}
+
+	// 500 + elevation-required -> Error, no elevation hint.
+	e = Problem(withType(500, "INTERNAL_SERVER_ERROR", "Something broke",
+		cliexit.ElevationRequiredType), nil, 500)
+	if e.Code != cliexit.Error {
+		t.Fatalf("500+elevation: code = %d, want %d", e.Code, cliexit.Error)
+	}
+	if strings.Contains(e.Hint, "/credentials") {
+		t.Fatalf("500+elevation: the elevation hint was set on a non-403: %q", e.Hint)
+	}
+}
+
 // An envelope with an empty message still has to say something.
 func TestEmptyMessageFallsBackToTheCode(t *testing.T) {
 	e := Problem(&api.ApiProblem{Code: "INTERNAL_SERVER_ERROR", Status: 500}, nil, 500)

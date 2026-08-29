@@ -121,35 +121,44 @@ func TestCodeOfFindsAJoinedExitError(t *testing.T) {
 	}
 }
 
-// FromProblem is the seam for the two cases a status cannot decide on its own.
-// Today it agrees with FromHTTPStatus for everything, which is the point: the
-// place to make the change exists before anything depends on the current answer.
-func TestFromProblemMatchesStatusToday(t *testing.T) {
+// FromProblem discriminates two 403s: a role-floor refusal (exit 1) and an
+// elevation-required scope failure (exit 4).
+func TestFromProblemElevation(t *testing.T) {
+	// Elevation-required 403 returns AuthRequired.
+	if got := FromProblem(ElevationRequiredType, 403); got != AuthRequired {
+		t.Fatalf("FromProblem(elevation-required, 403) = %d, want %d", got, AuthRequired)
+	}
+	// A plain 403 with any other type stays Error.
+	if got := FromProblem("urn:drift:problem:forbidden", 403); got != Error {
+		t.Fatalf("FromProblem(forbidden, 403) = %d, want %d", got, Error)
+	}
+	// An empty type on a 403 stays Error.
+	if got := FromProblem("", 403); got != Error {
+		t.Fatalf("FromProblem(empty, 403) = %d, want %d", got, Error)
+	}
+}
+
+func TestFromProblemMatchesStatusForOtherCodes(t *testing.T) {
 	for _, c := range []struct {
-		code   string
-		status int
+		problemType string
+		status      int
 	}{
-		{"BAD_REQUEST", 400}, {"UNAUTHORIZED", 401}, {"FORBIDDEN", 403},
-		{"NOT_FOUND", 404}, {"CONFLICT", 409}, {"TOO_MANY_REQUESTS", 429},
-		{"INTERNAL_SERVER_ERROR", 500}, {"SERVICE_UNAVAILABLE", 503},
+		{"urn:drift:problem:bad-request", 400},
+		{"urn:drift:problem:unauthenticated", 401},
+		{"urn:drift:problem:not-found", 404},
+		{"urn:drift:problem:invalid-transition", 409},
+		{"urn:drift:problem:rate-limited", 429},
+		{"urn:drift:problem:internal", 500},
+		{"urn:drift:problem:unavailable", 503},
 	} {
-		if got, want := FromProblem(c.code, c.status), FromHTTPStatus(c.status); got != want {
-			t.Fatalf("FromProblem(%q, %d) = %d, want %d", c.code, c.status, got, want)
+		if got, want := FromProblem(c.problemType, c.status), FromHTTPStatus(c.status); got != want {
+			t.Fatalf("FromProblem(%q, %d) = %d, want %d", c.problemType, c.status, got, want)
 		}
 	}
-	// Recorded decisions, so a change to either is deliberate:
-	//   Exit 7 is now EMITTED: /api/v1 limits per credential and declares a 429
-	//   with Retry-After on every operation. Reached only through an envelope, so
-	//   an intermediary's 429 does not claim to be drift's rate limiter.
-	if FromProblem("TOO_MANY_REQUESTS", 429) != RateLimited {
-		t.Fatal("429 no longer maps to RateLimited; update the decision recorded in FromProblem")
+	if FromProblem("urn:drift:problem:rate-limited", 429) != RateLimited {
+		t.Fatal("429 no longer maps to RateLimited")
 	}
 	if RateLimited != 7 {
 		t.Fatalf("RateLimited = %d, want 7", RateLimited)
-	}
-	//   403 stays Error until `promote prd` can return a scope failure (step 6),
-	//   where re-login through the elevation mint IS the remedy.
-	if FromProblem("FORBIDDEN", 403) != Error {
-		t.Fatal("403 no longer maps to Error; update the decision recorded in FromProblem")
 	}
 }

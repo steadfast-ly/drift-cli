@@ -18,13 +18,13 @@ func newReleaseCommand(app *App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "release",
 		Aliases: []string{"releases"},
-		Short:   "Inspect release state and promote to rc",
+		Short:   "Inspect release state and promote",
 		Long: "Inspect release state and promote services.\n\n" +
 			"`status` shows what is deployed where; `history` lists past\n" +
-			"promotions; `promote rc` retags stg images as rc and `promote hotfix`\n" +
-			"builds a branch straight to rc, bypassing stg, for emergencies.\n\n" +
-			"Production promotion is NOT on this surface — see\n" +
-			"`drift release promote prd` for why.\n\n" + cliexit.Help,
+			"promotions; `promote rc` retags stg images as rc, `promote hotfix`\n" +
+			"builds a branch straight to rc, bypassing stg, for emergencies,\n" +
+			"and `promote prd` promotes from rc to production (requires an\n" +
+			"elevated credential).\n\n" + cliexit.Help,
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error { return c.Help() },
 	}
@@ -292,7 +292,7 @@ func runReleaseHistory(ctx context.Context, app *App, limit, offset int) error {
 func newReleasePromoteCommand(app *App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "promote",
-		Short: "Promote services to rc",
+		Short: "Promote services",
 		Args:  cobra.NoArgs,
 		RunE:  func(c *cobra.Command, _ []string) error { return c.Help() },
 	}
@@ -434,44 +434,109 @@ func newPromoteHotfixCommand(app *App) *cobra.Command {
 	return cmd
 }
 
-// newPromotePrdCommand exists so that typing the obvious thing gets an
-// explanation rather than "unknown command".
-//
-// It is NOT a stub of the operation: nothing is called, nothing is faked, and
-// the exit code says the CLI cannot do this. Production promotion needs a
-// short-TTL credential scoped to `promote:prd`, minted through an interactive
-// browser round trip, and that mint does not exist on this server yet — so the
-// only correct behaviour is to say where the operation lives and why it is not
-// here. Omitting the command entirely would leave an operator mid-incident
-// staring at a usage error that does not mention production at all.
 func newPromotePrdCommand(app *App) *cobra.Command {
-	return &cobra.Command{
+	var yes bool
+	flags := &promotionWaitFlags{}
+	cmd := &cobra.Command{
 		Use:   "prd <service>...",
-		Short: "Promote to production (web only for now)",
+		Short: "Promote services from rc to production",
 		Long: "Promote services from rc to production.\n\n" +
-			"NOT AVAILABLE FROM THE CLI. Production promotion requires elevation —\n" +
-			"a browser round trip minting a credential scoped to `promote:prd` with\n" +
-			"a fifteen-minute lifetime — so that a leaked long-lived token cannot\n" +
-			"reach production and CI structurally cannot promote. Neither the mint\n" +
-			"nor the operation is on `/api/v1` yet.\n\n" +
-			"Use the web UI. This command exists so that typing it explains itself\n" +
-			"instead of failing as an unknown subcommand.\n\n" + cliexit.Help,
-		Args: cobra.ArbitraryArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			e := &cliexit.ExitError{
-				Code:    cliexit.Error,
-				Message: "production promotion is not available from the CLI",
-				Detail: "it requires a short-lived credential scoped to `promote:prd`, minted through an " +
-					"interactive browser sign-in; neither that mint nor the operation is on /api/v1 yet",
-			}
-			if r, rerr := app.Resolve(); rerr == nil {
-				e.Hint = "promote from the web UI at " + strings.TrimRight(r.Endpoint, "/") + "/releases"
-			} else {
-				e.Hint = "promote from the web UI"
-			}
-			return e
+			"Each named service's CURRENT rc image is retagged as prd and the\n" +
+			"retag workflow dispatched, grouped by GitHub repository so a monorepo\n" +
+			"is dispatched once. Services are named by helm chart key — the same\n" +
+			"names `drift release status` prints.\n\n" +
+			"REQUIRES ELEVATION. Production promotion needs a short-lived\n" +
+			"credential scoped to `promote:prd`, minted through an interactive\n" +
+			"browser sign-in at /credentials with a fifteen-minute lifetime.\n" +
+			"A leaked long-lived token cannot reach production because it lacks\n" +
+			"the scope, and CI structurally cannot promote because minting\n" +
+			"requires interactive SSO.\n\n" +
+			"Destructive: confirms on a terminal, takes --yes, and refuses without\n" +
+			"--yes when the session is not interactive.\n\n" +
+			"Blocks until the promotion finishes deploying.\n\n" + cliexit.Help,
+		Args: cobra.MinimumNArgs(1),
+		RunE: func(c *cobra.Command, args []string) error {
+			services := normalizeServices(args)
+			return runPromotion(c.Context(), app, promotion{
+				Feature:  FeaturePromotionsPrd,
+				Kind:     "prd",
+				Services: services,
+				Summary: fmt.Sprintf("This promotes the current rc image of %s to production.",
+					strings.Join(services, ", ")),
+				Question: "promote to production",
+				Yes:      yes,
+				Wait:     flags,
+				Call: func(ctx context.Context, sess *Session) (*api.PromotionMutation, *cliexit.ExitError) {
+					resp, err := sess.API.ReleasesPromotePrdWithResponse(ctx,
+						api.ReleasesPromotePrdJSONRequestBody{HelmChartKeys: services})
+					if err != nil {
+						return nil, client.Transport(err, sess.Resolved.Endpoint)
+					}
+					if resp.JSON200 == nil {
+						return nil, client.Fail(resp, resp.Headers429)
+					}
+					return resp.JSON200, nil
+				},
+			})
 		},
 	}
+	cmd.Flags().BoolVar(&yes, "yes", false, "skip the confirmation prompt")
+	flags.register(cmd)
+
+	cmd.AddCommand(newPromotePrdHotfixCommand(app))
+	return cmd
+}
+
+func newPromotePrdHotfixCommand(app *App) *cobra.Command {
+	var yes bool
+	var branch string
+	flags := &promotionWaitFlags{}
+	cmd := &cobra.Command{
+		Use:   "hotfix <service>... --branch <branch>",
+		Short: "Build a branch straight to prd, bypassing rc",
+		Long: "Promote a branch directly to production without passing through rc.\n\n" +
+			"The named branch's HEAD is resolved in each service's repository and\n" +
+			"that repository's hotfix workflow dispatched against it, tagging the\n" +
+			"result `prd-<sha>`.\n\n" +
+			"FOR EMERGENCIES. The build does not pass through rc, so nothing has\n" +
+			"validated it before it reaches production.\n\n" +
+			"REQUIRES ELEVATION. See `drift release promote prd --help`.\n\n" +
+			"Destructive: confirms on a terminal, takes --yes, and refuses without\n" +
+			"--yes when the session is not interactive.\n\n" + cliexit.Help,
+		Args: cobra.MinimumNArgs(1),
+		RunE: func(c *cobra.Command, args []string) error {
+			if strings.TrimSpace(branch) == "" {
+				return usageErrorf("--branch is required: a hotfix names the branch to build")
+			}
+			services := normalizeServices(args)
+			return runPromotion(c.Context(), app, promotion{
+				Feature:  FeaturePromotionsPrd,
+				Kind:     "prd hotfix",
+				Services: services,
+				Summary: fmt.Sprintf(
+					"This builds %s from branch %q straight to production, BYPASSING rc — nothing will have validated it.",
+					strings.Join(services, ", "), branch),
+				Question: "dispatch this prd hotfix",
+				Yes:      yes,
+				Wait:     flags,
+				Call: func(ctx context.Context, sess *Session) (*api.PromotionMutation, *cliexit.ExitError) {
+					resp, err := sess.API.ReleasesPromotePrdHotfixWithResponse(ctx,
+						api.ReleasesPromotePrdHotfixJSONRequestBody{HelmChartKeys: services, Branch: branch})
+					if err != nil {
+						return nil, client.Transport(err, sess.Resolved.Endpoint)
+					}
+					if resp.JSON200 == nil {
+						return nil, client.Fail(resp, resp.Headers429)
+					}
+					return resp.JSON200, nil
+				},
+			})
+		},
+	}
+	cmd.Flags().StringVar(&branch, "branch", "", "branch to build (required)")
+	cmd.Flags().BoolVar(&yes, "yes", false, "skip the confirmation prompt")
+	flags.register(cmd)
+	return cmd
 }
 
 // normalizeServices trims and de-duplicates the service list, preserving the

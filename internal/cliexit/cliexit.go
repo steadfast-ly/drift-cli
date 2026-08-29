@@ -103,33 +103,29 @@ func CodeOf(err error) int {
 	return Error
 }
 
+// ElevationRequiredType is the problem URN the server returns when a credential
+// lacks the `promote:prd` scope. Defined here rather than in `client` because
+// the exit-code decision is the only consumer, and the mapping is the contract.
+const ElevationRequiredType = "urn:drift:problem:elevation-required"
+
 // FromProblem maps a server error envelope onto the exit-code contract.
 //
-// This is the ONLY place the mapping exists, and it takes the envelope's `code`
-// as well as its `status` because two cases cannot be told apart from the
-// status alone:
+// `problemType` is the URN from the envelope's `data.type` field. Two cases
+// cannot be decided from the HTTP status alone:
 //
-//   - **403.** Today every 403 is "your role is below the floor", where
-//     re-authenticating does not help and telling the user to log in again
-//     sends them in a circle — so it is a plain Error. At step 6 the same status
-//     will also mean "this credential lacks the `promote:prd` scope", where
-//     re-login through the elevation mint IS the remedy and AuthRequired is
-//     correct. The discrimination has to be on `code`, not on `status`, and the
-//     seam exists now so that adding it later is a one-line change rather than
-//     a breaking reinterpretation of an exit code scripts already depend on.
-//     No code string is guessed here: the server has no promotion procedures
-//     yet, so there is nothing to match on and nothing is invented.
+//   - **403 + elevation-required.** The credential lacks `promote:prd`, and
+//     re-login through the elevation mint IS the remedy. Every other 403 stays
+//     a plain Error, because telling a user whose ROLE is the problem to log in
+//     again sends them in a circle.
 //
-//   - **429.** Now emitted as RateLimited, because the server means it: limits
-//     are per credential and every operation in the contract declares a 429
-//     carrying `Retry-After`. Reached only through this function, so a 429 that
-//     did not arrive as a drift envelope stays on the generic path — an
-//     intermediary throttling the connection is a different condition with a
-//     different remedy, and `Problem` keeps the two apart.
-func FromProblem(code string, status int) int {
-	// Reserved for the step-6 elevation case; deliberately empty rather than
-	// populated with a guess.
-	_ = code
+//   - **429.** Emitted as RateLimited: limits are per credential and every
+//     operation in the contract declares a 429 carrying `Retry-After`. Reached
+//     only through an envelope, so an intermediary's 429 does not claim to be
+//     drift's rate limiter.
+func FromProblem(problemType string, status int) int {
+	if status == 403 && problemType == ElevationRequiredType {
+		return AuthRequired
+	}
 	return FromHTTPStatus(status)
 }
 

@@ -2,7 +2,7 @@
   "info": {
     "title": "Drift API",
     "version": "1.0.0",
-    "description": "drift's versioned API: environment reads, the full environment lifecycle, and promotion to rc. Authenticate with a CLI bearer credential or a browser session cookie; when both are presented the bearer wins and a bearer that fails to verify is a 401, never a fallback. Every operation enforces a role floor server-side — `read-only` for reads, `preview` for every environment mutation, `release` for a promotion — so a read-only credential cannot reach a write and a preview credential cannot promote. Production promotion is deliberately absent: it requires a short-lived elevated credential and is not reachable from this surface at all. Requests are rate limited per credential (per signed-in user for cookie callers); a 429 carries `Retry-After` in whole seconds and is not avoidable by changing any request header. Errors share one envelope: `{ defined, code, status, message, data }`, where `data.type` is a `urn:drift:problem:` identifier; a 409 whose type is `urn:drift:problem:invalid-transition` additionally carries `data.state` and `data.event`, the state the entity was in and the lifecycle event that was refused. Mutations accept work and return an id; poll `GET /environments/{ref}` or `GET /releases/promotions/active` for the outcome."
+    "description": "drift's versioned API: environment reads, the full environment lifecycle, and promotion to rc and to production. Authenticate with a CLI bearer credential or a browser session cookie; when both are presented the bearer wins and a bearer that fails to verify is a 401, never a fallback. Every operation enforces a role floor server-side — `read-only` for reads, `preview` for every environment mutation, `release` for a promotion — so a read-only credential cannot reach a write and a preview credential cannot promote. Production promotion requires MORE than a role: the credential must also carry the `promote:prd` scope, which only a 15-minute credential minted through an interactive browser sign-in has. A `release` credential — or an `admin` one — without that scope is refused with 403 and `data.type` `urn:drift:problem:elevation-required`, which is the signal to elevate rather than to give up; the refusal also carries `WWW-Authenticate: Bearer error=\"insufficient_scope\"`. Requests are rate limited per credential (per signed-in user for cookie callers); a 429 carries `Retry-After` in whole seconds and is not avoidable by changing any request header. Errors share one envelope: `{ defined, code, status, message, data }`, where `data.type` is a `urn:drift:problem:` identifier; a 409 whose type is `urn:drift:problem:invalid-transition` additionally carries `data.state` and `data.event`, the state the entity was in and the lifecycle event that was refused. Mutations accept work and return an id; poll `GET /environments/{ref}` or `GET /releases/promotions/active` for the outcome."
   },
   "servers": [
     {
@@ -23,13 +23,13 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "drift-cli-credential",
-        "description": "A drift CLI credential: `Authorization: Bearer drift_<token>`. Minted from the drift credentials page, shown once, hashed at rest, carrying a role snapshot capped at the minting user's role, and revocable with effect from the next request. Takes precedence over `cookieAuth` when both are present."
+        "description": "A drift CLI credential: `Authorization: Bearer drift_<token>`. Minted from the drift credentials page, shown once, hashed at rest, and revocable with effect from the next request. Its authority is the LOWER of the role snapshot taken at mint and the owner's role at the time of the request, so a later demotion narrows it and a later promotion does not widen it; a banned owner's credential is refused outright. Takes precedence over `cookieAuth` when both are present."
       },
       "cookieAuth": {
         "type": "apiKey",
         "in": "cookie",
-        "name": "authjs.session-token",
-        "description": "Auth.js session cookie, set by the browser sign-in flow. Over HTTPS the cookie is named `__Secure-authjs.session-token`; send whichever one sign-in set."
+        "name": "better-auth.session_token",
+        "description": "Better Auth session cookie, set by the browser sign-in flow. The name VARIES with the deployment: a production deployment sets secure cookies and the same credential arrives as `__Secure-better-auth.session_token`, while a plain-HTTP one (a `kubectl port-forward`, local development) sets `better-auth.session_token`. An `apiKey` scheme has one name and cannot express the alternative, so this declares the unprefixed spelling and the prefixed one is named here — send whichever the sign-in flow set, and prefer `bearerAuth` for a non-browser client."
       }
     },
     "schemas": {
@@ -377,6 +377,15 @@
           "label": {
             "type": "string"
           },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "promote:prd"
+              ],
+              "type": "string"
+            }
+          },
           "expiresAt": {
             "type": "string",
             "format": "date-time",
@@ -386,6 +395,7 @@
         "required": [
           "id",
           "label",
+          "scopes",
           "expiresAt"
         ]
       },
@@ -441,12 +451,16 @@
           },
           "displayName": {
             "type": "string"
+          },
+          "atomic": {
+            "type": "boolean"
           }
         },
         "required": [
           "id",
           "fullName",
-          "displayName"
+          "displayName",
+          "atomic"
         ]
       },
       "Repository": {
@@ -773,9 +787,7 @@
             "type": "string"
           },
           "workflowRunId": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
+            "type": "string"
           },
           "workflowRunUrl": {
             "type": "string"
@@ -1099,6 +1111,16 @@
               }
             ]
           },
+          "actorUserId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "details": {
             "anyOf": [
               {
@@ -1124,6 +1146,7 @@
           "repositoryId",
           "promotionId",
           "actor",
+          "actorUserId",
           "details"
         ]
       },
@@ -1413,7 +1436,7 @@
                   "slug": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 29,
+                    "maxLength": 45,
                     "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
                   },
                   "ticketId": {
@@ -3554,7 +3577,7 @@
       "post": {
         "operationId": "releases.promote.rc",
         "summary": "Promote services from stg to rc",
-        "description": "Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by GitHub repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.",
+        "description": "Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.",
         "tags": [
           "releases"
         ],
@@ -3770,6 +3793,321 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "502",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/releases/promotions/prd": {
+      "post": {
+        "operationId": "releases.promote.prd",
+        "summary": "Promote services from rc to production",
+        "description": "Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` from the drift credentials page (`drift auth elevate`). Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.",
+        "tags": [
+          "releases"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "helmChartKeys": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "required": [
+                  "helmChartKeys"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionMutation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "RFC 6750 challenge, present when the refusal is a missing scope rather than an insufficient role: `Bearer realm=\"drift\", error=\"insufficient_scope\", scope=\"promote:prd\"`. Absent on a plain role refusal.",
+                "required": false,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "502",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/releases/promotions/prd/hotfix": {
+      "post": {
+        "operationId": "releases.promote.prdHotfix",
+        "summary": "Dispatch a hotfix build to production",
+        "description": "Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.",
+        "tags": [
+          "releases"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "helmChartKeys": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "branch": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "helmChartKeys",
+                  "branch"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionMutation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "RFC 6750 challenge, present when the refusal is a missing scope rather than an insufficient role: `Bearer realm=\"drift\", error=\"insufficient_scope\", scope=\"promote:prd\"`. Absent on a plain role refusal.",
+                "required": false,
+                "schema": {
+                  "type": "string"
                 }
               }
             }

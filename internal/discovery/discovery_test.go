@@ -304,6 +304,19 @@ func TestPrereleaseComparesAsItsReleaseVersion(t *testing.T) {
 	}
 }
 
+// git describe outputs `v0.2.0` when exactly on a tag. The skew check must
+// strip the `v` prefix, otherwise a tagged release always warns.
+func TestVPrefixedDescribeOutputParsesCleanly(t *testing.T) {
+	doc := &Document{Version: "1.0.0", MinimumClientVersion: "0.2.0"}
+	s := CheckSkew("v0.2.0", doc)
+	if !s.Comparable {
+		t.Fatalf("v0.2.0 must be comparable: %+v", s)
+	}
+	if s.TooOld {
+		t.Fatalf("v0.2.0 must not be below the 0.2.0 floor: %+v", s)
+	}
+}
+
 func TestUnparseableVersionsMakeNoClaim(t *testing.T) {
 	doc := &Document{Version: "1.0.0", MinimumClientVersion: "0.1.0"}
 	s := CheckSkew("not-a-version", doc)

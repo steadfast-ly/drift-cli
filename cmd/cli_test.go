@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/steadfast/drift-cli/internal/auth"
 	"github.com/steadfast/drift-cli/internal/cliexit"
@@ -124,6 +125,23 @@ func newFakeDrift(t *testing.T, doc map[string]any) *fakeServer {
 			problem(w, 404, "NOT_FOUND", "Environment not found",
 				"urn:drift:problem:not-found", "No such environment.")
 		}
+	})
+
+	mux.HandleFunc("/api/v1/auth/whoami", func(w http.ResponseWriter, r *http.Request) {
+		if !authed(r) {
+			problem(w, 401, "UNAUTHORIZED", "Authentication required",
+				"urn:drift:problem:unauthenticated", "The bearer credential is missing, expired or revoked.")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"email": "operator@example.com", "role": "admin", "channel": "cli",
+			"credential": map[string]any{
+				"id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "label": "desktop",
+				"scopes":    []string{},
+				"expiresAt": "2026-09-24T19:19:59.694Z",
+			},
+		})
 	})
 
 	fs.Server = httptest.NewServer(mux)
@@ -1124,4 +1142,236 @@ func (k *intermittentKeyring) Delete(s, u string) error {
 		return errors.New("keyring unavailable")
 	}
 	return k.inner.Delete(s, u)
+}
+
+func TestAuthStatusShowsWhoamiColumns(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	out, errOut, code := h.run("auth", "status", "-o", "wide")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	for _, want := range []string{"operator@example.com", "admin", "desktop", "cli"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("auth status output is missing %q:\n%s", want, out)
+		}
+	}
+}
+
+// When whoami returns credential: null (a cookie caller -- impossible from the
+// CLI but allowed by the schema), owner and role render, credential columns
+// stay empty, and no expiry warning fires.
+func TestAuthStatusWhoamiCredentialNull(t *testing.T) {
+	mux := http.NewServeMux()
+	doc, _ := json.Marshal(defaultDoc(""))
+	mux.HandleFunc("/.well-known/drift.json", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(doc)
+	})
+	problem := func(w http.ResponseWriter, status int, code, msg, ptype, detail string) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"defined": true, "code": code, "status": status, "message": msg,
+			"data": map[string]any{"type": ptype, "detail": detail},
+		})
+	}
+	mux.HandleFunc("/api/v1/environments", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer "+goodToken {
+			problem(w, 401, "UNAUTHORIZED", "Authentication required",
+				"urn:drift:problem:unauthenticated", "")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"items":      []any{},
+			"pagination": map[string]any{"limit": 20, "offset": 0, "hasMore": false},
+		})
+	})
+	mux.HandleFunc("/api/v1/auth/whoami", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer "+goodToken {
+			problem(w, 401, "UNAUTHORIZED", "Authentication required",
+				"urn:drift:problem:unauthenticated", "")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"email": "cookie-user@example.com", "role": "release", "channel": "api",
+			"credential": nil,
+		})
+	})
+
+	fsrv := httptest.NewServer(mux)
+	t.Cleanup(fsrv.Close)
+	srv := &fakeServer{Server: fsrv}
+
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	// Table output: owner and role present, exit 0.
+	out, errOut, code := h.run("auth", "status", "-o", "wide")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	for _, want := range []string{"cookie-user@example.com", "release"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("auth status output is missing %q:\n%s", want, out)
+		}
+	}
+	// No expiry warning when credential is null.
+	if strings.Contains(errOut, "within 24 hours") {
+		t.Fatalf("expiry warning should not fire when credential is null:\n%s", errOut)
+	}
+
+	// JSON output: label, scopes, expires should be absent keys.
+	jout, jerrOut, jcode := h.run("auth", "status", "-o", "json")
+	if jcode != cliexit.OK {
+		t.Fatalf("exit %d\n%s", jcode, jerrOut)
+	}
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(jout), &parsed); err != nil {
+		t.Fatalf("cannot parse JSON output: %v\n%s", err, jout)
+	}
+	if parsed["owner"] != "cookie-user@example.com" {
+		t.Fatalf("owner missing or wrong in JSON: %v", parsed["owner"])
+	}
+	if parsed["role"] != "release" {
+		t.Fatalf("role missing or wrong in JSON: %v", parsed["role"])
+	}
+	for _, absent := range []string{"label", "scopes", "expires"} {
+		if v, ok := parsed[absent]; ok && v != nil {
+			t.Fatalf("JSON key %q should be absent or null when credential is null, got %v", absent, v)
+		}
+	}
+}
+
+func TestAuthStatusWhoamiExpiryWarning(t *testing.T) {
+	// Build a custom fake that returns a credential expiring within 24 hours.
+	mux := http.NewServeMux()
+	doc, _ := json.Marshal(defaultDoc(""))
+	mux.HandleFunc("/.well-known/drift.json", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(doc)
+	})
+	problem := func(w http.ResponseWriter, status int, code, msg, ptype, detail string) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"defined": true, "code": code, "status": status, "message": msg,
+			"data": map[string]any{"type": ptype, "detail": detail},
+		})
+	}
+	mux.HandleFunc("/api/v1/environments", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer "+goodToken {
+			problem(w, 401, "UNAUTHORIZED", "Authentication required",
+				"urn:drift:problem:unauthenticated", "")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"items":      []any{},
+			"pagination": map[string]any{"limit": 20, "offset": 0, "hasMore": false},
+		})
+	})
+	// Whoami with an expiry 30 minutes from now.
+	soon := time.Now().Add(30 * time.Minute).UTC().Format(time.RFC3339)
+	mux.HandleFunc("/api/v1/auth/whoami", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer "+goodToken {
+			problem(w, 401, "UNAUTHORIZED", "Authentication required",
+				"urn:drift:problem:unauthenticated", "")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"email": "operator@example.com", "role": "release", "channel": "cli",
+			"credential": map[string]any{
+				"id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "label": "ephemeral",
+				"scopes": []string{"promote:prd"}, "expiresAt": soon,
+			},
+		})
+	})
+
+	fsrv := httptest.NewServer(mux)
+	t.Cleanup(fsrv.Close)
+	srv := &fakeServer{Server: fsrv}
+
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	out, errOut, code := h.run("auth", "status", "-o", "wide")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if !strings.Contains(out, "promote:prd") {
+		t.Fatalf("scopes missing from output:\n%s", out)
+	}
+	if !strings.Contains(errOut, "within 24 hours") {
+		t.Fatalf("24-hour expiry warning missing from stderr:\n%s", errOut)
+	}
+}
+
+func TestAuthStatusWhoamiExpiredCredential(t *testing.T) {
+	mux := http.NewServeMux()
+	doc, _ := json.Marshal(defaultDoc(""))
+	mux.HandleFunc("/.well-known/drift.json", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(doc)
+	})
+	problem := func(w http.ResponseWriter, status int, code, msg, ptype, detail string) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"defined": true, "code": code, "status": status, "message": msg,
+			"data": map[string]any{"type": ptype, "detail": detail},
+		})
+	}
+	mux.HandleFunc("/api/v1/environments", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer "+goodToken {
+			problem(w, 401, "UNAUTHORIZED", "Authentication required",
+				"urn:drift:problem:unauthenticated", "")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"items":      []any{},
+			"pagination": map[string]any{"limit": 20, "offset": 0, "hasMore": false},
+		})
+	})
+	// Whoami with an expiry in the past (already expired).
+	past := time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339)
+	mux.HandleFunc("/api/v1/auth/whoami", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer "+goodToken {
+			problem(w, 401, "UNAUTHORIZED", "Authentication required",
+				"urn:drift:problem:unauthenticated", "")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"email": "operator@example.com", "role": "release", "channel": "cli",
+			"credential": map[string]any{
+				"id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "label": "stale",
+				"scopes": []string{}, "expiresAt": past,
+			},
+		})
+	})
+
+	fsrv := httptest.NewServer(mux)
+	t.Cleanup(fsrv.Close)
+	srv := &fakeServer{Server: fsrv}
+
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	_, errOut, code := h.run("auth", "status")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if !strings.Contains(errOut, "expired at") {
+		t.Fatalf("expected 'expired at' warning, got:\n%s", errOut)
+	}
+	if strings.Contains(errOut, "within 24 hours") {
+		t.Fatalf("'within 24 hours' should not appear for an already-expired credential:\n%s", errOut)
+	}
 }

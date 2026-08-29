@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/steadfast/drift-cli/internal/api"
@@ -284,12 +285,8 @@ func newAuthStatusCommand(app *App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
 		Short: "Show who this CLI is, against which context",
-		Long: "Show the active context, the credential in use and whether the server\n" +
-			"still accepts it.\n\n" +
-			"The credential's OWNER, ROLE and EXPIRY are not shown: /api/v1 has no\n" +
-			"operation that describes the calling credential, so this command\n" +
-			"reports what it can prove rather than guessing. They are visible on\n" +
-			"the server's credentials page.\n\n" + cliexit.Help,
+		Long: "Show the active context, the credential in use, its owner, role,\n" +
+			"scopes and expiry.\n\n" + cliexit.Help,
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			return runAuthStatus(c.Context(), app)
@@ -320,6 +317,12 @@ func runAuthStatus(ctx context.Context, app *App) error {
 		{Name: "server_version", Header: "Server version"},
 		{Name: "auth_mode", Header: "Auth mode"},
 		output.StatusColumn("status", "Status"),
+		{Name: "owner", Header: "Owner"},
+		{Name: "role", Header: "Role"},
+		{Name: "channel", Header: "Channel", Wide: true},
+		{Name: "label", Header: "Label", Wide: true},
+		{Name: "scopes", Header: "Scopes", Wide: true},
+		{Name: "expires", Header: "Expires"},
 	}
 
 	store, err := app.Store()
@@ -393,14 +396,34 @@ func runAuthStatus(ctx context.Context, app *App) error {
 		return probeErr
 	}
 	row["status"] = "authenticated"
-	if err := app.Out.Write(doc); err != nil {
-		return err
+
+	// Whoami enriches the output with the credential's identity. Errors are
+	// non-fatal: the probe already proved the credential is good, so a
+	// transient failure in whoami degrades the output rather than the exit code.
+	whoami, whoamiErr := c.AuthWhoamiWithResponse(ctx)
+	if whoamiErr == nil && whoami.JSON200 != nil {
+		w := whoami.JSON200
+		row["owner"] = w.Email
+		row["role"] = string(w.Role)
+		row["channel"] = string(w.Channel)
+		if w.Credential != nil {
+			row["label"] = w.Credential.Label
+			scopes := make([]string, len(w.Credential.Scopes))
+			for i, s := range w.Credential.Scopes {
+				scopes[i] = string(s)
+			}
+			row["scopes"] = strings.Join(scopes, ", ")
+			row["expires"] = w.Credential.ExpiresAt
+			remaining := time.Until(w.Credential.ExpiresAt)
+			if remaining <= 0 {
+				app.Out.Warnf("warning: this credential expired at %s", w.Credential.ExpiresAt.Format(time.RFC3339))
+			} else if remaining < 24*time.Hour {
+				app.Out.Warnf("warning: this credential expires at %s (within 24 hours)", w.Credential.ExpiresAt.Format(time.RFC3339))
+			}
+		}
 	}
-	if f := app.Out.EffectiveFormat(); f == output.FormatTable || f == output.FormatWide {
-		app.Out.Infof("\nThe credential's owner, role and expiry are not exposed by /api/v1; see %s.",
-			strings.TrimRight(r.Endpoint, "/")+CredentialsPath)
-	}
-	return nil
+
+	return app.Out.Write(doc)
 }
 
 func emptyToNil(s string) any {

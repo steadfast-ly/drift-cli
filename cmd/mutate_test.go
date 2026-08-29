@@ -57,6 +57,9 @@ type mutServer struct {
 	mutations      int
 	// extraRepos are appended to the repository list, for the ambiguity case.
 	extraRepos []map[string]any
+	// prd403Elevation causes the prd promote endpoint to return a 403 with the
+	// elevation-required problem type.
+	prd403Elevation bool
 }
 
 func (s *mutServer) nextStatus() string {
@@ -122,7 +125,7 @@ func newMutServer(t *testing.T) *mutServer {
 		"services": map[string]string{"api.v1": "/api/v1"},
 		"features_supported": []string{
 			"environments.read", "environments.write", "repositories.read",
-			"releases.read", "promotions.rc", "promotions.hotfix",
+			"releases.read", "promotions.rc", "promotions.hotfix", "promotions.prd",
 		},
 		"minimum_client_version": "0.1.0",
 	})
@@ -307,6 +310,36 @@ func newMutServer(t *testing.T) *mutServer {
 			return
 		}
 		s.record("promote:hotfix")
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"promotionId": promID, "dispatchCount": 1})
+	})
+	mux.HandleFunc("/api/v1/releases/promotions/prd", func(w http.ResponseWriter, r *http.Request) {
+		// Only match POST, not /prd/hotfix (which has its own handler).
+		if r.URL.Path != "/api/v1/releases/promotions/prd" {
+			http.NotFound(w, r)
+			return
+		}
+		if limited(w) {
+			return
+		}
+		s.mu.Lock()
+		elev := s.prd403Elevation
+		s.mu.Unlock()
+		if elev {
+			w.Header().Set("WWW-Authenticate", `Bearer realm="drift", error="insufficient_scope", scope="promote:prd"`)
+			writeProblem(w, 403, "FORBIDDEN", "Elevated credential required",
+				"urn:drift:problem:elevation-required", "This operation requires a credential scoped to promote:prd.")
+			return
+		}
+		s.record("promote:prd")
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"promotionId": promID, "dispatchCount": 1})
+	})
+	mux.HandleFunc("/api/v1/releases/promotions/prd/hotfix", func(w http.ResponseWriter, _ *http.Request) {
+		if limited(w) {
+			return
+		}
+		s.record("promote:prd:hotfix")
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"promotionId": promID, "dispatchCount": 1})
 	})
@@ -804,23 +837,94 @@ func TestPromoteFailsImmediatelyOnDeployFailed(t *testing.T) {
 	}
 }
 
-// `promote prd` must explain itself rather than failing as an unknown command
-// or, worse, pretending to work.
-func TestPromotePrdExplainsThatItIsWebOnly(t *testing.T) {
+func TestPromotePrdWaitsForTheMachineToFinish(t *testing.T) {
 	s := newMutServer(t)
+	s.promotes = []string{"dispatched", "promoting", "deploying", "completed"}
 	h := newMutHarness(t, s)
 
-	_, errOut, code := h.run("release", "promote", "prd", "widget")
+	out, errOut, code := h.run("release", "promote", "prd", "widget", "--yes")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if !strings.Contains(out, "completed") {
+		t.Fatalf("final status not reported: %s", out)
+	}
+	if s.seen("promote:prd") != 1 {
+		t.Fatalf("expected exactly one promote:prd call, got %d", s.seen("promote:prd"))
+	}
+}
+
+func TestPromotePrdHotfixSuccess(t *testing.T) {
+	s := newMutServer(t)
+	s.promotes = []string{"dispatched", "completed"}
+	h := newMutHarness(t, s)
+
+	out, errOut, code := h.run("release", "promote", "prd", "hotfix", "widget", "--branch", "fix/urgent", "--yes")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if !strings.Contains(out, "completed") {
+		t.Fatalf("final status not reported: %s", out)
+	}
+	if s.seen("promote:prd:hotfix") != 1 {
+		t.Fatalf("expected exactly one promote:prd:hotfix call, got %d", s.seen("promote:prd:hotfix"))
+	}
+}
+
+func TestPromotePrd403ElevationRequiredExits4(t *testing.T) {
+	s := newMutServer(t)
+	s.prd403Elevation = true
+	h := newMutHarness(t, s)
+
+	_, errOut, code := h.run("release", "promote", "prd", "widget", "--yes")
+	if code != cliexit.AuthRequired {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.AuthRequired, errOut)
+	}
+	for _, want := range []string{"/credentials", "drift auth login"} {
+		if !strings.Contains(errOut, want) {
+			t.Fatalf("the hint is missing %q: %s", want, errOut)
+		}
+	}
+}
+
+func TestPromotePrdPlain403StaysExit1(t *testing.T) {
+	// A 403 without the elevation-required type stays a plain Error (exit 1),
+	// not AuthRequired. Re-authenticating will not help when the ROLE is wrong.
+	srv := newFakeDrift(t, map[string]any{
+		"org": "acme", "version": "1.0.0", "auth": "sso",
+		"services":               map[string]string{"api.v1": "/api/v1"},
+		"features_supported":     []string{"environments.read", "releases.read", "promotions.prd"},
+		"minimum_client_version": "0.1.0",
+	})
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	// The fake server's generic 403 (for /environments/forbidden) carries
+	// type urn:drift:problem:forbidden, not elevation-required.
+	_, errOut, code := h.run("env", "get", "forbidden")
 	if code != cliexit.Error {
 		t.Fatalf("exit %d, want %d\n%s", code, cliexit.Error, errOut)
 	}
-	for _, want := range []string{"not available from the CLI", "promote:prd", "web UI"} {
-		if !strings.Contains(errOut, want) {
-			t.Fatalf("the explanation is missing %q: %s", want, errOut)
-		}
+}
+
+func TestPromotePrdFeatureGateAbsent(t *testing.T) {
+	// When the discovery document does NOT include promotions.prd, the command
+	// fails with the standard gate message.
+	srv := newFakeDrift(t, map[string]any{
+		"org": "acme", "version": "1.0.0", "auth": "sso",
+		"services":               map[string]string{"api.v1": "/api/v1"},
+		"features_supported":     []string{"environments.read", "releases.read"},
+		"minimum_client_version": "0.1.0",
+	})
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	_, errOut, code := h.run("release", "promote", "prd", "widget", "--yes")
+	if code != cliexit.Error {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.Error, errOut)
 	}
-	if s.seen("promote:rc") != 0 {
-		t.Fatal("prd promotion fell through to the rc endpoint")
+	if !strings.Contains(errOut, "this server does not support") {
+		t.Fatalf("feature gate message missing: %s", errOut)
 	}
 }
 
@@ -912,15 +1016,6 @@ func TestYesStillPrintsThePlan(t *testing.T) {
 		t.Fatalf("exit %d\n%s", code, errOut)
 	}
 	checkGolden(t, "create_plan_stderr.golden", errOut)
-}
-
-// The `promote prd` explanation is output too, and the one most likely to be
-// read under pressure, so its wording is pinned.
-func TestGoldenPromotePrdExplanation(t *testing.T) {
-	s := newMutServer(t)
-	h := newMutHarness(t, s)
-	_, errOut, _ := h.run("release", "promote", "prd", "widget")
-	checkGolden(t, "promote_prd_stderr.golden", strings.ReplaceAll(errOut, s.URL, "https://drift.example.com"))
 }
 
 func checkGolden(t *testing.T, name, got string) {

@@ -20,6 +20,8 @@ const (
 	FeatureReleasesRead      = "releases.read"
 	FeaturePromotionsRc      = "promotions.rc"
 	FeaturePromotionsHotfix  = "promotions.hotfix"
+	FeaturePromotionsPrd     = "promotions.prd"
+	FeatureAuditLogRead      = "audit-log.read"
 )
 
 // NewRootCommand builds the command tree.

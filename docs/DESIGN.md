@@ -173,7 +173,7 @@ drift context    list | use <name> | current | add | remove
 drift env        list | get | create | rm | cancel | relaunch | sleep | wake |
                  extend | share | unshare | add-service | remove-service |
                  swap-branch | retry-build | wait | open
-drift release    status | history | promote rc|prd|hotfix
+drift release    status | history | promote rc|hotfix|prd|prd hotfix
 drift repo       list | branches
 drift audit      list | actors
 drift api        <method> <path>            raw escape hatch
@@ -190,7 +190,7 @@ drift doctor     reachability, VPN, auth validity, version skew, capabilities
 
 - Output: table by default; `-o json|yaml|wide`; `--json <fields>` for a stable field contract. Data to stdout, diagnostics to stderr. No NDJSON streaming in v1 — no v1 command streams, and `-o json | jq` covers the need.
 - Colour: honour `NO_COLOR`, `TERM=dumb`, `CLICOLOR_FORCE` and CI detection. Suppress animation when not a TTY; formatting is the only thing that changes off-TTY.
-- Exit codes: 0 success, 1 error, 2 usage, 3 not found, 4 authentication required, 5 state conflict or operation failed, 6 wait timeout.
+- Exit codes: 0 success, 1 error, 2 usage, 3 not found, 4 authentication required (including elevation: a 403 with problem type `urn:drift:problem:elevation-required` maps here, because re-login through the elevation mint is the remedy), 5 state conflict or operation failed, 6 wait timeout.
 - Destructive operations (`rm`, `promote prd`, `relaunch`) confirm on a TTY, take `--yes`, and refuse without `--yes` when not a TTY.
 
 ### Wait semantics

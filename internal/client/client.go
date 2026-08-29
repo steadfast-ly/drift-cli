@@ -279,8 +279,16 @@ func Problem(p *api.ApiProblem, body []byte, transportStatus int) *cliexit.ExitE
 		status = transportStatus
 	}
 
+	// The problem type from `data.type` is what discriminates two 403s that
+	// need different exit codes: a role-floor refusal vs. an elevation-required
+	// scope failure.
+	var problemType string
+	if p.Data != nil {
+		problemType = p.Data.Type
+	}
+
 	e := &cliexit.ExitError{
-		Code:    cliexit.FromProblem(p.Code, status),
+		Code:    cliexit.FromProblem(problemType, status),
 		Message: p.Message,
 	}
 	if p.Data != nil && p.Data.Detail != nil {
@@ -299,7 +307,10 @@ func Problem(p *api.ApiProblem, body []byte, transportStatus int) *cliexit.ExitE
 	if e.Message == "" {
 		e.Message = fmt.Sprintf("request failed (%s)", p.Code)
 	}
-	if status == http.StatusUnauthorized {
+	switch {
+	case status == http.StatusForbidden && problemType == cliexit.ElevationRequiredType:
+		e.Hint = "mint a 15-minute elevated credential at /credentials, then run `drift auth login --token-stdin` with it and retry"
+	case status == http.StatusUnauthorized:
 		e.Hint = "run `drift auth login`, or set DRIFT_TOKEN"
 	}
 	return e
