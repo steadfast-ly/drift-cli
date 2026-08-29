@@ -6032,6 +6032,8 @@ type RepositoriesBranchesResponse struct {
 	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
 	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
 	// JSON503 the response for an HTTP 503 `application/json` response
 	JSON503 *ApiProblem
 	// Headers429 the parsed response headers for an HTTP 429 response
@@ -6071,6 +6073,11 @@ func (r RepositoriesBranchesResponse) GetJSON429() *ApiProblem {
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
 func (r RepositoriesBranchesResponse) GetJSON500() *ApiProblem {
 	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r RepositoriesBranchesResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
 }
 
 // GetJSON503 returns the response for an HTTP 503 `application/json` response
@@ -9050,6 +9057,13 @@ func ParseRepositoriesBranchesResponse(rsp *http.Response) (*RepositoriesBranche
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
 		var dest ApiProblem

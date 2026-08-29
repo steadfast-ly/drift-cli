@@ -5,7 +5,7 @@ release-management service. One binary talks to every deployment.
 
 Status: **v0.2** — the write surface. The full environment lifecycle, rc,
 hotfix and prd promotions, and `--wait` on top of v0.1's reads, contexts,
-paste-based login and diagnostics. P6 added `repo list`, `audit list|actors`,
+paste-based login and diagnostics. P6 added `repo list|branches`, `audit list|actors`,
 `api` (raw escape hatch), `release promote prd` and whoami-backed
 `auth status`.
 
@@ -39,7 +39,7 @@ drift env         list | get | create | rm | cancel | relaunch | sleep | wake |
                   extend | share | unshare | add-service | remove-service |
                   swap-branch | retry-build | wait
 drift release     status | history | promote rc | promote hotfix | promote prd
-drift repo        list
+drift repo        list | branches
 drift audit       list | actors
 drift api         <method> <path>
 drift doctor      reachability, VPN, auth validity, version skew, capabilities

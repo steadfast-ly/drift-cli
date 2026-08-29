@@ -182,7 +182,8 @@ func newFakeDrift(t *testing.T, doc map[string]any) *fakeServer {
 		parts := strings.SplitN(rest, "/", 2)
 		repoID := parts[0]
 		if len(parts) == 2 && parts[1] == "branches" {
-			if repoID == "11111111-1111-1111-1111-111111111111" {
+			switch repoID {
+			case "11111111-1111-1111-1111-111111111111":
 				w.Header().Set("Content-Type", "application/json")
 				_ = json.NewEncoder(w).Encode(map[string]any{
 					"items": []map[string]any{
@@ -191,7 +192,12 @@ func newFakeDrift(t *testing.T, doc map[string]any) *fakeServer {
 					},
 					"pagination": map[string]any{"limit": 20, "offset": 0, "hasMore": false},
 				})
-			} else {
+			case "bad0bad0-bad0-bad0-bad0-bad0bad0bad0":
+				problem(w, 502, "EXTERNAL_SERVICE_ERROR",
+					"The forge returned an error while listing branches",
+					"urn:drift:problem:external-service",
+					"GitHub API responded 401 Unauthorized; the repository's App credentials may have been revoked.")
+			default:
 				problem(w, 404, "NOT_FOUND", "Repository not found",
 					"urn:drift:problem:not-found", "No such repository.")
 			}
@@ -1923,5 +1929,30 @@ func TestAuditListLimitOffsetValidation(t *testing.T) {
 				t.Fatalf("exit %d, want %d\n%s", code, c.want, h.stderr.String())
 			}
 		})
+	}
+}
+
+// A 502 from the branches endpoint — the forge is unreachable or misconfigured —
+// must surface the server's explanation and hint at the cause.
+func TestBranches502ForgeFailureSurfacesExplanation(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	_, errOut, code := h.run("repo", "branches", "bad0bad0-bad0-bad0-bad0-bad0bad0bad0")
+	if code != cliexit.Error {
+		t.Fatalf("exit %d, want %d", code, cliexit.Error)
+	}
+	// The server's message must be surfaced, not a generic "HTTP 502".
+	if !strings.Contains(errOut, "forge returned an error") {
+		t.Fatalf("server message was not surfaced: %s", errOut)
+	}
+	// The detail from data.detail must reach the user.
+	if !strings.Contains(errOut, "App credentials") {
+		t.Fatalf("data.detail was dropped: %s", errOut)
+	}
+	// The CLI-side hint must tell the operator what to check.
+	if !strings.Contains(errOut, "forge") && !strings.Contains(errOut, "deployment operator") {
+		t.Fatalf("the hint does not name the cause: %s", errOut)
 	}
 }

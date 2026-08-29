@@ -215,6 +215,9 @@ func runRepoBranches(ctx context.Context, app *App, idStr string, limit, offset 
 		if resp.JSON404 != nil {
 			e.Hint = fmt.Sprintf("no repository with id %s; run `drift repo list` to see available ids", idStr)
 		}
+		if resp.JSON502 != nil {
+			e.Hint = "the forge (GitHub) is unreachable or its credentials are misconfigured; check with the deployment operator"
+		}
 		return e
 	}
 
