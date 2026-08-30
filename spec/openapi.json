@@ -3874,7 +3874,7 @@
       "post": {
         "operationId": "releases.promote.prd",
         "summary": "Promote services from rc to production",
-        "description": "Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` from the drift credentials page (`drift auth elevate`). Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.",
+        "description": "Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), copy the token, then pipe it into `drift auth login --token-stdin`. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.",
         "tags": [
           "releases"
         ],
