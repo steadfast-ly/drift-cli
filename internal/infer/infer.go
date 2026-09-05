@@ -187,8 +187,8 @@ var (
 // Slugify turns a branch name into a slug the server will accept.
 //
 // The target is the contract's own pattern — `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`,
-// at most 29 characters — so a branch like `feature/AUS-10151_grid-pushdown`
-// becomes `feature-aus-10151-grid-pushdow`. Truncation re-trims, because
+// at most 29 characters — so a branch like `feature/PROJ-1234_grid-pushdown`
+// becomes `feature-proj-1234-grid-pushdo`. Truncation re-trims, because
 // cutting mid-word can leave a trailing hyphen and the pattern forbids one.
 func Slugify(branch string) string {
 	s := nonSlug.ReplaceAllString(strings.ToLower(strings.TrimSpace(branch)), "-")
@@ -204,8 +204,8 @@ func Slugify(branch string) string {
 // contract requires (`^[A-Z][A-Z0-9]+-\d+$`).
 //
 // Case-insensitive on the way in because branch names are conventionally
-// lowercase — `aus-10151-grid-pushdown` carries the ticket just as much as
-// `AUS-10151-grid-pushdown` does — and upper-cased on the way out because the
+// lowercase — `proj-1234-grid-pushdown` carries the ticket just as much as
+// `PROJ-1234-grid-pushdown` does — and upper-cased on the way out because the
 // server's pattern is not.
 func Ticket(branch string) string {
 	m := ticketMatch.FindStringSubmatch(branch)

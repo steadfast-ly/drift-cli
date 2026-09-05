@@ -1,6 +1,6 @@
 Create environment:
   slug     proof-alpha
-  ticket   AUS-10151
+  ticket   PROJ-1234
   service  widget @ topic
   pr       #4633 Grid SQL pushdown
            https://github.com/acme/widget/pull/4633

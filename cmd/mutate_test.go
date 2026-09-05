@@ -954,7 +954,7 @@ func TestPromotePrd403ElevationRequiredExits4(t *testing.T) {
 	if code != cliexit.AuthRequired {
 		t.Fatalf("exit %d, want %d\n%s", code, cliexit.AuthRequired, errOut)
 	}
-	for _, want := range []string{"/credentials", "drift auth login"} {
+	for _, want := range []string{"/credentials", "DRIFT_TOKEN"} {
 		if !strings.Contains(errOut, want) {
 			t.Fatalf("the hint is missing %q: %s", want, errOut)
 		}
@@ -1082,7 +1082,7 @@ func TestYesStillPrintsThePlan(t *testing.T) {
 	h := newMutHarness(t, s)
 
 	_, errOut, code := h.run("env", "create", "--slug", "proof-alpha",
-		"--repo", "widget:topic", "--ticket", "AUS-10151", "--ttl", "12",
+		"--repo", "widget:topic", "--ticket", "PROJ-1234", "--ttl", "12",
 		"--pr", "4633", "--pr-title", "Grid SQL pushdown",
 		"--pr-url", "https://github.com/acme/widget/pull/4633",
 		"--yes", "--no-wait")

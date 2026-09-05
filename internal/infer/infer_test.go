@@ -33,8 +33,8 @@ func TestParseRemoteHandlesEveryFormGitStores(t *testing.T) {
 
 func TestSlugifyProducesSomethingTheContractAccepts(t *testing.T) {
 	cases := []struct{ branch, want string }{
-		{"AUS-10151-grid-pushdown", "aus-10151-grid-pushdown"},
-		{"feature/AUS-10151_grid", "feature-aus-10151-grid"},
+		{"PROJ-1234-grid-pushdown", "proj-1234-grid-pushdown"},
+		{"feature/PROJ-1234_grid", "feature-proj-1234-grid"},
 		{"fix/thing.with.dots", "fix-thing-with-dots"},
 		{"---leading-and-trailing---", "leading-and-trailing"},
 		{"UPPER", "upper"},
@@ -64,8 +64,8 @@ func TestSlugifyOnSomethingWithNoUsableCharacters(t *testing.T) {
 
 func TestTicketIsCaseInsensitiveInAndUpperCaseOut(t *testing.T) {
 	cases := []struct{ branch, want string }{
-		{"AUS-10151-grid-pushdown", "AUS-10151"},
-		{"aus-10151-grid-pushdown", "AUS-10151"},
+		{"PROJ-1234-grid-pushdown", "PROJ-1234"},
+		{"proj-1234-grid-pushdown", "PROJ-1234"},
 		{"feature/PROJ-7", "PROJ-7"},
 		{"fix/some-thing", ""},
 		// A single leading letter fails the contract's `[A-Z][A-Z0-9]+` and must
@@ -108,25 +108,25 @@ func fakeRun(responses map[string]string, fail map[string]bool) Runner {
 func TestDetectFillsEverythingWhenEverythingIsThere(t *testing.T) {
 	run := fakeRun(map[string]string{
 		"git rev-parse --git-dir":    ".git\n",
-		"git remote get-url":         "git@github.com:auditsight/cyclops.git\n",
-		"git rev-parse --abbrev-ref": "AUS-10151-grid-pushdown\n",
-		"gh pr":                      `[{"number":4633,"title":"Grid SQL pushdown","url":"https://github.com/auditsight/cyclops/pull/4633"}]`,
+		"git remote get-url":         "git@github.com:acme/widget.git\n",
+		"git rev-parse --abbrev-ref": "PROJ-1234-grid-pushdown\n",
+		"gh pr":                      `[{"number":4633,"title":"Grid SQL pushdown","url":"https://github.com/acme/widget/pull/4633"}]`,
 	}, nil)
 
 	r := Detect(context.Background(), run)
 	if !r.InRepo {
 		t.Fatal("InRepo false")
 	}
-	if r.Remote != "auditsight/cyclops" {
+	if r.Remote != "acme/widget" {
 		t.Errorf("Remote = %q", r.Remote)
 	}
-	if r.Branch != "AUS-10151-grid-pushdown" {
+	if r.Branch != "PROJ-1234-grid-pushdown" {
 		t.Errorf("Branch = %q", r.Branch)
 	}
-	if r.Slug != "aus-10151-grid-pushdown" {
+	if r.Slug != "proj-1234-grid-pushdown" {
 		t.Errorf("Slug = %q", r.Slug)
 	}
-	if r.Ticket != "AUS-10151" {
+	if r.Ticket != "PROJ-1234" {
 		t.Errorf("Ticket = %q", r.Ticket)
 	}
 	if r.PR == nil || r.PR.Number != 4633 || r.PR.Title != "Grid SQL pushdown" {

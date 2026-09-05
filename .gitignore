@@ -1,3 +1,5 @@
 /drift
 /dist/
 *.test
+/site/
+docs/reference/commands/

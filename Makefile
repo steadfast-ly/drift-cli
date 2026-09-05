@@ -109,9 +109,22 @@ vendor-spec: ## SERVER_REPO=/path/to/drift make vendor-spec
 	cp "$(SERVER_REPO)/openapi.json" $(SPEC)
 	$(MAKE) generate
 
+.PHONY: docs-gen
+docs-gen: ## generate command-reference pages
+	$(GO) run ./tools/docsgen
+
+.PHONY: docs-serve
+docs-serve: docs-gen ## build docs and serve locally
+	uvx --with mkdocs-material mkdocs serve
+
+.PHONY: docs-build
+docs-build: docs-gen ## build the docs site
+	uvx --with mkdocs-material mkdocs build --strict
+
 .PHONY: clean
 clean:
 	rm -f drift
+	rm -rf site/ docs/reference/commands/
 
 .PHONY: help
 help:

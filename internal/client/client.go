@@ -309,7 +309,7 @@ func Problem(p *api.ApiProblem, body []byte, transportStatus int) *cliexit.ExitE
 	}
 	switch {
 	case status == http.StatusForbidden && problemType == cliexit.ElevationRequiredType:
-		e.Hint = "mint a 15-minute elevated credential at /credentials, then run `drift auth login --token-stdin` with it and retry"
+		e.Hint = "mint a 15-minute elevated credential at /credentials, then retry with DRIFT_TOKEN=<credential> set for that one command"
 	case status == http.StatusUnauthorized:
 		e.Hint = "run `drift auth login`, or set DRIFT_TOKEN"
 	}

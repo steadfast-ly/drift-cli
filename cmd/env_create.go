@@ -62,7 +62,7 @@ func newEnvCreateCommand(app *App) *cobra.Command {
 	}
 	fl := cmd.Flags()
 	fl.StringVar(&f.slug, "slug", "", "environment slug (inferred from the branch name)")
-	fl.StringVar(&f.ticket, "ticket", "", "issue key, e.g. AUS-10151 (inferred from the branch name)")
+	fl.StringVar(&f.ticket, "ticket", "", "issue key, e.g. PROJ-1234 (inferred from the branch name)")
 	fl.StringArrayVar(&f.repos, "repo", nil, "`name:branch` to include; repeat for a multi-service environment")
 	fl.IntVar(&f.ttlHours, "ttl", 0, "lifetime in hours (server default 48, maximum 120)")
 	fl.BoolVar(&f.public, "public", false, "make the environment reachable without the VPN")
@@ -292,7 +292,7 @@ func (p *plan) validate(inferring bool) error {
 				"starting and ending with a letter or digit", p.Slug, infer.MaxSlugLength)
 	}
 	if p.Ticket != "" && !infer.ValidTicket(p.Ticket) {
-		return usageErrorf("ticket %q is not an issue key (expected something like AUS-10151)", p.Ticket)
+		return usageErrorf("ticket %q is not an issue key (expected something like PROJ-1234)", p.Ticket)
 	}
 	if len(p.Repos) == 0 {
 		return missingField("--repo name:branch", "repository", inferring)

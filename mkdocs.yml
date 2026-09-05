@@ -1,0 +1,60 @@
+site_name: drift CLI
+site_url: https://steadfast-ly.github.io/drift-cli/
+repo_url: https://github.com/steadfast-ly/drift-cli
+edit_uri: ""
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - content.code.copy
+
+exclude_docs: |
+  DESIGN.md
+  TODO.md
+  EN-PORT-PLAN.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - tables
+  - toc:
+      permalink: true
+
+validation:
+  nav:
+    omitted_files: ignore
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Install: getting-started/install.md
+      - Network access: getting-started/network.md
+      - First steps: getting-started/first-steps.md
+  - Concepts:
+      - Contexts and authentication: concepts/contexts-auth.md
+      - Environments: concepts/environments.md
+      - Releases and promotions: concepts/releases.md
+  - Guides:
+      - Preview environments: guides/preview-envs.md
+      - Promotions: guides/promotions.md
+      - CI and automation: guides/automation.md
+      - LLM agents: guides/agents.md
+  - Reference:
+      - Configuration: reference/configuration.md
+      - Errors and exit codes: reference/errors.md
+      - Command reference: reference/commands/index.md
+  - Troubleshooting: troubleshooting.md
