@@ -35,6 +35,10 @@ const (
 	svcID  = "22222222-2222-4222-8222-222222222222"
 	repoID = "33333333-3333-4333-8333-333333333333"
 	promID = "44444444-4444-4444-8444-444444444444"
+
+	// Monorepo fixture: two services from the same repo (acme/findstar).
+	findstarRepoID = "55555555-5555-4555-8555-555555555555"
+	binderRepoID   = "66666666-6666-4666-8666-666666666666"
 )
 
 // mutServer is a drift with the whole write surface, scripted.
@@ -183,6 +187,13 @@ func newMutServer(t *testing.T) *mutServer {
 		}
 		body, _ := readJSON(r)
 		s.record("create:" + fmt.Sprint(body["slug"]))
+		if repos, ok := body["repos"].([]any); ok {
+			for _, r := range repos {
+				if repo, ok := r.(map[string]any); ok {
+					s.record("repo:" + fmt.Sprint(repo["repositoryId"]))
+				}
+			}
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"environmentId": envID})
 	})
@@ -804,6 +815,69 @@ func TestAmbiguousRepositoryNameIsRefused(t *testing.T) {
 		t.Fatalf("exit %d, want %d\n%s", code, cliexit.Usage, errOut)
 	}
 	if !strings.Contains(errOut, "widget, widget-api") {
+		t.Fatalf("the disambiguating names were not offered: %s", errOut)
+	}
+}
+
+// A monorepo hosts multiple services that share the same FullName, Name and
+// Owner. When one service's HelmChartKey happens to equal the shared Name,
+// the old four-way resolver declares it ambiguous and the service becomes
+// unnameable. The two-pass resolver fixes this: HelmChartKey is matched first
+// and, being unique, wins.
+func TestMonorepoResolvesChartKeyFirst(t *testing.T) {
+	s := newMutServer(t)
+	// Mimic auditsight/findstar: two services from the same repo, one with
+	// chart key "binder" and one with chart key "findstar" (== the repo Name).
+	s.extraRepos = []map[string]any{
+		{
+			"id": findstarRepoID, "owner": "acme", "name": "findstar",
+			"fullName": "acme/findstar", "displayName": "Findstar",
+			"description": nil, "defaultBranch": "main",
+			"helmChartKey": "findstar", "isActive": true,
+			"stgUrl": nil, "rcUrl": nil, "prdUrl": nil,
+			"applicationGroupId": nil, "applicationGroup": nil,
+		},
+		{
+			"id": binderRepoID, "owner": "acme", "name": "findstar",
+			"fullName": "acme/findstar", "displayName": "Binder",
+			"description": nil, "defaultBranch": "main",
+			"helmChartKey": "binder", "isActive": true,
+			"stgUrl": nil, "rcUrl": nil, "prdUrl": nil,
+			"applicationGroupId": nil, "applicationGroup": nil,
+		},
+	}
+	h := newMutHarness(t, s)
+
+	// "findstar" is ambiguous in the four-way resolver (matches Findstar via
+	// HelmChartKey AND Binder via Name) but unambiguous via chart key.
+	_, errOut, code := h.run("env", "create", "--slug", "proof-alpha",
+		"--repo", "findstar:topic", "--yes", "--no-wait")
+	if code != cliexit.OK {
+		t.Fatalf("findstar: exit %d, want %d\n%s", code, cliexit.OK, errOut)
+	}
+	if s.seen("repo:"+findstarRepoID) != 1 {
+		t.Fatalf("findstar resolved to the wrong repository; calls: %v", s.calls)
+	}
+
+	// "binder" matches only the Binder service's chart key — no ambiguity in
+	// either pass.
+	_, errOut, code = h.run("env", "create", "--slug", "proof-beta",
+		"--repo", "binder:topic", "--yes", "--no-wait")
+	if code != cliexit.OK {
+		t.Fatalf("binder: exit %d, want %d\n%s", code, cliexit.OK, errOut)
+	}
+	if s.seen("repo:"+binderRepoID) != 1 {
+		t.Fatalf("binder resolved to the wrong repository; calls: %v", s.calls)
+	}
+
+	// A spelling that matches multiple services and is NOT a chart key is
+	// still refused. "acme/findstar" is the FullName for both rows.
+	_, errOut, code = h.run("env", "create", "--slug", "proof-gamma",
+		"--repo", "acme/findstar:topic", "--yes", "--no-wait")
+	if code != cliexit.Usage {
+		t.Fatalf("acme/findstar: exit %d, want %d\n%s", code, cliexit.Usage, errOut)
+	}
+	if !strings.Contains(errOut, "binder") || !strings.Contains(errOut, "findstar") {
 		t.Fatalf("the disambiguating names were not offered: %s", errOut)
 	}
 }

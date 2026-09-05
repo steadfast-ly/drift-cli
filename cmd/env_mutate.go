@@ -724,15 +724,39 @@ func serviceFor(ctx context.Context, sess *Session, e *envRef, repoName string) 
 // resolveRepository maps a repository NAME onto the id the API takes.
 //
 // Client-side by design (DESIGN.md §5): the API is addressed by UUID and users
-// think in repository names. Four spellings are accepted because four are in
-// circulation — `owner/name` from a git remote, the bare name from a directory,
-// the display name from the web UI, and the helm chart key from gitops.
+// think in repository names. Resolution is two-pass, with HelmChartKey taking
+// precedence:
+//
+//  1. Exact case-insensitive match on HelmChartKey alone. If exactly one
+//     repository matches, return its Id immediately. This pass exists because
+//     the chart key is the only one of the four accepted spellings guaranteed
+//     to be unique — a monorepo has several services sharing one `owner/name`,
+//     and without this precedence rule a service whose chart key happens to
+//     equal another service's Name is unnameable.
+//
+//  2. If pass 1 matched zero (or, defensively, more than one), fall back to
+//     the four-way match: FullName, Name, DisplayName, HelmChartKey. The
+//     existing 0/1/many handling applies (NotFound / return / ambiguity
+//     refusal).
 func resolveRepository(ctx context.Context, sess *Session, name string) (uuid.UUID, error) {
 	repos, err := allRepositories(ctx, sess)
 	if err != nil {
 		return uuid.UUID{}, err
 	}
 	want := strings.ToLower(strings.TrimSpace(name))
+
+	// Pass 1: chart key only — unique by server invariant.
+	var chartKeyMatches []api.Repository
+	for _, r := range repos {
+		if strings.ToLower(r.HelmChartKey) == want {
+			chartKeyMatches = append(chartKeyMatches, r)
+		}
+	}
+	if len(chartKeyMatches) == 1 {
+		return chartKeyMatches[0].Id, nil
+	}
+
+	// Pass 2: four-way match (FullName, Name, DisplayName, HelmChartKey).
 	var matches []api.Repository
 	for _, r := range repos {
 		for _, candidate := range []string{r.FullName, r.Name, r.DisplayName, r.HelmChartKey} {
