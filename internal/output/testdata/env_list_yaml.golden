@@ -5,7 +5,7 @@ items:
     slept_at: null
     slug: proof-alpha
     status: running
-    ticket: AUS-10001
+    ticket: PROJ-1001
   - expires: "2026-07-27T14:30:00Z"
     id: 093c8639-3405-441e-8bc2-b9c75f32a3c0
     public: false

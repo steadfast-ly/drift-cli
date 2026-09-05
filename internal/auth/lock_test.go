@@ -299,7 +299,7 @@ func TestReadOnlyConfigDirectoryDoesNotBlockTheKeyring(t *testing.T) {
 
 	kr := newFakeKeyring()
 	s := &Store{Backend: kr, FilePath: filepath.Join(sub, "credentials.yaml")}
-	k := NewKey("au", "https://drift.au.example.com")
+	k := NewKey("alpha", "https://drift.alpha.example.com")
 
 	src, err := s.Set(k, token)
 	if err != nil {
@@ -336,7 +336,7 @@ func TestUnwritableDirectoryFailsTheFilePathWithAUsefulMessage(t *testing.T) {
 	kr.unavailable = true // force the file path
 	s := &Store{Backend: kr, FilePath: filepath.Join(sub, "credentials.yaml")}
 
-	_, err := s.Set(NewKey("au", "https://drift.au.example.com"), token)
+	_, err := s.Set(NewKey("alpha", "https://drift.alpha.example.com"), token)
 	if err == nil {
 		t.Fatal("expected the file write to fail")
 	}

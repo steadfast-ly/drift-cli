@@ -78,8 +78,8 @@ const token = "drift_UDkxSFRqTFJvUnpEcVpqOGdWcW1BUT09"
 // Credentials are keyed on the context name AND the endpoint, so the tests need
 // real keys rather than bare names.
 var (
-	auKey = NewKey("au", "https://drift.au.example.com")
-	enKey = NewKey("en", "https://drift.en.example.com")
+	alphaKey = NewKey("alpha", "https://drift.alpha.example.com")
+	betaKey  = NewKey("beta", "https://drift.beta.example.com")
 )
 
 func newStore(t *testing.T, kr Backend) *Store {
@@ -91,7 +91,7 @@ func TestKeyringRoundTrip(t *testing.T) {
 	kr := newFakeKeyring()
 	s := newStore(t, kr)
 
-	src, err := s.Set(auKey, token)
+	src, err := s.Set(alphaKey, token)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func TestKeyringRoundTrip(t *testing.T) {
 		t.Fatalf("a credential file was created alongside the keyring entry")
 	}
 
-	got, err := s.Get(auKey)
+	got, err := s.Get(alphaKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestFileFallbackWhenKeyringUnavailable(t *testing.T) {
 	kr.unavailable = true
 	s := newStore(t, kr)
 
-	src, err := s.Set(auKey, token)
+	src, err := s.Set(alphaKey, token)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func TestFileFallbackWhenKeyringUnavailable(t *testing.T) {
 		t.Fatalf("credential file mode = %o, want 600", perm)
 	}
 
-	got, err := s.Get(auKey)
+	got, err := s.Get(alphaKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,12 +151,12 @@ func TestKeyringWriteClearsAStaleFileCopy(t *testing.T) {
 	kr := newFakeKeyring()
 	kr.unavailable = true
 	s := newStore(t, kr)
-	if _, err := s.Set(auKey, "drift_old-token-value"); err != nil {
+	if _, err := s.Set(alphaKey, "drift_old-token-value"); err != nil {
 		t.Fatal(err)
 	}
 
 	kr.unavailable = false
-	if _, err := s.Set(auKey, token); err != nil {
+	if _, err := s.Set(alphaKey, token); err != nil {
 		t.Fatal(err)
 	}
 
@@ -174,12 +174,12 @@ func TestKeyringWriteClearsAStaleFileCopy(t *testing.T) {
 func TestEnvTokenOverridesEverything(t *testing.T) {
 	kr := newFakeKeyring()
 	s := newStore(t, kr)
-	if _, err := s.Set(auKey, token); err != nil {
+	if _, err := s.Set(alphaKey, token); err != nil {
 		t.Fatal(err)
 	}
 	s.EnvToken = "drift_from-the-environment"
 
-	got, err := s.Get(auKey)
+	got, err := s.Get(alphaKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +199,7 @@ func TestEnvTokenOverridesEverything(t *testing.T) {
 
 func TestGetWithoutAnyCredential(t *testing.T) {
 	s := newStore(t, newFakeKeyring())
-	_, err := s.Get(auKey)
+	_, err := s.Get(alphaKey)
 	if !errors.Is(err, ErrNoCredential) {
 		t.Fatalf("want ErrNoCredential, got %v", err)
 	}
@@ -213,21 +213,21 @@ func TestDeleteClearsBothBackends(t *testing.T) {
 
 	// Put a copy in each: the file directly, the keyring through Set.
 	kr.unavailable = true
-	if _, err := s.Set(auKey, token); err != nil {
+	if _, err := s.Set(alphaKey, token); err != nil {
 		t.Fatal(err)
 	}
 	kr.unavailable = false
-	if err := kr.Set(KeyringService, auKey.storage(), token); err != nil {
+	if err := kr.Set(KeyringService, alphaKey.storage(), token); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := s.Delete(auKey); err != nil {
+	if err := s.Delete(alphaKey); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := kr.Get(KeyringService, auKey.storage()); err == nil {
+	if _, err := kr.Get(KeyringService, alphaKey.storage()); err == nil {
 		t.Fatal("the keyring entry survived logout")
 	}
-	if _, err := s.Get(auKey); !errors.Is(err, ErrNoCredential) {
+	if _, err := s.Get(alphaKey); !errors.Is(err, ErrNoCredential) {
 		t.Fatalf("the file entry survived logout: %v", err)
 	}
 }
@@ -246,14 +246,14 @@ func TestDeleteFailsLoudlyWhenTheKeyringIsUnreachable(t *testing.T) {
 	s := newStore(t, kr)
 
 	// A credential in the keyring, put there while it worked.
-	if _, err := s.Set(auKey, token); err != nil {
+	if _, err := s.Set(alphaKey, token); err != nil {
 		t.Fatal(err)
 	}
 	// Now the keyring is gone. Nothing is in the file, so the file backend
 	// honestly reports absence — the exact shape that used to read as success.
 	kr.unavailable = true
 
-	err := s.Delete(auKey)
+	err := s.Delete(alphaKey)
 	if err == nil {
 		t.Fatal("logout reported success while the credential was still in the keyring")
 	}
@@ -266,7 +266,7 @@ func TestDeleteFailsLoudlyWhenTheKeyringIsUnreachable(t *testing.T) {
 
 	// And the credential really is still there, which is why this matters.
 	kr.unavailable = false
-	if _, err := kr.Get(KeyringService, auKey.storage()); err != nil {
+	if _, err := kr.Get(KeyringService, alphaKey.storage()); err != nil {
 		t.Fatalf("precondition: the credential should still be in the keyring: %v", err)
 	}
 }
@@ -276,7 +276,7 @@ func TestDeleteFailsLoudlyWhenTheFileCannotBeRewritten(t *testing.T) {
 	kr := newFakeKeyring()
 	kr.unavailable = true
 	s := newStore(t, kr)
-	if _, err := s.Set(auKey, token); err != nil {
+	if _, err := s.Set(alphaKey, token); err != nil {
 		t.Fatal(err)
 	}
 	kr.unavailable = false
@@ -285,7 +285,7 @@ func TestDeleteFailsLoudlyWhenTheFileCannotBeRewritten(t *testing.T) {
 	if err := os.WriteFile(s.FilePath, []byte("{{{not yaml"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	err := s.Delete(auKey)
+	err := s.Delete(alphaKey)
 	if err == nil || errors.Is(err, ErrNoCredential) {
 		t.Fatalf("a broken credential file was not reported: %v", err)
 	}
@@ -296,7 +296,7 @@ func TestDeleteFailsLoudlyWhenTheFileCannotBeRewritten(t *testing.T) {
 
 func TestDeleteWhenNothingStored(t *testing.T) {
 	s := newStore(t, newFakeKeyring())
-	if err := s.Delete(auKey); err == nil {
+	if err := s.Delete(alphaKey); err == nil {
 		t.Fatal("expected an error when there is nothing to remove")
 	}
 }
@@ -337,27 +337,27 @@ func TestCredentialsAreContextScoped(t *testing.T) {
 	kr.unavailable = true // exercise the file backend, which keys by context
 	s := newStore(t, kr)
 
-	if _, err := s.Set(auKey, "drift_au-token"); err != nil {
+	if _, err := s.Set(alphaKey, "drift_alpha-token"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.Set(enKey, "drift_en-token"); err != nil {
+	if _, err := s.Set(betaKey, "drift_beta-token"); err != nil {
 		t.Fatal(err)
 	}
 
-	au, _ := s.Get(auKey)
-	en, _ := s.Get(enKey)
-	if au.Token != "drift_au-token" || en.Token != "drift_en-token" {
-		t.Fatalf("contexts crossed: au=%q en=%q", au.Token, en.Token)
+	alpha, _ := s.Get(alphaKey)
+	beta, _ := s.Get(betaKey)
+	if alpha.Token != "drift_alpha-token" || beta.Token != "drift_beta-token" {
+		t.Fatalf("contexts crossed: alpha=%q beta=%q", alpha.Token, beta.Token)
 	}
 
 	// Deleting needs a reachable keyring, or Delete correctly refuses to claim
 	// the credential is gone. That refusal has its own test.
 	kr.unavailable = false
-	if err := s.Delete(auKey); err != nil {
+	if err := s.Delete(alphaKey); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := s.Get(enKey); err != nil || got.Token != "drift_en-token" {
-		t.Fatalf("removing au disturbed en: %+v %v", got, err)
+	if got, err := s.Get(betaKey); err != nil || got.Token != "drift_beta-token" {
+		t.Fatalf("removing alpha disturbed beta: %+v %v", got, err)
 	}
 }
 
@@ -384,16 +384,16 @@ func TestRotationWithAnUnreadableKeyringIsReportedNotGuessed(t *testing.T) {
 	kr := newFakeKeyring()
 	s := newStore(t, kr)
 
-	if _, err := s.Set(auKey, "drift_old-desktop-token"); err != nil {
+	if _, err := s.Set(alphaKey, "drift_old-desktop-token"); err != nil {
 		t.Fatal(err)
 	}
-	if got, _ := s.Get(auKey); got.Source != SourceKeyring {
+	if got, _ := s.Get(alphaKey); got.Source != SourceKeyring {
 		t.Fatalf("precondition: expected the keyring, got %s", got.Source)
 	}
 
 	// Over SSH: the keyring cannot be read or written.
 	kr.unavailable = true
-	src, err := s.Set(auKey, "drift_new-rotated-token")
+	src, err := s.Set(alphaKey, "drift_new-rotated-token")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -402,27 +402,27 @@ func TestRotationWithAnUnreadableKeyringIsReportedNotGuessed(t *testing.T) {
 	}
 	// While the keyring is unreachable the file is the only credential there is,
 	// so the rotation takes effect immediately where it was performed.
-	if got, err := s.Get(auKey); err != nil || got.Token != "drift_new-rotated-token" {
+	if got, err := s.Get(alphaKey); err != nil || got.Token != "drift_new-rotated-token" {
 		t.Fatalf("the rotation did not take effect over SSH: %+v %v", got, err)
 	}
 
 	// Back at the desk: two different credentials, no evidence.
 	kr.unavailable = false
-	_, err = s.Get(auKey)
+	_, err = s.Get(alphaKey)
 	if !errors.Is(err, ErrAmbiguousCredential) {
 		t.Fatalf("want ErrAmbiguousCredential, got %v", err)
 	}
 	// Whichever way it had been resolved silently would have been wrong; what
 	// matters is that the superseded token is not returned.
-	if got, _ := s.Get(auKey); got.Token == "drift_old-desktop-token" {
+	if got, _ := s.Get(alphaKey); got.Token == "drift_old-desktop-token" {
 		t.Fatal("the superseded token was returned")
 	}
 
 	// Logging in again settles it, and the keyring is authoritative once more.
-	if _, err := s.Set(auKey, "drift_new-rotated-token"); err != nil {
+	if _, err := s.Set(alphaKey, "drift_new-rotated-token"); err != nil {
 		t.Fatal(err)
 	}
-	got, err := s.Get(auKey)
+	got, err := s.Get(alphaKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -436,22 +436,22 @@ func TestRotationWithAnUnreadableKeyringIsReportedNotGuessed(t *testing.T) {
 func TestLogoutResolvesAnAmbiguousState(t *testing.T) {
 	kr := newFakeKeyring()
 	s := newStore(t, kr)
-	if _, err := s.Set(auKey, "drift_old-desktop-token"); err != nil {
+	if _, err := s.Set(alphaKey, "drift_old-desktop-token"); err != nil {
 		t.Fatal(err)
 	}
 	kr.unavailable = true
-	if _, err := s.Set(auKey, "drift_new-rotated-token"); err != nil {
+	if _, err := s.Set(alphaKey, "drift_new-rotated-token"); err != nil {
 		t.Fatal(err)
 	}
 	kr.unavailable = false
-	if _, err := s.Get(auKey); !errors.Is(err, ErrAmbiguousCredential) {
+	if _, err := s.Get(alphaKey); !errors.Is(err, ErrAmbiguousCredential) {
 		t.Fatalf("precondition: expected ambiguity, got %v", err)
 	}
 
-	if err := s.Delete(auKey); err != nil {
+	if err := s.Delete(alphaKey); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.Get(auKey); !errors.Is(err, ErrNoCredential) {
+	if _, err := s.Get(alphaKey); !errors.Is(err, ErrNoCredential) {
 		t.Fatalf("logout left something behind: %v", err)
 	}
 }
@@ -462,7 +462,7 @@ func TestLogoutResolvesAnAmbiguousState(t *testing.T) {
 func TestFileWriteSupersedesAnUnclearableKeyringEntry(t *testing.T) {
 	kr := newFakeKeyring()
 	s := newStore(t, kr)
-	if _, err := s.Set(auKey, "drift_old-desktop-token"); err != nil {
+	if _, err := s.Set(alphaKey, "drift_old-desktop-token"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -470,7 +470,7 @@ func TestFileWriteSupersedesAnUnclearableKeyringEntry(t *testing.T) {
 	// locked collection, or a policy that forbids modification.
 	kr.failDelete = errors.New("keyring locked")
 	kr.failSet = errors.New("keyring locked")
-	src, err := s.Set(auKey, "drift_new-rotated-token")
+	src, err := s.Set(alphaKey, "drift_new-rotated-token")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -478,7 +478,7 @@ func TestFileWriteSupersedesAnUnclearableKeyringEntry(t *testing.T) {
 		t.Fatalf("stored in %s, want the file", src)
 	}
 
-	got, err := s.Get(auKey)
+	got, err := s.Get(alphaKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -489,10 +489,10 @@ func TestFileWriteSupersedesAnUnclearableKeyringEntry(t *testing.T) {
 	// ...and once the keyring accepts a write again, it becomes authoritative
 	// and the marker is cleared with the file entry.
 	kr.failSet, kr.failDelete = nil, nil
-	if _, err := s.Set(auKey, "drift_newest"); err != nil {
+	if _, err := s.Set(alphaKey, "drift_newest"); err != nil {
 		t.Fatal(err)
 	}
-	got, err = s.Get(auKey)
+	got, err = s.Get(alphaKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -518,7 +518,7 @@ func TestWriteDoesNotInheritAPlantedTempFilesMode(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := s.Set(auKey, token); err != nil {
+	if _, err := s.Set(alphaKey, token); err != nil {
 		t.Fatal(err)
 	}
 	info, err := os.Stat(s.FilePath)
@@ -550,7 +550,7 @@ func TestWriteDoesNotFollowASymlinkAtTheTempPath(t *testing.T) {
 	if err := os.Symlink(target, s.FilePath+".tmp"); err != nil {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
-	if _, err := s.Set(auKey, token); err != nil {
+	if _, err := s.Set(alphaKey, token); err != nil {
 		t.Fatal(err)
 	}
 	if raw, err := os.ReadFile(target); err == nil && strings.Contains(string(raw), token) {
@@ -571,7 +571,7 @@ func TestWriteTightensALooseDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := s.Set(auKey, token); err != nil {
+	if _, err := s.Set(alphaKey, token); err != nil {
 		t.Fatal(err)
 	}
 	info, err := os.Stat(filepath.Dir(s.FilePath))
@@ -604,18 +604,18 @@ func TestDescribeDoesNotFakeThePrefix(t *testing.T) {
 func TestAPlantedFileCannotPromoteItselfOverTheKeyring(t *testing.T) {
 	kr := newFakeKeyring()
 	s := newStore(t, kr)
-	if _, err := s.Set(auKey, "drift_live-keyring-token"); err != nil {
+	if _, err := s.Set(alphaKey, "drift_live-keyring-token"); err != nil {
 		t.Fatal(err)
 	}
 
 	// A planted file claiming precedence with a forged marker.
-	planted := "credentials:\n    " + auKey.storage() + ": drift_attacker-chosen\n" +
-		"supersedes-keyring:\n    " + auKey.storage() + ": \"0000000000000000000000000000000000000000000000000000000000000000\"\n"
+	planted := "credentials:\n    " + alphaKey.storage() + ": drift_attacker-chosen\n" +
+		"supersedes-keyring:\n    " + alphaKey.storage() + ": \"0000000000000000000000000000000000000000000000000000000000000000\"\n"
 	if err := os.WriteFile(s.FilePath, []byte(planted), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
-	got, err := s.Get(auKey)
+	got, err := s.Get(alphaKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -624,12 +624,12 @@ func TestAPlantedFileCannotPromoteItselfOverTheKeyring(t *testing.T) {
 	}
 
 	// The bare-flag form of the same claim is equally powerless.
-	planted = "credentials:\n    " + auKey.storage() + ": drift_attacker-chosen\n" +
-		"supersedes-keyring:\n    " + auKey.storage() + ": true\n"
+	planted = "credentials:\n    " + alphaKey.storage() + ": drift_attacker-chosen\n" +
+		"supersedes-keyring:\n    " + alphaKey.storage() + ": true\n"
 	if err := os.WriteFile(s.FilePath, []byte(planted), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	got, err = s.Get(auKey)
+	got, err = s.Get(alphaKey)
 	if err != nil && !errors.Is(err, ErrAmbiguousCredential) {
 		t.Fatal(err)
 	}
@@ -647,7 +647,7 @@ func TestKeyringWriteReportsAFileClearFailure(t *testing.T) {
 	s := newStore(t, kr)
 
 	// A credential in the file, from a headless login.
-	if _, err := s.Set(auKey, "drift_old-file-token"); err != nil {
+	if _, err := s.Set(alphaKey, "drift_old-file-token"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -657,7 +657,7 @@ func TestKeyringWriteReportsAFileClearFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	src, err := s.Set(auKey, "drift_new-token")
+	src, err := s.Set(alphaKey, "drift_new-token")
 	if src != SourceKeyring {
 		t.Fatalf("stored in %s, want the keyring", src)
 	}
@@ -750,21 +750,21 @@ func TestMalformedSupersedeMarkerDoesNotBrickTheStore(t *testing.T) {
 	kr := newFakeKeyring()
 	kr.unavailable = true
 	s := newStore(t, kr)
-	if _, err := s.Set(auKey, token); err != nil {
+	if _, err := s.Set(alphaKey, token); err != nil {
 		t.Fatal(err)
 	}
 
 	for _, bad := range []string{
 		"supersedes-keyring: not-a-list\n",
-		"supersedes-keyring:\n    - au\n",
+		"supersedes-keyring:\n    - alpha\n",
 		"supersedes-keyring: 42\n",
-		"supersedes-keyring:\n    au: [1, 2]\n",
+		"supersedes-keyring:\n    alpha: [1, 2]\n",
 	} {
-		body := "credentials:\n    " + auKey.storage() + ": " + token + "\n" + bad
+		body := "credentials:\n    " + alphaKey.storage() + ": " + token + "\n" + bad
 		if err := os.WriteFile(s.FilePath, []byte(body), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		got, err := s.Get(auKey)
+		got, err := s.Get(alphaKey)
 		if err != nil {
 			t.Fatalf("%q made the store unreadable: %v", bad, err)
 		}
@@ -814,12 +814,12 @@ func TestSameNameDifferentEndpointsAreSeparateCredentials(t *testing.T) {
 // become a second entry.
 func TestEndpointSpellingsShareOneKey(t *testing.T) {
 	for _, spelling := range []string{
-		"https://drift.au.example.com",
-		"https://drift.au.example.com/",
-		"  https://drift.au.example.com  ",
+		"https://drift.alpha.example.com",
+		"https://drift.alpha.example.com/",
+		"  https://drift.alpha.example.com  ",
 	} {
-		if got := NewKey("au", spelling).storage(); got != auKey.storage() {
-			t.Fatalf("%q keyed as %q, want %q", spelling, got, auKey.storage())
+		if got := NewKey("alpha", spelling).storage(); got != alphaKey.storage() {
+			t.Fatalf("%q keyed as %q, want %q", spelling, got, alphaKey.storage())
 		}
 	}
 }
@@ -880,11 +880,11 @@ func TestLegacyKeyedFileCredentialIsFoundAndMigrated(t *testing.T) {
 	kr.unavailable = true
 	s := newStore(t, kr)
 
-	body := "credentials:\n    au: " + token + "\n"
+	body := "credentials:\n    alpha: " + token + "\n"
 	if err := os.WriteFile(s.FilePath, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	got, err := s.Get(auKey)
+	got, err := s.Get(alphaKey)
 	if err != nil || got.Token != token {
 		t.Fatalf("a legacy file credential was not found: %+v %v", got, err)
 	}
@@ -893,10 +893,10 @@ func TestLegacyKeyedFileCredentialIsFoundAndMigrated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cf.Credentials[auKey.storage()] != token {
+	if cf.Credentials[alphaKey.storage()] != token {
 		t.Fatalf("not migrated: %#v", cf.Credentials)
 	}
-	if _, ok := cf.Credentials[auKey.legacy()]; ok {
+	if _, ok := cf.Credentials[alphaKey.legacy()]; ok {
 		t.Fatal("the legacy file entry survived migration")
 	}
 }
@@ -910,13 +910,13 @@ func TestLegacyKeyedFileCredentialIsFoundAndMigrated(t *testing.T) {
 func TestDeleteClearsLegacyKeysToo(t *testing.T) {
 	kr := newFakeKeyring()
 	s := newStore(t, kr)
-	if err := kr.Set(KeyringService, auKey.legacy(), token); err != nil {
+	if err := kr.Set(KeyringService, alphaKey.legacy(), token); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Delete(auKey); err != nil {
+	if err := s.Delete(alphaKey); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := kr.Get(KeyringService, auKey.legacy()); !errors.Is(err, ErrNoCredential) {
+	if _, err := kr.Get(KeyringService, alphaKey.legacy()); !errors.Is(err, ErrNoCredential) {
 		t.Fatal("the legacy entry survived logout")
 	}
 }

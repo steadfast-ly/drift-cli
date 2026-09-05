@@ -1,3 +1,3 @@
 SLUG                            STATUS         TICKET     EXPIRES
-proof-alpha                     running        AUS-10001  2026-07-25 14:30
+proof-alpha                     running        PROJ-1001  2026-07-25 14:30
 a-much-longer-environment-slug  deploy_failed  -          2026-07-27 14:30

@@ -21,9 +21,7 @@ theme:
     - content.code.copy
 
 exclude_docs: |
-  DESIGN.md
   TODO.md
-  EN-PORT-PLAN.md
 
 markdown_extensions:
   - admonition

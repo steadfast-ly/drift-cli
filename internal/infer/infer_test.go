@@ -12,15 +12,15 @@ func TestParseRemoteHandlesEveryFormGitStores(t *testing.T) {
 		url, owner, name string
 		ok               bool
 	}{
-		{"https://github.com/auditsight/cyclops.git", "auditsight", "cyclops", true},
-		{"https://github.com/auditsight/cyclops", "auditsight", "cyclops", true},
-		{"git@github.com:auditsight/cyclops.git", "auditsight", "cyclops", true},
+		{"https://github.com/acme/anvil.git", "acme", "anvil", true},
+		{"https://github.com/acme/anvil", "acme", "anvil", true},
+		{"git@github.com:acme/anvil.git", "acme", "anvil", true},
 		// Host aliases select an SSH identity; the host is not what is extracted.
-		{"git@github-au:auditsight/findstar.git", "auditsight", "findstar", true},
-		{"ssh://git@github.com/auditsight/cyclops.git", "auditsight", "cyclops", true},
-		{"https://github.com/auditsight/cyclops/", "auditsight", "cyclops", true},
+		{"git@github-alt:acme/forge.git", "acme", "forge", true},
+		{"ssh://git@github.com/acme/anvil.git", "acme", "anvil", true},
+		{"https://github.com/acme/anvil/", "acme", "anvil", true},
 		{"", "", "", false},
-		{"cyclops", "", "", false},
+		{"anvil", "", "", false},
 	}
 	for _, c := range cases {
 		owner, name, ok := ParseRemote(c.url)
@@ -142,15 +142,15 @@ func TestDetectFillsEverythingWhenEverythingIsThere(t *testing.T) {
 func TestDetectDegradesWhenGhIsAbsent(t *testing.T) {
 	run := fakeRun(map[string]string{
 		"git rev-parse --git-dir":    ".git\n",
-		"git remote get-url":         "https://github.com/auditsight/findstar\n",
-		"git rev-parse --abbrev-ref": "aus-10999-thing\n",
+		"git remote get-url":         "https://github.com/acme/forge\n",
+		"git rev-parse --abbrev-ref": "proj-1099-thing\n",
 	}, nil)
 
 	r := Detect(context.Background(), run)
 	if r.PR != nil {
 		t.Fatal("a PR was invented without gh")
 	}
-	if r.Slug != "aus-10999-thing" || r.Ticket != "AUS-10999" {
+	if r.Slug != "proj-1099-thing" || r.Ticket != "PROJ-1099" {
 		t.Fatalf("inference stopped at the missing gh: %+v", r)
 	}
 	if !strings.Contains(strings.Join(r.Notes, " "), "pull request") {
@@ -174,7 +174,7 @@ func TestDetectOutsideAGitRepository(t *testing.T) {
 func TestDetectRefusesADetachedHead(t *testing.T) {
 	run := fakeRun(map[string]string{
 		"git rev-parse --git-dir":    ".git\n",
-		"git remote get-url":         "git@github.com:auditsight/cyclops.git\n",
+		"git remote get-url":         "git@github.com:acme/anvil.git\n",
 		"git rev-parse --abbrev-ref": "HEAD\n",
 	}, nil)
 	r := Detect(context.Background(), run)

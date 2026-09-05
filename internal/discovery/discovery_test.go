@@ -268,9 +268,9 @@ func TestSkewWarnsButNeverRefuses(t *testing.T) {
 	if !old.TooOld || !old.Comparable {
 		t.Fatalf("0.2.9 vs 0.3.0: %+v", old)
 	}
-	w := old.Warning("au", doc.Version)
+	w := old.Warning("alpha", doc.Version)
 	if w == "" || !strings.Contains(w, "0.2.9") || !strings.Contains(w, "0.3.0") ||
-		!strings.Contains(w, `context "au"`) || !strings.Contains(w, "1.4.2") {
+		!strings.Contains(w, `context "alpha"`) || !strings.Contains(w, "1.4.2") {
 		// The warning must name the client version, the floor, the CONTEXT and
 		// the server version: an operator with several contexts otherwise has
 		// no way to tell which deployment complained.
@@ -281,7 +281,7 @@ func TestSkewWarnsButNeverRefuses(t *testing.T) {
 	if exact.TooOld {
 		t.Fatal("the floor itself must not warn")
 	}
-	if exact.Warning("au", doc.Version) != "" {
+	if exact.Warning("alpha", doc.Version) != "" {
 		t.Fatal("a satisfied floor must produce no warning")
 	}
 
@@ -323,7 +323,7 @@ func TestUnparseableVersionsMakeNoClaim(t *testing.T) {
 	if s.Comparable || s.TooOld {
 		t.Fatalf("an unparseable client version must make no claim: %+v", s)
 	}
-	if s.Warning("au", doc.Version) != "" {
+	if s.Warning("alpha", doc.Version) != "" {
 		t.Fatal("no claim means no warning")
 	}
 

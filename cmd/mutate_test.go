@@ -36,9 +36,9 @@ const (
 	repoID = "33333333-3333-4333-8333-333333333333"
 	promID = "44444444-4444-4444-8444-444444444444"
 
-	// Monorepo fixture: two services from the same repo (acme/findstar).
-	findstarRepoID = "55555555-5555-4555-8555-555555555555"
-	binderRepoID   = "66666666-6666-4666-8666-666666666666"
+	// Monorepo fixture: two services from the same repo (acme/forge).
+	forgeRepoID  = "55555555-5555-4555-8555-555555555555"
+	binderRepoID = "66666666-6666-4666-8666-666666666666"
 )
 
 // mutServer is a drift with the whole write surface, scripted.
@@ -224,7 +224,7 @@ func newMutServer(t *testing.T) *mutServer {
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"environment": map[string]any{
-					"id": envID, "slug": "proof-alpha", "ticketId": "AUS-10001",
+					"id": envID, "slug": "proof-alpha", "ticketId": "PROJ-1001",
 					"namespace": "pr-proof-alpha", "status": status,
 					"expiresAt": "2026-07-28T10:00:00Z", "ttlHours": 48,
 					"sleptAt": nil, "isPublic": false,
@@ -826,20 +826,20 @@ func TestAmbiguousRepositoryNameIsRefused(t *testing.T) {
 // and, being unique, wins.
 func TestMonorepoResolvesChartKeyFirst(t *testing.T) {
 	s := newMutServer(t)
-	// Mimic auditsight/findstar: two services from the same repo, one with
-	// chart key "binder" and one with chart key "findstar" (== the repo Name).
+	// Mimic a monorepo: two services from the same repo, one with
+	// chart key "binder" and one with chart key "forge" (== the repo Name).
 	s.extraRepos = []map[string]any{
 		{
-			"id": findstarRepoID, "owner": "acme", "name": "findstar",
-			"fullName": "acme/findstar", "displayName": "Findstar",
+			"id": forgeRepoID, "owner": "acme", "name": "forge",
+			"fullName": "acme/forge", "displayName": "Forge",
 			"description": nil, "defaultBranch": "main",
-			"helmChartKey": "findstar", "isActive": true,
+			"helmChartKey": "forge", "isActive": true,
 			"stgUrl": nil, "rcUrl": nil, "prdUrl": nil,
 			"applicationGroupId": nil, "applicationGroup": nil,
 		},
 		{
-			"id": binderRepoID, "owner": "acme", "name": "findstar",
-			"fullName": "acme/findstar", "displayName": "Binder",
+			"id": binderRepoID, "owner": "acme", "name": "forge",
+			"fullName": "acme/forge", "displayName": "Binder",
 			"description": nil, "defaultBranch": "main",
 			"helmChartKey": "binder", "isActive": true,
 			"stgUrl": nil, "rcUrl": nil, "prdUrl": nil,
@@ -848,15 +848,15 @@ func TestMonorepoResolvesChartKeyFirst(t *testing.T) {
 	}
 	h := newMutHarness(t, s)
 
-	// "findstar" is ambiguous in the four-way resolver (matches Findstar via
+	// "forge" is ambiguous in the four-way resolver (matches Forge via
 	// HelmChartKey AND Binder via Name) but unambiguous via chart key.
 	_, errOut, code := h.run("env", "create", "--slug", "proof-alpha",
-		"--repo", "findstar:topic", "--yes", "--no-wait")
+		"--repo", "forge:topic", "--yes", "--no-wait")
 	if code != cliexit.OK {
-		t.Fatalf("findstar: exit %d, want %d\n%s", code, cliexit.OK, errOut)
+		t.Fatalf("forge: exit %d, want %d\n%s", code, cliexit.OK, errOut)
 	}
-	if s.seen("repo:"+findstarRepoID) != 1 {
-		t.Fatalf("findstar resolved to the wrong repository; calls: %v", s.calls)
+	if s.seen("repo:"+forgeRepoID) != 1 {
+		t.Fatalf("forge resolved to the wrong repository; calls: %v", s.calls)
 	}
 
 	// "binder" matches only the Binder service's chart key — no ambiguity in
@@ -871,13 +871,13 @@ func TestMonorepoResolvesChartKeyFirst(t *testing.T) {
 	}
 
 	// A spelling that matches multiple services and is NOT a chart key is
-	// still refused. "acme/findstar" is the FullName for both rows.
+	// still refused. "acme/forge" is the FullName for both rows.
 	_, errOut, code = h.run("env", "create", "--slug", "proof-gamma",
-		"--repo", "acme/findstar:topic", "--yes", "--no-wait")
+		"--repo", "acme/forge:topic", "--yes", "--no-wait")
 	if code != cliexit.Usage {
-		t.Fatalf("acme/findstar: exit %d, want %d\n%s", code, cliexit.Usage, errOut)
+		t.Fatalf("acme/forge: exit %d, want %d\n%s", code, cliexit.Usage, errOut)
 	}
-	if !strings.Contains(errOut, "binder") || !strings.Contains(errOut, "findstar") {
+	if !strings.Contains(errOut, "binder") || !strings.Contains(errOut, "forge") {
 		t.Fatalf("the disambiguating names were not offered: %s", errOut)
 	}
 }

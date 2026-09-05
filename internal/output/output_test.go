@@ -50,7 +50,7 @@ func TestMain(m *testing.M) {
 }
 
 func sampleDoc() *Doc {
-	ticket := "AUS-10001"
+	ticket := "PROJ-1001"
 	slept := fixed.Add(-3 * time.Hour)
 	return &Doc{
 		Columns: []Column{
@@ -185,7 +185,7 @@ func TestWarningsGoToStderr(t *testing.T) {
 	var out, errOut bytes.Buffer
 	w := &Writer{Out: &out, Err: &errOut, Format: FormatJSON}
 	w.Warnf("client is older than the server floor")
-	w.Infof("using context %q", "au")
+	w.Infof("using context %q", "alpha")
 	if out.Len() != 0 {
 		t.Fatalf("a diagnostic reached stdout: %q", out.String())
 	}
@@ -303,8 +303,8 @@ func TestNonASCIIValuesDoNotShiftColumns(t *testing.T) {
 			{Name: "ticket", Header: "Ticket"},
 		},
 		Rows: []Row{
-			{"slug": "feature-café-ünïcode", "status": "running", "ticket": "AUS-1"},
-			{"slug": "plain-ascii", "status": "sleeping", "ticket": "AUS-2"},
+			{"slug": "feature-café-ünïcode", "status": "running", "ticket": "PROJ-1"},
+			{"slug": "plain-ascii", "status": "sleeping", "ticket": "PROJ-2"},
 		},
 	}
 	got, _ := render(t, &Writer{Format: FormatTable}, d)

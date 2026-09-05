@@ -88,7 +88,7 @@ func newFakeDrift(t *testing.T, doc map[string]any) *fakeServer {
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"items": []map[string]any{{
 				"id": "b92b68a9-877a-4f14-a92e-db1a62b803d9", "slug": "proof-alpha",
-				"ticketId": "AUS-10001", "namespace": "pr-proof-alpha", "status": "running",
+				"ticketId": "PROJ-1001", "namespace": "pr-proof-alpha", "status": "running",
 				"expiresAt": "2026-07-27T10:40:00Z", "ttlHours": 48, "sleptAt": nil, "isPublic": true,
 			}},
 			"pagination": map[string]any{"limit": 20, "offset": 0, "hasMore": false},
@@ -108,7 +108,7 @@ func newFakeDrift(t *testing.T, doc map[string]any) *fakeServer {
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"environment": map[string]any{
 					"id": "b92b68a9-877a-4f14-a92e-db1a62b803d9", "slug": "proof-alpha",
-					"ticketId": "AUS-10001", "namespace": "pr-proof-alpha", "status": "running",
+					"ticketId": "PROJ-1001", "namespace": "pr-proof-alpha", "status": "running",
 					"expiresAt": "2026-07-27T10:40:00Z", "ttlHours": 48, "sleptAt": nil, "isPublic": true,
 				},
 				"services": []any{}, "builds": []any{},
@@ -158,9 +158,9 @@ func newFakeDrift(t *testing.T, doc map[string]any) *fakeServer {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"items": []map[string]any{{
-				"id": "11111111-1111-1111-1111-111111111111", "owner": "auditsight",
-				"name": "nodus", "fullName": "auditsight/nodus", "displayName": "Nodus",
-				"description": nil, "defaultBranch": "main", "helmChartKey": "nodus",
+				"id": "11111111-1111-1111-1111-111111111111", "owner": "acme",
+				"name": "widget", "fullName": "acme/widget", "displayName": "Widget",
+				"description": nil, "defaultBranch": "main", "helmChartKey": "widget",
 				"isActive": true, "stgUrl": nil, "rcUrl": nil, "prdUrl": nil,
 				"applicationGroupId": "22222222-2222-2222-2222-222222222222",
 				"applicationGroup": map[string]any{
@@ -950,10 +950,10 @@ func TestDoctorSkipsDependentChecks(t *testing.T) {
 func TestContextLifecycle(t *testing.T) {
 	h := newHarness(t)
 
-	if _, _, code := h.run("context", "add", "au", "--endpoint", "https://drift.au.example.com"); code != 0 {
+	if _, _, code := h.run("context", "add", "alpha", "--endpoint", "https://drift.alpha.example.com"); code != 0 {
 		t.Fatal("add failed")
 	}
-	if _, _, code := h.run("context", "add", "en", "--endpoint", "https://drift.en.example.com"); code != 0 {
+	if _, _, code := h.run("context", "add", "beta", "--endpoint", "https://drift.beta.example.com"); code != 0 {
 		t.Fatal("add failed")
 	}
 
@@ -964,15 +964,15 @@ func TestContextLifecycle(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &cur); err != nil {
 		t.Fatal(err)
 	}
-	if cur["name"] != "au" {
+	if cur["name"] != "alpha" {
 		t.Fatalf("current = %#v", cur)
 	}
 
-	if _, _, code := h.run("context", "use", "en"); code != 0 {
+	if _, _, code := h.run("context", "use", "beta"); code != 0 {
 		t.Fatal("use failed")
 	}
 	out, _, _ = h.run("context", "list")
-	if !strings.Contains(out, "*") || !strings.Contains(out, "en") {
+	if !strings.Contains(out, "*") || !strings.Contains(out, "beta") {
 		t.Fatalf("list did not mark the current context:\n%s", out)
 	}
 
@@ -983,7 +983,7 @@ func TestContextLifecycle(t *testing.T) {
 		t.Fatalf("use of an unknown context: exit %d, want %d", code, cliexit.Usage)
 	}
 
-	if _, _, code := h.run("context", "remove", "en"); code != 0 {
+	if _, _, code := h.run("context", "remove", "beta"); code != 0 {
 		t.Fatal("remove failed")
 	}
 	if _, _, code := h.run("context", "current"); code != cliexit.Usage {
@@ -1501,7 +1501,7 @@ func TestRepoListTableAndJSON(t *testing.T) {
 	if code != cliexit.OK {
 		t.Fatalf("exit %d\n%s", code, h.stderr.String())
 	}
-	for _, want := range []string{"auditsight/nodus", "Nodus", "main", "nodus", "Core"} {
+	for _, want := range []string{"acme/widget", "Widget", "main", "widget", "Core"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("table output missing %q:\n%s", want, out)
 		}
@@ -1520,7 +1520,7 @@ func TestRepoListTableAndJSON(t *testing.T) {
 	if len(resp.Items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(resp.Items))
 	}
-	if resp.Items[0]["fullName"] != "auditsight/nodus" {
+	if resp.Items[0]["fullName"] != "acme/widget" {
 		t.Fatalf("wrong fullName: %v", resp.Items[0]["fullName"])
 	}
 }

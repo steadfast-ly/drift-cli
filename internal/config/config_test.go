@@ -26,9 +26,9 @@ func isolate(t *testing.T) string {
 func seeded(t *testing.T) *File {
 	t.Helper()
 	f := &File{}
-	f.Add(Context{Name: "au", Endpoint: "https://drift.au.example.com"})
-	f.Add(Context{Name: "en", Endpoint: "https://drift.en.example.com", Output: "json"})
-	f.CurrentContext = "au"
+	f.Add(Context{Name: "alpha", Endpoint: "https://drift.alpha.example.com"})
+	f.Add(Context{Name: "beta", Endpoint: "https://drift.beta.example.com", Output: "json"})
+	f.CurrentContext = "alpha"
 	return f
 }
 
@@ -53,7 +53,7 @@ func TestPrecedenceFlagBeatsEnvBeatsContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Endpoint != "https://drift.au.example.com" || r.Source != "context" {
+	if r.Endpoint != "https://drift.alpha.example.com" || r.Source != "context" {
 		t.Fatalf("context tier: got %+v", r)
 	}
 
@@ -81,20 +81,20 @@ func TestContextSelectionPrecedence(t *testing.T) {
 	isolate(t)
 	f := seeded(t)
 
-	t.Setenv("DRIFT_CONTEXT", "en")
+	t.Setenv("DRIFT_CONTEXT", "beta")
 	r, err := f.Resolve(Overrides{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.ContextName != "en" || r.Endpoint != "https://drift.en.example.com" {
+	if r.ContextName != "beta" || r.Endpoint != "https://drift.beta.example.com" {
 		t.Fatalf("DRIFT_CONTEXT ignored: %+v", r)
 	}
 
-	r, err = f.Resolve(Overrides{Context: "au"})
+	r, err = f.Resolve(Overrides{Context: "alpha"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.ContextName != "au" {
+	if r.ContextName != "alpha" {
 		t.Fatalf("--context did not beat DRIFT_CONTEXT: %+v", r)
 	}
 }
@@ -117,7 +117,7 @@ func TestOutputPrecedence(t *testing.T) {
 	f := seeded(t)
 
 	// Context default.
-	f.CurrentContext = "en"
+	f.CurrentContext = "beta"
 	r, _ := f.Resolve(Overrides{})
 	if r.Output != "json" {
 		t.Fatalf("context output default ignored: %q", r.Output)
@@ -137,7 +137,7 @@ func TestOutputPrecedence(t *testing.T) {
 	}
 
 	// With nothing configured anywhere, the default is a table.
-	f.CurrentContext = "au"
+	f.CurrentContext = "alpha"
 	t.Setenv("DRIFT_OUTPUT", "")
 	r, _ = f.Resolve(Overrides{})
 	if r.Output != "table" {
@@ -192,7 +192,7 @@ func TestSaveLoadRoundTripAnd0600(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if back.CurrentContext != "au" || len(back.Contexts) != 2 {
+	if back.CurrentContext != "alpha" || len(back.Contexts) != 2 {
 		t.Fatalf("round trip lost data: %+v", back)
 	}
 	if back.Contexts[1].Output != "json" {
@@ -217,13 +217,13 @@ func TestLoadMissingFileIsEmptyNotAnError(t *testing.T) {
 func TestRemoveClearsCurrentPointer(t *testing.T) {
 	isolate(t)
 	f := seeded(t)
-	if err := f.Remove("au"); err != nil {
+	if err := f.Remove("alpha"); err != nil {
 		t.Fatal(err)
 	}
 	if f.CurrentContext != "" {
 		t.Fatalf("current context left dangling: %q", f.CurrentContext)
 	}
-	if err := f.Remove("au"); !errors.Is(err, ErrNotFound) {
+	if err := f.Remove("alpha"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("second remove: want ErrNotFound, got %v", err)
 	}
 }
@@ -234,7 +234,7 @@ func TestUseRefusesUnknownContext(t *testing.T) {
 	if err := f.Use("nope"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("want ErrNotFound, got %v", err)
 	}
-	if f.CurrentContext != "au" {
+	if f.CurrentContext != "alpha" {
 		t.Fatalf("a failed Use changed the pointer to %q", f.CurrentContext)
 	}
 }
@@ -242,11 +242,11 @@ func TestUseRefusesUnknownContext(t *testing.T) {
 func TestAddReplacesByName(t *testing.T) {
 	isolate(t)
 	f := seeded(t)
-	f.Add(Context{Name: "au", Endpoint: "https://moved.example.com"})
+	f.Add(Context{Name: "alpha", Endpoint: "https://moved.example.com"})
 	if len(f.Contexts) != 2 {
 		t.Fatalf("Add duplicated a context: %+v", f.Contexts)
 	}
-	c, err := f.Find("au")
+	c, err := f.Find("alpha")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +273,7 @@ func TestCredentialContextRefusesAForeignEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !r.EndpointIsContexts || r.CredentialContext() != "au" {
+	if !r.EndpointIsContexts || r.CredentialContext() != "alpha" {
 		t.Fatalf("the context's own endpoint must be in scope: %+v", r)
 	}
 
@@ -283,7 +283,7 @@ func TestCredentialContextRefusesAForeignEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.ContextName != "au" {
+	if r.ContextName != "alpha" {
 		t.Fatalf("the context should still be identified: %+v", r)
 	}
 	if r.EndpointIsContexts || r.CredentialContext() != "" {
@@ -308,15 +308,15 @@ func TestCredentialContextAllowsAnEquivalentOverride(t *testing.T) {
 	f := seeded(t)
 
 	for _, spelling := range []string{
-		"https://drift.au.example.com",
-		"https://drift.au.example.com/",
-		"  https://drift.au.example.com  ",
+		"https://drift.alpha.example.com",
+		"https://drift.alpha.example.com/",
+		"  https://drift.alpha.example.com  ",
 	} {
 		r, err := f.Resolve(Overrides{Endpoint: spelling})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if r.CredentialContext() != "au" {
+		if r.CredentialContext() != "alpha" {
 			t.Fatalf("%q is the context's own endpoint but was treated as foreign: %+v", spelling, r)
 		}
 	}
@@ -329,11 +329,11 @@ func TestCredentialContextRefusesNearMisses(t *testing.T) {
 	f := seeded(t)
 
 	for _, spelling := range []string{
-		"http://drift.au.example.com",           // scheme downgrade
-		"https://drift.au.example.com:8443",     // different port
-		"https://drift.au.example.com.evil.tld", // suffix
-		"https://user@drift.au.example.com",     // userinfo
-		"https://drift.au.example.com/sub",      // different path
+		"http://drift.alpha.example.com",           // scheme downgrade
+		"https://drift.alpha.example.com:8443",     // different port
+		"https://drift.alpha.example.com.evil.tld", // suffix
+		"https://user@drift.alpha.example.com",     // userinfo
+		"https://drift.alpha.example.com/sub",      // different path
 	} {
 		r, err := f.Resolve(Overrides{Endpoint: spelling})
 		if err != nil {

@@ -153,7 +153,7 @@ func detectPR(ctx context.Context, run Runner, branch string) *PullRequest {
 
 // remotePattern matches the tail of a GitHub remote URL in any of the forms git
 // actually stores: `https://host/owner/name(.git)`, `git@host:owner/name.git`,
-// `ssh://git@host/owner/name.git`. Host aliases (`git@github-au:…`, used to
+// `ssh://git@host/owner/name.git`. Host aliases (`git@github-alt:…`, used to
 // select an SSH identity) are matched too — the host is not what is being
 // extracted.
 var remotePattern = regexp.MustCompile(`(?:[:/])([^/:]+)/([^/]+?)(?:\.git)?/?$`)
