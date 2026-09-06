@@ -367,6 +367,30 @@
           "environmentId"
         ]
       },
+      "EnvironmentStatusResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "requested",
+              "building",
+              "build_failed",
+              "deploying",
+              "running",
+              "sleeping",
+              "waking",
+              "deploy_failed",
+              "destroying",
+              "destroyed",
+              "canceled"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
       "CredentialIdentity": {
         "type": "object",
         "properties": {
@@ -1638,6 +1662,120 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EnvironmentDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/environments/{ref}/status": {
+      "get": {
+        "operationId": "environments.status",
+        "summary": "Get an environment's status",
+        "description": "Returns only the environment's current status. `ref` is either the environment's UUID or its slug. Designed as a lightweight poll target: one query, no services or builds, so polling every 30 seconds costs a fraction of what `GET /environments/{ref}` would.",
+        "tags": [
+          "environments"
+        ],
+        "parameters": [
+          {
+            "name": "ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvironmentStatusResponse"
                 }
               }
             }
@@ -3874,7 +4012,7 @@
       "post": {
         "operationId": "releases.promote.prd",
         "summary": "Promote services from rc to production",
-        "description": "Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), copy the token, then pipe it into `drift auth login --token-stdin`. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.",
+        "description": "Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.",
         "tags": [
           "releases"
         ],
@@ -4029,7 +4167,7 @@
       "post": {
         "operationId": "releases.promote.prdHotfix",
         "summary": "Dispatch a hotfix build to production",
-        "description": "Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.",
+        "description": "Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential on your Drift Install's /credentials page and run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd hotfix ... --branch ...`) — this leaves your stored credential untouched. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.",
         "tags": [
           "releases"
         ],
