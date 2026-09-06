@@ -114,6 +114,51 @@ func (e EnvironmentBuildStatus) Valid() bool {
 	}
 }
 
+// Defines values for EnvironmentStatusResponseStatus.
+const (
+	EnvironmentStatusResponseStatusBuildFailed  EnvironmentStatusResponseStatus = "build_failed"
+	EnvironmentStatusResponseStatusBuilding     EnvironmentStatusResponseStatus = "building"
+	EnvironmentStatusResponseStatusCanceled     EnvironmentStatusResponseStatus = "canceled"
+	EnvironmentStatusResponseStatusDeployFailed EnvironmentStatusResponseStatus = "deploy_failed"
+	EnvironmentStatusResponseStatusDeploying    EnvironmentStatusResponseStatus = "deploying"
+	EnvironmentStatusResponseStatusDestroyed    EnvironmentStatusResponseStatus = "destroyed"
+	EnvironmentStatusResponseStatusDestroying   EnvironmentStatusResponseStatus = "destroying"
+	EnvironmentStatusResponseStatusRequested    EnvironmentStatusResponseStatus = "requested"
+	EnvironmentStatusResponseStatusRunning      EnvironmentStatusResponseStatus = "running"
+	EnvironmentStatusResponseStatusSleeping     EnvironmentStatusResponseStatus = "sleeping"
+	EnvironmentStatusResponseStatusWaking       EnvironmentStatusResponseStatus = "waking"
+)
+
+// Valid indicates whether the value is a known member of the EnvironmentStatusResponseStatus enum.
+func (e EnvironmentStatusResponseStatus) Valid() bool {
+	switch e {
+	case EnvironmentStatusResponseStatusBuildFailed:
+		return true
+	case EnvironmentStatusResponseStatusBuilding:
+		return true
+	case EnvironmentStatusResponseStatusCanceled:
+		return true
+	case EnvironmentStatusResponseStatusDeployFailed:
+		return true
+	case EnvironmentStatusResponseStatusDeploying:
+		return true
+	case EnvironmentStatusResponseStatusDestroyed:
+		return true
+	case EnvironmentStatusResponseStatusDestroying:
+		return true
+	case EnvironmentStatusResponseStatusRequested:
+		return true
+	case EnvironmentStatusResponseStatusRunning:
+		return true
+	case EnvironmentStatusResponseStatusSleeping:
+		return true
+	case EnvironmentStatusResponseStatusWaking:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PromotionPromotionType.
 const (
 	PromotionPromotionTypePrd PromotionPromotionType = "prd"
@@ -511,6 +556,14 @@ type EnvironmentService struct {
 	PrNumber     *int               `json:"prNumber"`
 	RepositoryId openapi_types.UUID `json:"repositoryId"`
 }
+
+// EnvironmentStatusResponse defines model for EnvironmentStatusResponse.
+type EnvironmentStatusResponse struct {
+	Status EnvironmentStatusResponseStatus `json:"status"`
+}
+
+// EnvironmentStatusResponseStatus defines model for EnvironmentStatusResponse.Status.
+type EnvironmentStatusResponseStatus string
 
 // NamespaceRelease defines model for NamespaceRelease.
 type NamespaceRelease struct {
@@ -1056,6 +1109,13 @@ type ClientInterface interface {
 	// Corresponds with GET /environments/{ref} (the `EnvironmentsGet` operationId).
 	EnvironmentsGet(ctx context.Context, ref string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// EnvironmentsStatus Get an environment's status
+	//
+	// Returns only the environment's current status. `ref` is either the environment's UUID or its slug. Designed as a lightweight poll target: one query, no services or builds, so polling every 30 seconds costs a fraction of what `GET /environments/{ref}` would.
+	//
+	// Corresponds with GET /environments/{ref}/status (the `EnvironmentsStatus` operationId).
+	EnvironmentsStatus(ctx context.Context, ref string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ReleasesPromotionsActive Get the in-flight promotion and recent history
 	//
 	// Corresponds with GET /releases/promotions/active (the `ReleasesPromotionsActive` operationId).
@@ -1068,7 +1128,7 @@ type ClientInterface interface {
 
 	// ReleasesPromotePrdWithBody Promote services from rc to production
 	//
-	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), copy the token, then pipe it into `drift auth login --token-stdin`. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1077,7 +1137,7 @@ type ClientInterface interface {
 
 	// ReleasesPromotePrd Promote services from rc to production
 	//
-	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), copy the token, then pipe it into `drift auth login --token-stdin`. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1086,7 +1146,7 @@ type ClientInterface interface {
 
 	// ReleasesPromotePrdHotfixWithBody Dispatch a hotfix build to production
 	//
-	// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
+	// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential on your Drift Install's /credentials page and run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd hotfix ... --branch ...`) — this leaves your stored credential untouched. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1095,7 +1155,7 @@ type ClientInterface interface {
 
 	// ReleasesPromotePrdHotfix Dispatch a hotfix build to production
 	//
-	// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
+	// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential on your Drift Install's /credentials page and run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd hotfix ... --branch ...`) — this leaves your stored credential untouched. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1554,6 +1614,23 @@ func (c *Client) EnvironmentsGet(ctx context.Context, ref string, reqEditors ...
 	return c.Client.Do(req)
 }
 
+// EnvironmentsStatus Get an environment's status
+//
+// Returns only the environment's current status. `ref` is either the environment's UUID or its slug. Designed as a lightweight poll target: one query, no services or builds, so polling every 30 seconds costs a fraction of what `GET /environments/{ref}` would.
+//
+// Corresponds with GET /environments/{ref}/status (the `EnvironmentsStatus` operationId).
+func (c *Client) EnvironmentsStatus(ctx context.Context, ref string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsStatusRequest(c.Server, ref)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ReleasesPromotionsActive Get the in-flight promotion and recent history
 //
 // Corresponds with GET /releases/promotions/active (the `ReleasesPromotionsActive` operationId).
@@ -1586,7 +1663,7 @@ func (c *Client) ReleasesPromotionsHistory(ctx context.Context, params *Releases
 
 // ReleasesPromotePrdWithBody Promote services from rc to production
 //
-// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), copy the token, then pipe it into `drift auth login --token-stdin`. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
 //
 // Takes any type of body and a specified content type.
 //
@@ -1605,7 +1682,7 @@ func (c *Client) ReleasesPromotePrdWithBody(ctx context.Context, contentType str
 
 // ReleasesPromotePrd Promote services from rc to production
 //
-// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), copy the token, then pipe it into `drift auth login --token-stdin`. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -1624,7 +1701,7 @@ func (c *Client) ReleasesPromotePrd(ctx context.Context, body ReleasesPromotePrd
 
 // ReleasesPromotePrdHotfixWithBody Dispatch a hotfix build to production
 //
-// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
+// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential on your Drift Install's /credentials page and run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd hotfix ... --branch ...`) — this leaves your stored credential untouched. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
 //
 // Takes any type of body and a specified content type.
 //
@@ -1643,7 +1720,7 @@ func (c *Client) ReleasesPromotePrdHotfixWithBody(ctx context.Context, contentTy
 
 // ReleasesPromotePrdHotfix Dispatch a hotfix build to production
 //
-// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
+// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential on your Drift Install's /credentials page and run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd hotfix ... --branch ...`) — this leaves your stored credential untouched. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -2617,6 +2694,40 @@ func NewEnvironmentsGetRequest(server string, ref string) (*http.Request, error)
 	return req, nil
 }
 
+// NewEnvironmentsStatusRequest constructs an http.Request for the EnvironmentsStatus method
+func NewEnvironmentsStatusRequest(server string, ref string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ref", ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/environments/%s/status", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewReleasesPromotionsActiveRequest constructs an http.Request for the ReleasesPromotionsActive method
 func NewReleasesPromotionsActiveRequest(server string, params *ReleasesPromotionsActiveParams) (*http.Request, error) {
 	var err error
@@ -3317,6 +3428,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /environments/{ref} (the `EnvironmentsGet` operationId).
 	EnvironmentsGetWithResponse(ctx context.Context, ref string, reqEditors ...RequestEditorFn) (*EnvironmentsGetResponse, error)
 
+	// EnvironmentsStatusWithResponse Get an environment's status
+	//
+	// Returns only the environment's current status. `ref` is either the environment's UUID or its slug. Designed as a lightweight poll target: one query, no services or builds, so polling every 30 seconds costs a fraction of what `GET /environments/{ref}` would.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /environments/{ref}/status (the `EnvironmentsStatus` operationId).
+	EnvironmentsStatusWithResponse(ctx context.Context, ref string, reqEditors ...RequestEditorFn) (*EnvironmentsStatusResponse, error)
+
 	// ReleasesPromotionsActiveWithResponse Get the in-flight promotion and recent history
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -3333,7 +3453,7 @@ type ClientWithResponsesInterface interface {
 
 	// ReleasesPromotePrdWithBodyWithResponse Promote services from rc to production
 	//
-	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), copy the token, then pipe it into `drift auth login --token-stdin`. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -3342,7 +3462,7 @@ type ClientWithResponsesInterface interface {
 
 	// ReleasesPromotePrdWithResponse Promote services from rc to production
 	//
-	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), copy the token, then pipe it into `drift auth login --token-stdin`. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -3351,7 +3471,7 @@ type ClientWithResponsesInterface interface {
 
 	// ReleasesPromotePrdHotfixWithBodyWithResponse Dispatch a hotfix build to production
 	//
-	// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
+	// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential on your Drift Install's /credentials page and run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd hotfix ... --branch ...`) — this leaves your stored credential untouched. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -3360,7 +3480,7 @@ type ClientWithResponsesInterface interface {
 
 	// ReleasesPromotePrdHotfixWithResponse Dispatch a hotfix build to production
 	//
-	// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
+	// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential on your Drift Install's /credentials page and run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd hotfix ... --branch ...`) — this leaves your stored credential untouched. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -5192,6 +5312,103 @@ func (r EnvironmentsGetResponse) ContentType() string {
 	return ""
 }
 
+// EnvironmentsStatusResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsStatus
+type EnvironmentsStatusResponse429Headers struct {
+	RetryAfter int
+}
+
+type EnvironmentsStatusResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EnvironmentStatusResponse
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsStatusResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnvironmentsStatusResponse) GetJSON200() *EnvironmentStatusResponse {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EnvironmentsStatusResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnvironmentsStatusResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EnvironmentsStatusResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r EnvironmentsStatusResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsStatusResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EnvironmentsStatusResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EnvironmentsStatusResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r EnvironmentsStatusResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnvironmentsStatusResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnvironmentsStatusResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnvironmentsStatusResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ReleasesPromotionsActiveResponse429Headers the declared response headers of an HTTP 429 response for ReleasesPromotionsActive
 type ReleasesPromotionsActiveResponse429Headers struct {
 	RetryAfter int
@@ -6444,6 +6661,21 @@ func (c *ClientWithResponses) EnvironmentsGetWithResponse(ctx context.Context, r
 	return ParseEnvironmentsGetResponse(rsp)
 }
 
+// EnvironmentsStatusWithResponse Get an environment's status
+//
+// Returns only the environment's current status. `ref` is either the environment's UUID or its slug. Designed as a lightweight poll target: one query, no services or builds, so polling every 30 seconds costs a fraction of what `GET /environments/{ref}` would.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /environments/{ref}/status (the `EnvironmentsStatus` operationId).
+func (c *ClientWithResponses) EnvironmentsStatusWithResponse(ctx context.Context, ref string, reqEditors ...RequestEditorFn) (*EnvironmentsStatusResponse, error) {
+	rsp, err := c.EnvironmentsStatus(ctx, ref, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsStatusResponse(rsp)
+}
+
 // ReleasesPromotionsActiveWithResponse Get the in-flight promotion and recent history
 //
 // Returns a wrapper object for the known response body format(s).
@@ -6472,7 +6704,7 @@ func (c *ClientWithResponses) ReleasesPromotionsHistoryWithResponse(ctx context.
 
 // ReleasesPromotePrdWithBodyWithResponse Promote services from rc to production
 //
-// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), copy the token, then pipe it into `drift auth login --token-stdin`. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -6487,7 +6719,7 @@ func (c *ClientWithResponses) ReleasesPromotePrdWithBodyWithResponse(ctx context
 
 // ReleasesPromotePrdWithResponse Promote services from rc to production
 //
-// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), copy the token, then pipe it into `drift auth login --token-stdin`. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -6502,7 +6734,7 @@ func (c *ClientWithResponses) ReleasesPromotePrdWithResponse(ctx context.Context
 
 // ReleasesPromotePrdHotfixWithBodyWithResponse Dispatch a hotfix build to production
 //
-// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
+// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential on your Drift Install's /credentials page and run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd hotfix ... --branch ...`) — this leaves your stored credential untouched. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -6517,7 +6749,7 @@ func (c *ClientWithResponses) ReleasesPromotePrdHotfixWithBodyWithResponse(ctx c
 
 // ReleasesPromotePrdHotfixWithResponse Dispatch a hotfix build to production
 //
-// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
+// Resolves the named branch's HEAD in each service's repository and dispatches that repository's hotfix workflow against it, deploying to production without passing through stg or rc. REQUIRES AN ELEVATED CREDENTIAL scoped to `promote:prd`; a `release` credential is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential on your Drift Install's /credentials page and run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd hotfix ... --branch ...`) — this leaves your stored credential untouched. The target is the path, not a parameter: a body field naming `rc` or `prd` is ignored, because the route selects the operation and the operation selects what it requires.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -8230,6 +8462,94 @@ func ParseEnvironmentsGetResponse(rsp *http.Response) (*EnvironmentsGetResponse,
 	switch {
 	case rsp.StatusCode == 429:
 		var headers EnvironmentsGetResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnvironmentsStatusResponse parses an HTTP response from a EnvironmentsStatusWithResponse call
+func ParseEnvironmentsStatusResponse(rsp *http.Response) (*EnvironmentsStatusResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnvironmentsStatusResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnvironmentStatusResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsStatusResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
