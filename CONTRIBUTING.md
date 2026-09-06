@@ -10,3 +10,13 @@ repository under Apache-2.0").
 
 If you believe you have found a security vulnerability, contact Steadfast
 through your engagement.
+
+## Filing issues
+
+Findings and improvement ideas should be raised with the maintainer for triage
+before filing as issues. Do not file issues without prior approval.
+
+Issues must never contain customer-deployment-specific data -- hostnames, org
+names, account identifiers, or any other detail that identifies a particular
+deployment. This is a product repository; deployment details are private.
+Use generic placeholders when an example is needed.
