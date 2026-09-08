@@ -65,6 +65,48 @@ siblings automatically at create time. When adding a service to an existing
 environment, its dependencies must already be present -- if they are not, the
 server returns a 409 or 400.
 
+## Database access
+
+`drift env tunnel` and `drift env db` connect to an environment's database
+through an embedded [chisel](https://github.com/jpillora/chisel) tunnel. The
+tunnel runs in-process -- there is no external `chisel` dependency.
+
+Both commands are **blocking**. `tunnel` holds the connection open until
+Ctrl-C; `db` launches the interactive client and exits when it does.
+
+### Exit codes
+
+`env tunnel` exits 0 on a clean Ctrl-C. `env db` **propagates the client's
+own exit code** -- if `psql` exits 2, `drift env db` exits 2. Scripts can
+branch on the outcome without parsing output.
+
+### No password resolution
+
+The server returns tunnel coordinates but no database credentials. The
+password is left to the client's own prompt. This matches the console: the
+console's chisel command also leaves the password to the client. Inventing
+client-side credential resolution would create a contract the server does not
+support.
+
+### MySQL TLS flags
+
+MySQL's `caching_sha2_password` plugin (default since 8.0) requires TLS even
+over localhost. The CLI keeps TLS **on** but skips server-cert verification,
+because the tunnel presents a self-signed certificate:
+
+| Client | Flag |
+| ------ | ---- |
+| Oracle `mysql` | `--ssl-mode=REQUIRED` |
+| MariaDB `mariadb` | `--ssl --ssl-verify-server-cert=0` |
+
+The two flag sets are not interchangeable. The CLI detects which client is
+installed by inspecting `mysql --version` output.
+
+### Server version floor
+
+The `db-access` endpoint requires drift server >= 0.15.0. An older server
+returns exit 3 with a version hint.
+
 ## Visibility
 
 Environments are **private** by default -- reachable only from within the

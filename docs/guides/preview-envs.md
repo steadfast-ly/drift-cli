@@ -146,6 +146,36 @@ drift env get my-env -o json
 drift env get my-env --json slug,status,expires
 ```
 
+## Database access
+
+Open a tunnel to the environment's database and launch an interactive
+client:
+
+```bash
+drift env db my-env
+drift env db my-env --user dbadmin
+```
+
+`--user` sets the database username; without it, the client uses its own
+default (typically your OS login name).
+
+This opens a chisel tunnel, then exec's `psql` (Postgres) or
+`mysql`/`mariadb` (MySQL) against the forwarded local port. The password
+is left to the client's own prompt. When the client exits, the tunnel
+closes and the client's exit code is propagated.
+
+To open the tunnel without launching a client (e.g. for a GUI tool):
+
+```bash
+drift env tunnel my-env
+# Tunnel ready on 127.0.0.1:33060
+#   psql -h 127.0.0.1 -p 33060 preview_db
+```
+
+The tunnel blocks until Ctrl-C. `--port` overrides the local bind port.
+
+Both commands require drift server >= 0.15.0.
+
 ## Destroy
 
 ```bash

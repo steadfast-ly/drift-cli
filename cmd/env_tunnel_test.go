@@ -22,7 +22,7 @@ func TestBuildTunnelConfig(t *testing.T) {
 		if tc.ServerURL != "https://tunnel.example.com" {
 			t.Fatalf("ServerURL = %q", tc.ServerURL)
 		}
-		if tc.Remote != "33060:db.internal:3306" {
+		if tc.Remote != "127.0.0.1:33060:db.internal:3306" {
 			t.Fatalf("Remote = %q", tc.Remote)
 		}
 		if tc.Auth != "user:pass" {
@@ -46,7 +46,7 @@ func TestBuildTunnelConfig(t *testing.T) {
 		if tc.LocalPort != 55555 {
 			t.Fatalf("LocalPort = %d, want 55555", tc.LocalPort)
 		}
-		if tc.Remote != "55555:db.internal:3306" {
+		if tc.Remote != "127.0.0.1:55555:db.internal:3306" {
 			t.Fatalf("Remote = %q", tc.Remote)
 		}
 	})
@@ -57,6 +57,14 @@ func TestBuildTunnelConfig(t *testing.T) {
 
 		if tc.Auth != "" {
 			t.Fatalf("Auth = %q, want empty", tc.Auth)
+		}
+	})
+
+	t.Run("remote binds localhost only", func(t *testing.T) {
+		access := newFakeDbAccess("postgres", "tunnel.example.com", "db.internal", "mydb", 5432, 33060, nil)
+		tc := buildTunnelConfig(access, 0)
+		if !strings.HasPrefix(tc.Remote, "127.0.0.1:") {
+			t.Fatalf("Remote = %q, must start with 127.0.0.1:", tc.Remote)
 		}
 	})
 
@@ -97,8 +105,14 @@ func TestClientHint(t *testing.T) {
 		if !strings.Contains(hint, "mysql") {
 			t.Fatalf("hint = %q, want mysql", hint)
 		}
-		if !strings.Contains(hint, "ssl-mode") {
-			t.Fatalf("hint = %q, want ssl-mode", hint)
+		if !strings.Contains(hint, "--ssl-mode=REQUIRED") {
+			t.Fatalf("hint = %q, want --ssl-mode=REQUIRED", hint)
+		}
+		if !strings.Contains(hint, "MariaDB") {
+			t.Fatalf("hint = %q, want MariaDB alternative noted", hint)
+		}
+		if !strings.Contains(hint, "ssl-verify-server-cert") {
+			t.Fatalf("hint = %q, want MariaDB flag mentioned", hint)
 		}
 	})
 }
@@ -286,7 +300,7 @@ func TestTunnelConfigFromPublishedResponse(t *testing.T) {
 	if tc.ServerURL != "https://tunnel.example.com" {
 		t.Fatalf("ServerURL = %q", tc.ServerURL)
 	}
-	if tc.Remote != "33060:db.internal:3306" {
+	if tc.Remote != "127.0.0.1:33060:db.internal:3306" {
 		t.Fatalf("Remote = %q", tc.Remote)
 	}
 	if tc.Auth != "user:secret" {
@@ -301,7 +315,7 @@ func TestTunnelConfigFromPublishedResponse(t *testing.T) {
 	if tc2.LocalPort != 44444 {
 		t.Fatalf("port override: LocalPort = %d", tc2.LocalPort)
 	}
-	if tc2.Remote != "44444:db.internal:3306" {
+	if tc2.Remote != "127.0.0.1:44444:db.internal:3306" {
 		t.Fatalf("port override: Remote = %q", tc2.Remote)
 	}
 }
