@@ -402,6 +402,52 @@
           "status"
         ]
       },
+      "DbAccessDirect": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "direct"
+          },
+          "engine": {
+            "enum": [
+              "postgres",
+              "mysql"
+            ],
+            "type": "string"
+          },
+          "tunnelHost": {
+            "type": "string"
+          },
+          "dbPort": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "chiselAuth": {
+            "type": "string"
+          },
+          "localPort": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "dbHost": {
+            "type": "string"
+          },
+          "dbName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "engine",
+          "tunnelHost",
+          "dbPort",
+          "localPort",
+          "dbHost",
+          "dbName"
+        ]
+      },
       "CredentialIdentity": {
         "type": "object",
         "properties": {
@@ -1787,6 +1833,147 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EnvironmentStatusResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/environments/{ref}/db-access": {
+      "get": {
+        "operationId": "environments.dbAccess",
+        "summary": "Get database access parameters for an environment",
+        "description": "Returns the database-connection parameters the CLI needs for `drift env tunnel` and `drift env db`. `ref` is either the environment's UUID or its slug. When the Install does not publish ephemeral database access (or the lower tier is credentials-shaped), the response carries `published: false` — absence, not an error.",
+        "tags": [
+          "environments"
+        ],
+        "parameters": [
+          {
+            "name": "ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "published": {
+                          "const": true
+                        },
+                        "access": {
+                          "$ref": "#/components/schemas/DbAccessDirect"
+                        }
+                      },
+                      "required": [
+                        "published",
+                        "access"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "published": {
+                          "const": false
+                        }
+                      },
+                      "required": [
+                        "published"
+                      ]
+                    }
+                  ]
                 }
               }
             }
