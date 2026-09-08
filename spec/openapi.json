@@ -140,6 +140,16 @@
             ],
             "type": "string"
           },
+          "statusMessage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "expiresAt": {
             "type": "string",
             "format": "date-time",
@@ -172,6 +182,7 @@
           "ticketId",
           "namespace",
           "status",
+          "statusMessage",
           "expiresAt",
           "ttlHours",
           "sleptAt",

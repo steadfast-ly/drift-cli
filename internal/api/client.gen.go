@@ -500,15 +500,16 @@ type CredentialIdentityScopes string
 
 // Environment defines model for Environment.
 type Environment struct {
-	ExpiresAt time.Time          `json:"expiresAt"`
-	Id        openapi_types.UUID `json:"id"`
-	IsPublic  bool               `json:"isPublic"`
-	Namespace string             `json:"namespace"`
-	SleptAt   *time.Time         `json:"sleptAt"`
-	Slug      string             `json:"slug"`
-	Status    EnvironmentStatus  `json:"status"`
-	TicketId  *string            `json:"ticketId"`
-	TtlHours  int                `json:"ttlHours"`
+	ExpiresAt     time.Time          `json:"expiresAt"`
+	Id            openapi_types.UUID `json:"id"`
+	IsPublic      bool               `json:"isPublic"`
+	Namespace     string             `json:"namespace"`
+	SleptAt       *time.Time         `json:"sleptAt"`
+	Slug          string             `json:"slug"`
+	Status        EnvironmentStatus  `json:"status"`
+	StatusMessage *string            `json:"statusMessage"`
+	TicketId      *string            `json:"ticketId"`
+	TtlHours      int                `json:"ttlHours"`
 }
 
 // EnvironmentStatus defines model for Environment.Status.

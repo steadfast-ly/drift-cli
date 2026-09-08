@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/spf13/cobra"
 	"github.com/steadfast-ly/drift-cli/internal/api"
@@ -66,6 +67,7 @@ func envColumns() []output.Column {
 		{Name: "ttl_hours", Header: "TTL(h)", Wide: true},
 		{Name: "slept_at", Header: "Slept", Wide: true},
 		{Name: "public", Header: "Public", Wide: true},
+		{Name: "status_message", Header: "Note", Wide: true},
 	}
 }
 
@@ -80,6 +82,9 @@ func envRow(e api.Environment) output.Row {
 		"ttl_hours": e.TtlHours,
 		"slept_at":  e.SleptAt,
 		"public":    e.IsPublic,
+		// The server sets statusMessage when a lifecycle step needs an
+		// operator's attention (a wedged teardown, a quiesce); null otherwise.
+		"status_message": e.StatusMessage,
 	}
 }
 
@@ -269,6 +274,13 @@ func runEnvGet(ctx context.Context, app *App, ref string) error {
 		return nil
 	}
 	wide := format == output.FormatWide
+	// The status note only in the human formats, like the sub-tables below: the
+	// machine formats already carry it as `status_message` (raw).
+	if m := detail.Environment.StatusMessage; m != nil {
+		if note := sanitizeNote(*m); note != "" {
+			fmt.Fprintf(app.Stdout, "\nStatus note: %s\n", note)
+		}
+	}
 	if len(detail.Services) > 0 {
 		fmt.Fprintln(app.Stdout, "\nSERVICES")
 		if err := app.Out.Write(&output.Doc{Columns: serviceColumns(), Rows: serviceRows(detail.Services, wide)}); err != nil {
@@ -356,6 +368,30 @@ func buildPayload(in []api.EnvironmentBuild) []map[string]any {
 		out = append(out, mapRow(r))
 	}
 	return out
+}
+
+// sanitizeNote makes server-side prose safe to print verbatim: the note embeds
+// third-party error text, and a control sequence in it (ESC/OSC) could
+// otherwise manipulate the operator's terminal. Non-printable runes are
+// dropped and whitespace runs collapse to one space, so a multiline message
+// stays one note line.
+func sanitizeNote(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	pendingSpace := false
+	for _, r := range s {
+		switch {
+		case r == ' ' || r == '\n' || r == '\t':
+			pendingSpace = true
+		case unicode.IsPrint(r):
+			if pendingSpace && b.Len() > 0 {
+				b.WriteByte(' ')
+			}
+			pendingSpace = false
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 // shortSHA trims a commit to the conventional 7 characters, preserving nil.

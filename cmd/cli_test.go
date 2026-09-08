@@ -90,6 +90,7 @@ func newFakeDrift(t *testing.T, doc map[string]any) *fakeServer {
 				"id": "b92b68a9-877a-4f14-a92e-db1a62b803d9", "slug": "proof-alpha",
 				"ticketId": "PROJ-1001", "namespace": "pr-proof-alpha", "status": "running",
 				"expiresAt": "2026-07-27T10:40:00Z", "ttlHours": 48, "sleptAt": nil, "isPublic": true,
+				"statusMessage": nil,
 			}},
 			"pagination": map[string]any{"limit": 20, "offset": 0, "hasMore": false},
 		})
@@ -110,6 +111,33 @@ func newFakeDrift(t *testing.T, doc map[string]any) *fakeServer {
 					"id": "b92b68a9-877a-4f14-a92e-db1a62b803d9", "slug": "proof-alpha",
 					"ticketId": "PROJ-1001", "namespace": "pr-proof-alpha", "status": "running",
 					"expiresAt": "2026-07-27T10:40:00Z", "ttlHours": 48, "sleptAt": nil, "isPublic": true,
+					"statusMessage": nil,
+				},
+				"services": []any{}, "builds": []any{},
+			})
+		case "proof-noted":
+			// An environment the server has annotated: statusMessage is set when
+			// a lifecycle step needs operator attention (drift#39).
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"environment": map[string]any{
+					"id": "c3d1f2e4-5a6b-4c7d-8e9f-0a1b2c3d4e5f", "slug": "proof-noted",
+					"ticketId": "PROJ-1002", "namespace": "pr-proof-noted", "status": "destroying",
+					"expiresAt": "2026-07-27T10:40:00Z", "ttlHours": 48, "sleptAt": nil, "isPublic": false,
+					"statusMessage": "teardown blocked: the ACK bucket is not empty",
+				},
+				"services": []any{}, "builds": []any{},
+			})
+		case "proof-hostile":
+			// A note carrying third-party error text with terminal control
+			// sequences and a newline: the human renderer must neutralize it.
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"environment": map[string]any{
+					"id": "d4e5f6a7-8b9c-4d0e-9f1a-2b3c4d5e6f70", "slug": "proof-hostile",
+					"ticketId": "PROJ-1003", "namespace": "pr-proof-hostile", "status": "destroying",
+					"expiresAt": "2026-07-27T10:40:00Z", "ttlHours": 48, "sleptAt": nil, "isPublic": false,
+					"statusMessage": "\x1b[31mred\x1b[0m\nline2",
 				},
 				"services": []any{}, "builds": []any{},
 			})
@@ -705,6 +733,11 @@ func TestMachineFormatsEmitOnlyParseableOutput(t *testing.T) {
 	for _, args := range [][]string{
 		{"env", "get", "proof-alpha", "-o", "json"},
 		{"env", "get", "proof-alpha", "--json", "slug,status"},
+		// proof-noted carries a statusMessage, which the human formats render as
+		// an extra hand-written line — exactly the class of output this test
+		// exists to keep out of the machine formats.
+		{"env", "get", "proof-noted", "-o", "json"},
+		{"env", "get", "proof-noted", "--json", "slug,status_message"},
 		{"doctor", "--json", "check,state"},
 		{"version", "--json", "client_version"},
 		{"auth", "status", "--json", "context"},
@@ -715,6 +748,92 @@ func TestMachineFormatsEmitOnlyParseableOutput(t *testing.T) {
 		if err := json.Unmarshal([]byte(out), &any0); err != nil {
 			t.Fatalf("%v produced unparseable stdout: %v\n%s", args, err, out)
 		}
+	}
+}
+
+// drift#39: the server annotates an environment with statusMessage when a
+// lifecycle step needs operator attention (a wedged teardown, a quiesce). The
+// machine formats carry it as `status_message`; the human formats additionally
+// render a "Status note" line, which — like the SERVICES/BUILDS sub-tables —
+// must never leak into a machine format.
+func TestEnvGetStatusNote(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	const note = "teardown blocked: the ACK bucket is not empty"
+
+	// The machine contract carries the field when set...
+	out, _, code := h.run("env", "get", "proof-noted", "-o", "json")
+	if code != cliexit.OK {
+		t.Fatal(h.stderr.String())
+	}
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(out), &parsed); err != nil {
+		t.Fatalf("stdout is not parseable JSON: %v\n%s", err, out)
+	}
+	if got := parsed["status_message"]; got != note {
+		t.Fatalf("status_message = %#v, want %q", got, note)
+	}
+
+	// ...and carries an explicit null when the server sent one.
+	out, _, _ = h.run("env", "get", "proof-alpha", "-o", "json")
+	parsed = nil
+	if err := json.Unmarshal([]byte(out), &parsed); err != nil {
+		t.Fatalf("stdout is not parseable JSON: %v\n%s", err, out)
+	}
+	if got, ok := parsed["status_message"]; !ok || got != nil {
+		t.Fatalf("status_message = %#v (present=%v), want null", got, ok)
+	}
+
+	// The table shows the note when it is set, for table and wide alike...
+	for _, args := range [][]string{
+		{"env", "get", "proof-noted"},
+		{"env", "get", "proof-noted", "-o", "wide"},
+	} {
+		out, _, _ = h.run(args...)
+		if !strings.Contains(out, "Status note: "+note) {
+			t.Fatalf("%v did not render the status note:\n%s", args, out)
+		}
+	}
+
+	// ...and omits the line entirely when the value is null.
+	out, _, _ = h.run("env", "get", "proof-alpha")
+	if strings.Contains(out, "Status note") {
+		t.Fatalf("a null statusMessage still rendered a note:\n%s", out)
+	}
+
+	// The machine formats never emit the hand-rendered line.
+	for _, args := range [][]string{
+		{"env", "get", "proof-noted", "-o", "json"},
+		{"env", "get", "proof-noted", "-o", "yaml"},
+		{"env", "get", "proof-noted", "--json", "slug,status_message"},
+	} {
+		out, _, _ = h.run(args...)
+		if strings.Contains(out, "Status note") {
+			t.Fatalf("%v leaked the status note into a machine format:\n%s", args, out)
+		}
+	}
+
+	// The note is server-side prose embedding third-party error text: control
+	// sequences must not reach the operator's terminal, and a multiline
+	// message stays one note line.
+	out, _, _ = h.run("env", "get", "proof-hostile")
+	var noteLine string
+	for _, l := range strings.Split(out, "\n") {
+		if strings.HasPrefix(l, "Status note: ") {
+			noteLine = l
+			break
+		}
+	}
+	if noteLine == "" {
+		t.Fatalf("no status note line rendered:\n%s", out)
+	}
+	if !strings.Contains(noteLine, "red") || !strings.Contains(noteLine, "line2") {
+		t.Fatalf("the visible text was lost: %q", noteLine)
+	}
+	if strings.ContainsRune(out, 0x1b) {
+		t.Fatalf("an ESC byte reached the terminal:\n%q", out)
 	}
 }
 
