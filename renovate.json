@@ -1,0 +1,33 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["gomod", "github-actions"],
+  "automerge": false,
+  "postUpdateOptions": ["gomodTidy"],
+  "packageRules": [
+    {
+      "description": "One PR for all non-major Go module updates. Majors deliberately fall outside the group and ride one PR each (Renovate's default), so a breaking bump is never buried in a routine batch.",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "go-dependencies"
+    },
+    {
+      "description": "github.com/oapi-codegen/runtime stays Renovate-managed in the ordinary group, and the GENERATOR is deliberately NOT: the codegen pin (v2.8.0) lives in the Makefile's OAPI_VERSION variable and in the two `go install ...@v2.8.0` run lines in ci.yaml and release.yaml -- surfaces no enabled manager reads -- and that is correct, because bumping the generator without running `make generate` and committing the regenerated client turns `make check-generated` red on a diff nobody made. Generator bumps are a manual three-site edit plus `make generate` in one commit. The runtime LIBRARY is safe for Renovate: `make check-generated` regenerates with the PINNED generator, so a runtime bump cannot fake contract drift, and the PR's CI compiles and tests the committed client against the new runtime.",
+      "matchManagers": ["gomod"],
+      "matchPackageNames": ["github.com/oapi-codegen/runtime"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "go-dependencies"
+    },
+    {
+      "description": "One PR for all GitHub Actions pin updates (the manager also emits uses-with tool deps, so no extra datasource rule is needed). groupSingleUpdates keeps the group's branch/title even when only one update is due (drift PR #41: a single-update group otherwise wears the solo title).",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "groupSingleUpdates": true
+    },
+    {
+      "description": "Go toolchain bumps stay a manual ATOMIC edit across go.mod + ci.yaml + release.yaml. Renovate sees the toolchain at two decoupled sites riding two different groups -- the go.mod `go` directive (gomod manager: depName `go`, datasource golang-version) and the setup-go `go-version:` inputs in ci.yaml/release.yaml (github-actions manager: depType uses-with, depName `go`, packageName actions/go-versions, datasource github-releases) -- so two separate PRs could desync them, and no test enforces lockstep. This one matchDepNames rule disables BOTH extractions; setup-python's python-version stays managed (docs-only workflow, harmless). Better future fix: point ci.yaml/release.yaml at `go-version-file: go.mod` as docs.yaml already does, after which this rule can narrow to the gomod site only.",
+      "matchDepNames": ["go"],
+      "enabled": false
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+name: Renovate
+
+# Self-hosted Renovate, modelled on the drift server repo's workflow
+# (Actions-based, weekly, an org-owned App credential -- the Mend-hosted App
+# is NOT wanted; user ruling 2026-09-08). The dependency policy itself lives
+# in renovate.json at the repo root; renovate.json deliberately carries NO
+# `schedule` key, so the cron below is the single place the cadence is
+# written.
+#
+# CREDENTIAL -- LOAD-BEARING, do not "simplify" to the default GITHUB_TOKEN.
+# PRs opened with GITHUB_TOKEN do not trigger `on: pull_request` workflows
+# (GitHub's recursion guard), so CI would never run on Renovate's PRs -- and
+# PR CI running `make check-generated` plus the test suite is the designed
+# backstop here: it is what proves a Go dependency bump still compiles and
+# tests green against the committed generated client before anyone merges.
+# The job therefore mints its token from a repo-scoped GitHub App via
+# actions/create-github-app-token; with no `owner`/`repositories` inputs the
+# minted token is scoped to THIS repository only.
+#
+# The App is the same one the drift server repo uses and is ALREADY INSTALLED
+# on this repository. What remains is per-repo: the two secrets below are
+# REPOSITORY secrets and must be set on THIS repo -- they are not inherited
+# from anywhere.
+#   * Repository secrets to set: RENOVATE_APP_ID (the App id),
+#     RENOVATE_APP_PRIVATE_KEY (the .pem contents).
+#   * App repository permissions: Contents read+write (branches, commits),
+#     Pull requests read+write, Issues read+write (the dependency dashboard),
+#     Workflows read+write (the github-actions manager edits files under
+#     .github/workflows/), Metadata read (mandatory on every App).
+
+on:
+  schedule:
+    # Weekly, Monday 05:41 UTC -- staggered off the drift server repo's 05:23
+    # slot so the two runs never contend for the shared App's rate-limit
+    # window, and off the top of the hour (the :00 crons are the congested
+    # ones on GitHub's schedulers).
+    - cron: "41 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never two Renovate runs at once: two concurrent runs race each other's
+# branch pushes and PR updates. `cancel-in-progress: false` because killing
+# a half-finished run mid-PR-update is worse than queueing the next one.
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    timeout-minutes: 30  # one repository, two managers; a normal run is minutes -- 30 bounds a wedged registry lookup, not the happy path
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mint the repo-scoped App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.RENOVATE_APP_ID }}
+          private-key: ${{ secrets.RENOVATE_APP_PRIVATE_KEY }}
+
+      # Third-party action, so SHA-pinned with the version in a comment --
+      # the same pin, for the same reason, as the drift server repo's copy;
+      # Renovate's own github-actions group keeps it fresh from here.
+      - name: Run Renovate
+        uses: renovatebot/github-action@37beffda261423addd537c33f2d126df7f6ffbab # v46.2.6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+        env:
+          # Scoped to this single repository, derived -- never an org literal.
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          # The repo config (renovate.json) is the ONLY config: never open an
+          # onboarding PR, and fail loudly if the file ever goes missing
+          # rather than silently running with defaults.
+          RENOVATE_ONBOARDING: "false"
+          RENOVATE_REQUIRE_CONFIG: "required"
