@@ -33,6 +33,24 @@ func (e CredentialIdentityScopes) Valid() bool {
 	}
 }
 
+// Defines values for DbAccessDirectEngine.
+const (
+	DbAccessDirectEngineMysql    DbAccessDirectEngine = "mysql"
+	DbAccessDirectEnginePostgres DbAccessDirectEngine = "postgres"
+)
+
+// Valid indicates whether the value is a known member of the DbAccessDirectEngine enum.
+func (e DbAccessDirectEngine) Valid() bool {
+	switch e {
+	case DbAccessDirectEngineMysql:
+		return true
+	case DbAccessDirectEnginePostgres:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for EnvironmentStatus.
 const (
 	EnvironmentStatusBuildFailed  EnvironmentStatus = "build_failed"
@@ -498,6 +516,21 @@ type CredentialIdentity struct {
 // CredentialIdentityScopes defines model for CredentialIdentity.Scopes.
 type CredentialIdentityScopes string
 
+// DbAccessDirect defines model for DbAccessDirect.
+type DbAccessDirect struct {
+	ChiselAuth *string              `json:"chiselAuth,omitempty"`
+	DbHost     string               `json:"dbHost"`
+	DbName     string               `json:"dbName"`
+	DbPort     int                  `json:"dbPort"`
+	Engine     DbAccessDirectEngine `json:"engine"`
+	Kind       interface{}          `json:"kind"`
+	LocalPort  int                  `json:"localPort"`
+	TunnelHost string               `json:"tunnelHost"`
+}
+
+// DbAccessDirectEngine defines model for DbAccessDirect.Engine.
+type DbAccessDirectEngine string
+
 // Environment defines model for Environment.
 type Environment struct {
 	ExpiresAt     time.Time          `json:"expiresAt"`
@@ -786,6 +819,22 @@ type EnvironmentsSetVisibilityJSONBody struct {
 	IsPublic bool `json:"isPublic"`
 }
 
+// EnvironmentsDbAccess200JSONResponseBody0 defines parameters for EnvironmentsDbAccess.
+type EnvironmentsDbAccess200JSONResponseBody0 struct {
+	Access    DbAccessDirect `json:"access"`
+	Published interface{}    `json:"published"`
+}
+
+// EnvironmentsDbAccess200JSONResponseBody1 defines parameters for EnvironmentsDbAccess.
+type EnvironmentsDbAccess200JSONResponseBody1 struct {
+	Published interface{} `json:"published"`
+}
+
+// EnvironmentsDbAccess200JSONResponseBody defines parameters for EnvironmentsDbAccess.
+type EnvironmentsDbAccess200JSONResponseBody struct {
+	union json.RawMessage
+}
+
 // ReleasesPromotionsActiveParams defines parameters for ReleasesPromotionsActive.
 type ReleasesPromotionsActiveParams struct {
 	PromotionType *ReleasesPromotionsActiveParamsPromotionType `form:"promotionType,omitempty" json:"promotionType,omitempty"`
@@ -861,6 +910,68 @@ type ReleasesPromoteRcJSONRequestBody ReleasesPromoteRcJSONBody
 
 // ReleasesPromoteRcHotfixJSONRequestBody defines body for ReleasesPromoteRcHotfix for application/json ContentType.
 type ReleasesPromoteRcHotfixJSONRequestBody ReleasesPromoteRcHotfixJSONBody
+
+// AsEnvironmentsDbAccess200JSONResponseBody0 returns the union data inside the EnvironmentsDbAccess200JSONResponseBody as a EnvironmentsDbAccess200JSONResponseBody0
+func (t EnvironmentsDbAccess200JSONResponseBody) AsEnvironmentsDbAccess200JSONResponseBody0() (EnvironmentsDbAccess200JSONResponseBody0, error) {
+	var body EnvironmentsDbAccess200JSONResponseBody0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromEnvironmentsDbAccess200JSONResponseBody0 overwrites any union data inside the EnvironmentsDbAccess200JSONResponseBody as the provided EnvironmentsDbAccess200JSONResponseBody0
+func (t *EnvironmentsDbAccess200JSONResponseBody) FromEnvironmentsDbAccess200JSONResponseBody0(v EnvironmentsDbAccess200JSONResponseBody0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeEnvironmentsDbAccess200JSONResponseBody0 performs a merge with any union data inside the EnvironmentsDbAccess200JSONResponseBody, using the provided EnvironmentsDbAccess200JSONResponseBody0
+func (t *EnvironmentsDbAccess200JSONResponseBody) MergeEnvironmentsDbAccess200JSONResponseBody0(v EnvironmentsDbAccess200JSONResponseBody0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsEnvironmentsDbAccess200JSONResponseBody1 returns the union data inside the EnvironmentsDbAccess200JSONResponseBody as a EnvironmentsDbAccess200JSONResponseBody1
+func (t EnvironmentsDbAccess200JSONResponseBody) AsEnvironmentsDbAccess200JSONResponseBody1() (EnvironmentsDbAccess200JSONResponseBody1, error) {
+	var body EnvironmentsDbAccess200JSONResponseBody1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromEnvironmentsDbAccess200JSONResponseBody1 overwrites any union data inside the EnvironmentsDbAccess200JSONResponseBody as the provided EnvironmentsDbAccess200JSONResponseBody1
+func (t *EnvironmentsDbAccess200JSONResponseBody) FromEnvironmentsDbAccess200JSONResponseBody1(v EnvironmentsDbAccess200JSONResponseBody1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeEnvironmentsDbAccess200JSONResponseBody1 performs a merge with any union data inside the EnvironmentsDbAccess200JSONResponseBody, using the provided EnvironmentsDbAccess200JSONResponseBody1
+func (t *EnvironmentsDbAccess200JSONResponseBody) MergeEnvironmentsDbAccess200JSONResponseBody1(v EnvironmentsDbAccess200JSONResponseBody1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t EnvironmentsDbAccess200JSONResponseBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *EnvironmentsDbAccess200JSONResponseBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
 
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -1109,6 +1220,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /environments/{ref} (the `EnvironmentsGet` operationId).
 	EnvironmentsGet(ctx context.Context, ref string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsDbAccess Get database access parameters for an environment
+	//
+	// Returns the database-connection parameters the CLI needs for `drift env tunnel` and `drift env db`. `ref` is either the environment's UUID or its slug. When the Install does not publish ephemeral database access (or the lower tier is credentials-shaped), the response carries `published: false` — absence, not an error.
+	//
+	// Corresponds with GET /environments/{ref}/db-access (the `EnvironmentsDbAccess` operationId).
+	EnvironmentsDbAccess(ctx context.Context, ref string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// EnvironmentsStatus Get an environment's status
 	//
@@ -1605,6 +1723,23 @@ func (c *Client) EnvironmentsWake(ctx context.Context, environmentId openapi_typ
 // Corresponds with GET /environments/{ref} (the `EnvironmentsGet` operationId).
 func (c *Client) EnvironmentsGet(ctx context.Context, ref string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewEnvironmentsGetRequest(c.Server, ref)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsDbAccess Get database access parameters for an environment
+//
+// Returns the database-connection parameters the CLI needs for `drift env tunnel` and `drift env db`. `ref` is either the environment's UUID or its slug. When the Install does not publish ephemeral database access (or the lower tier is credentials-shaped), the response carries `published: false` — absence, not an error.
+//
+// Corresponds with GET /environments/{ref}/db-access (the `EnvironmentsDbAccess` operationId).
+func (c *Client) EnvironmentsDbAccess(ctx context.Context, ref string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsDbAccessRequest(c.Server, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -2695,6 +2830,40 @@ func NewEnvironmentsGetRequest(server string, ref string) (*http.Request, error)
 	return req, nil
 }
 
+// NewEnvironmentsDbAccessRequest constructs an http.Request for the EnvironmentsDbAccess method
+func NewEnvironmentsDbAccessRequest(server string, ref string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "ref", ref, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/environments/%s/db-access", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewEnvironmentsStatusRequest constructs an http.Request for the EnvironmentsStatus method
 func NewEnvironmentsStatusRequest(server string, ref string) (*http.Request, error) {
 	var err error
@@ -3428,6 +3597,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /environments/{ref} (the `EnvironmentsGet` operationId).
 	EnvironmentsGetWithResponse(ctx context.Context, ref string, reqEditors ...RequestEditorFn) (*EnvironmentsGetResponse, error)
+
+	// EnvironmentsDbAccessWithResponse Get database access parameters for an environment
+	//
+	// Returns the database-connection parameters the CLI needs for `drift env tunnel` and `drift env db`. `ref` is either the environment's UUID or its slug. When the Install does not publish ephemeral database access (or the lower tier is credentials-shaped), the response carries `published: false` — absence, not an error.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /environments/{ref}/db-access (the `EnvironmentsDbAccess` operationId).
+	EnvironmentsDbAccessWithResponse(ctx context.Context, ref string, reqEditors ...RequestEditorFn) (*EnvironmentsDbAccessResponse, error)
 
 	// EnvironmentsStatusWithResponse Get an environment's status
 	//
@@ -5313,6 +5491,103 @@ func (r EnvironmentsGetResponse) ContentType() string {
 	return ""
 }
 
+// EnvironmentsDbAccessResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsDbAccess
+type EnvironmentsDbAccessResponse429Headers struct {
+	RetryAfter int
+}
+
+type EnvironmentsDbAccessResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EnvironmentsDbAccess200JSONResponseBody
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsDbAccessResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnvironmentsDbAccessResponse) GetJSON200() *EnvironmentsDbAccess200JSONResponseBody {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EnvironmentsDbAccessResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnvironmentsDbAccessResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EnvironmentsDbAccessResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r EnvironmentsDbAccessResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsDbAccessResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EnvironmentsDbAccessResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EnvironmentsDbAccessResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r EnvironmentsDbAccessResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnvironmentsDbAccessResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnvironmentsDbAccessResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnvironmentsDbAccessResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // EnvironmentsStatusResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsStatus
 type EnvironmentsStatusResponse429Headers struct {
 	RetryAfter int
@@ -6660,6 +6935,21 @@ func (c *ClientWithResponses) EnvironmentsGetWithResponse(ctx context.Context, r
 		return nil, err
 	}
 	return ParseEnvironmentsGetResponse(rsp)
+}
+
+// EnvironmentsDbAccessWithResponse Get database access parameters for an environment
+//
+// Returns the database-connection parameters the CLI needs for `drift env tunnel` and `drift env db`. `ref` is either the environment's UUID or its slug. When the Install does not publish ephemeral database access (or the lower tier is credentials-shaped), the response carries `published: false` — absence, not an error.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /environments/{ref}/db-access (the `EnvironmentsDbAccess` operationId).
+func (c *ClientWithResponses) EnvironmentsDbAccessWithResponse(ctx context.Context, ref string, reqEditors ...RequestEditorFn) (*EnvironmentsDbAccessResponse, error) {
+	rsp, err := c.EnvironmentsDbAccess(ctx, ref, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsDbAccessResponse(rsp)
 }
 
 // EnvironmentsStatusWithResponse Get an environment's status
@@ -8463,6 +8753,94 @@ func ParseEnvironmentsGetResponse(rsp *http.Response) (*EnvironmentsGetResponse,
 	switch {
 	case rsp.StatusCode == 429:
 		var headers EnvironmentsGetResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnvironmentsDbAccessResponse parses an HTTP response from a EnvironmentsDbAccessWithResponse call
+func ParseEnvironmentsDbAccessResponse(rsp *http.Response) (*EnvironmentsDbAccessResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnvironmentsDbAccessResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnvironmentsDbAccess200JSONResponseBody
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsDbAccessResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {

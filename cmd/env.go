@@ -49,6 +49,8 @@ func newEnvCommand(app *App) *cobra.Command {
 		newEnvSwapBranchCommand(app),
 		newEnvRetryBuildCommand(app),
 		newEnvWaitCommand(app),
+		newEnvTunnelCommand(app),
+		newEnvDbCommand(app),
 	)
 	return cmd
 }

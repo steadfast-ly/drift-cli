@@ -35,6 +35,20 @@ drift doctor
 drift env create
 ```
 
+## Database access
+
+```sh
+# Open an interactive database session on a preview environment.
+drift env db my-env
+drift env db my-env --user dbadmin
+
+# Open only the tunnel (for a GUI client or custom tooling).
+drift env tunnel my-env
+drift env tunnel my-env --port 55432
+```
+
+Requires drift server >= 0.15.0.
+
 ## Documentation
 
 **[steadfast-ly.github.io/drift-cli](https://steadfast-ly.github.io/drift-cli/)**
