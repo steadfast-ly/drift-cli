@@ -208,6 +208,12 @@ func buildDbAccessMux(t *testing.T, fs *fakeServer, doc map[string]any, mode str
 				_ = json.NewEncoder(w).Encode(map[string]any{
 					"published": false,
 				})
+			case "route-miss-404":
+				// Simulates a pre-0.15.0 server whose catch-all route
+				// returns a DECODABLE 404 problem envelope for the
+				// unrecognised /db-access path — same URN as env-not-found.
+				problem(w, 404, "NOT_FOUND", "No such operation",
+					"urn:drift:problem:not-found", "")
 			case "undecodable-404":
 				// Simulates an old server that does not have the db-access
 				// endpoint at all — raw HTML, no problem envelope.
@@ -372,6 +378,85 @@ func TestTunnelPortValidation(t *testing.T) {
 				t.Fatalf("error does not name the flag: %s", errOut)
 			}
 		})
+	}
+}
+
+// --- old-server version-based 404 disambiguation ----------------------------
+
+// newDbAccessFakeWithVersion builds a fake drift whose discovery doc reports
+// the given version. Combined with mode "route-miss-404" it models the real
+// pre-0.15.0 behavior: the server's catch-all returns a decodable 404 problem
+// envelope for the unrecognised /db-access route.
+func newDbAccessFakeWithVersion(t *testing.T, mode, version string) *fakeServer {
+	t.Helper()
+	doc := defaultDoc("")
+	doc["version"] = version
+	fs := &fakeServer{}
+	mux := buildDbAccessMux(t, fs, doc, mode)
+	fs.Server = httptest.NewServer(mux)
+	t.Cleanup(fs.Close)
+	return fs
+}
+
+// TestTunnelOldServerRouteMiss404 verifies that a decodable 404 from a server
+// whose discovery version is < 0.15.0 produces the version-floor hint, not the
+// slug-resolution hint. This is the defect that was found against live EN
+// (0.14.0): the route-miss envelope has the same URN as env-not-found.
+func TestTunnelOldServerRouteMiss404(t *testing.T) {
+	srv := newDbAccessFakeWithVersion(t, "route-miss-404", "0.14.0")
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	_, errOut, code := h.run("env", "tunnel", "proof-alpha")
+	if code != cliexit.NotFound {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.NotFound, errOut)
+	}
+	if !strings.Contains(errOut, "0.15.0") {
+		t.Fatalf("version-floor hint missing: %s", errOut)
+	}
+	if !strings.Contains(errOut, "0.14.0") {
+		t.Fatalf("reported server version missing: %s", errOut)
+	}
+	if strings.Contains(errOut, "slug resolves") {
+		t.Fatalf("slug hint must not appear for a route miss: %s", errOut)
+	}
+}
+
+// TestDbOldServerRouteMiss404 verifies the same for env db.
+func TestDbOldServerRouteMiss404(t *testing.T) {
+	srv := newDbAccessFakeWithVersion(t, "route-miss-404", "0.14.0")
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	_, errOut, code := h.run("env", "db", "proof-alpha")
+	if code != cliexit.NotFound {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.NotFound, errOut)
+	}
+	if !strings.Contains(errOut, "0.15.0") {
+		t.Fatalf("version-floor hint missing: %s", errOut)
+	}
+	if !strings.Contains(errOut, "0.14.0") {
+		t.Fatalf("reported server version missing: %s", errOut)
+	}
+}
+
+// TestTunnelNewServerEnvNotFound verifies that a decodable 404 from a server
+// >= 0.15.0 produces the slug-resolution hint (the route exists, the
+// environment was not found).
+func TestTunnelNewServerEnvNotFound(t *testing.T) {
+	srv := newDbAccessFakeWithVersion(t, "404", "0.15.0")
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	_, errOut, code := h.run("env", "tunnel", "nope")
+	if code != cliexit.NotFound {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.NotFound, errOut)
+	}
+	if !strings.Contains(errOut, "slug resolves") {
+		t.Fatalf("slug hint missing: %s", errOut)
+	}
+	if strings.Contains(errOut, "0.15.0") {
+		t.Fatalf("version-floor hint must not appear when server is new enough: %s", errOut)
 	}
 }
 
