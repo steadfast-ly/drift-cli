@@ -399,6 +399,13 @@ func CheckSkew(clientVersion string, doc *Document) Skew {
 	return s
 }
 
+// VersionBefore reports whether version is strictly before floor. Returns false
+// when either string cannot be parsed (unknown is not "before").
+func VersionBefore(version, floor string) bool {
+	cmp, ok := compareSemver(version, floor)
+	return ok && cmp < 0
+}
+
 // compareSemver compares two dotted versions, ignoring any pre-release or build
 // suffix. Returns (-1, 0, 1) and whether the comparison was possible.
 //

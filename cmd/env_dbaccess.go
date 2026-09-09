@@ -9,6 +9,7 @@ import (
 	"github.com/steadfast-ly/drift-cli/internal/api"
 	"github.com/steadfast-ly/drift-cli/internal/client"
 	"github.com/steadfast-ly/drift-cli/internal/cliexit"
+	"github.com/steadfast-ly/drift-cli/internal/discovery"
 )
 
 // tunnelConfig holds the derived chisel client configuration, separated from
@@ -58,9 +59,8 @@ func clientHint(tc tunnelConfig) string {
 const dbAccessVersionHint = "0.15.0"
 
 // fetchDbAccess fetches the db-access params and returns the tunnelConfig.
-// Error handling (published:false, 404, undecodable 404, old server) is
-// identical across env tunnel and env db — factored here so they cannot
-// diverge.
+// Error handling (published:false, 404, old server) is identical across env
+// tunnel and env db — factored here so they cannot diverge.
 func fetchDbAccess(ctx context.Context, sess *Session, ref string, portOverride int) (*tunnelConfig, error) {
 	resp, err := sess.API.EnvironmentsDbAccessWithResponse(ctx, ref)
 	if err != nil {
@@ -68,16 +68,35 @@ func fetchDbAccess(ctx context.Context, sess *Session, ref string, portOverride 
 	}
 	if resp.JSON200 == nil {
 		e := client.Fail(resp, resp.Headers429)
-		if resp.JSON404 != nil {
-			// A decodable 404: the server knows the endpoint but the ref is
-			// not found. Hint at slug-resolution semantics.
-			e.Hint = fmt.Sprintf(
-				"a slug resolves only live environments; if %q was destroyed or canceled, address it by id", ref)
-		} else if resp.StatusCode() == 404 {
-			// An undecodable 404: the server does not have this endpoint at
-			// all (old server returning HTML). Override the generic hint with
-			// a version floor.
-			e.Hint = fmt.Sprintf("this command requires drift server >= %s; run `drift doctor` to check the server version", dbAccessVersionHint)
+		if resp.StatusCode() == 404 {
+			// Disambiguate route-miss from env-not-found.
+			//
+			// A pre-0.15.0 server has no /db-access route, so its
+			// catch-all returns a decodable 404 problem envelope with the
+			// same URN as a real env-not-found. Branching on the message
+			// text would be fragile, so we use the discovered server
+			// version: when the server is known to be below the version
+			// that introduced the endpoint, ANY 404 is a route miss.
+			serverVersion := ""
+			if sess.Discovery != nil && sess.Discovery.Document != nil {
+				serverVersion = sess.Discovery.Document.Version
+			}
+			if serverVersion != "" && discovery.VersionBefore(serverVersion, dbAccessVersionHint) {
+				e.Hint = fmt.Sprintf(
+					"this command requires drift server >= %s; this server reports %s — run `drift doctor`",
+					dbAccessVersionHint, serverVersion)
+			} else if resp.JSON404 != nil {
+				// Server is >= 0.15.0 (or unknown) and sent a typed 404:
+				// the route exists but the environment was not found.
+				e.Hint = fmt.Sprintf(
+					"a slug resolves only live environments; if %q was destroyed or canceled, address it by id", ref)
+			} else {
+				// Undecodable 404 from a server whose version we don't
+				// know — fall back to the version hint.
+				e.Hint = fmt.Sprintf(
+					"this command requires drift server >= %s; run `drift doctor` to check the server version",
+					dbAccessVersionHint)
+			}
 		}
 		return nil, e
 	}
