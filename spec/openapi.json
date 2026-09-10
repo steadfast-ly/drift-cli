@@ -699,6 +699,9 @@
           },
           "pagination": {
             "$ref": "#/components/schemas/PageInfo"
+          },
+          "truncated": {
+            "type": "boolean"
           }
         },
         "required": [
