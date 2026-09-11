@@ -503,6 +503,7 @@ type Branch struct {
 type BranchPage struct {
 	Items      []Branch `json:"items"`
 	Pagination PageInfo `json:"pagination"`
+	Truncated  *bool    `json:"truncated,omitempty"`
 }
 
 // CredentialIdentity defines model for CredentialIdentity.
@@ -1125,6 +1126,13 @@ type ClientInterface interface {
 	// Corresponds with POST /environments/{environmentId}/extend (the `EnvironmentsExtend` operationId).
 	EnvironmentsExtend(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsExtendJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// EnvironmentsRedeploy Redeploy an environment from deploy_failed
+	//
+	// Re-resolves repo configs, preflights images, and re-commits the gitops manifest. Only valid from deploy_failed with infrastructure ready.
+	//
+	// Corresponds with POST /environments/{environmentId}/redeploy (the `EnvironmentsRedeploy` operationId).
+	EnvironmentsRedeploy(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// EnvironmentsRelaunch Relaunch a terminal environment
 	//
 	// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL and visibility into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
@@ -1507,6 +1515,23 @@ func (c *Client) EnvironmentsExtendWithBody(ctx context.Context, environmentId o
 // Corresponds with POST /environments/{environmentId}/extend (the `EnvironmentsExtend` operationId).
 func (c *Client) EnvironmentsExtend(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsExtendJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewEnvironmentsExtendRequest(c.Server, environmentId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsRedeploy Redeploy an environment from deploy_failed
+//
+// Re-resolves repo configs, preflights images, and re-commits the gitops manifest. Only valid from deploy_failed with infrastructure ready.
+//
+// Corresponds with POST /environments/{environmentId}/redeploy (the `EnvironmentsRedeploy` operationId).
+func (c *Client) EnvironmentsRedeploy(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsRedeployRequest(c.Server, environmentId)
 	if err != nil {
 		return nil, err
 	}
@@ -2460,6 +2485,40 @@ func NewEnvironmentsExtendRequestWithBody(server string, environmentId openapi_t
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewEnvironmentsRedeployRequest constructs an http.Request for the EnvironmentsRedeploy method
+func NewEnvironmentsRedeployRequest(server string, environmentId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/environments/%s/redeploy", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -3490,6 +3549,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /environments/{environmentId}/extend (the `EnvironmentsExtend` operationId).
 	EnvironmentsExtendWithResponse(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsExtendJSONRequestBody, reqEditors ...RequestEditorFn) (*EnvironmentsExtendResponse, error)
 
+	// EnvironmentsRedeployWithResponse Redeploy an environment from deploy_failed
+	//
+	// Re-resolves repo configs, preflights images, and re-commits the gitops manifest. Only valid from deploy_failed with infrastructure ready.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /environments/{environmentId}/redeploy (the `EnvironmentsRedeploy` operationId).
+	EnvironmentsRedeployWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsRedeployResponse, error)
+
 	// EnvironmentsRelaunchWithResponse Relaunch a terminal environment
 	//
 	// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL and visibility into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
@@ -4507,6 +4575,117 @@ func (r EnvironmentsExtendResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r EnvironmentsExtendResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// EnvironmentsRedeployResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsRedeploy
+type EnvironmentsRedeployResponse429Headers struct {
+	RetryAfter int
+}
+
+type EnvironmentsRedeployResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EnvironmentMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsRedeployResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnvironmentsRedeployResponse) GetJSON200() *EnvironmentMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EnvironmentsRedeployResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnvironmentsRedeployResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EnvironmentsRedeployResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r EnvironmentsRedeployResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r EnvironmentsRedeployResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsRedeployResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EnvironmentsRedeployResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r EnvironmentsRedeployResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EnvironmentsRedeployResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r EnvironmentsRedeployResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnvironmentsRedeployResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnvironmentsRedeployResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnvironmentsRedeployResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -6757,6 +6936,21 @@ func (c *ClientWithResponses) EnvironmentsExtendWithResponse(ctx context.Context
 	return ParseEnvironmentsExtendResponse(rsp)
 }
 
+// EnvironmentsRedeployWithResponse Redeploy an environment from deploy_failed
+//
+// Re-resolves repo configs, preflights images, and re-commits the gitops manifest. Only valid from deploy_failed with infrastructure ready.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /environments/{environmentId}/redeploy (the `EnvironmentsRedeploy` operationId).
+func (c *ClientWithResponses) EnvironmentsRedeployWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsRedeployResponse, error) {
+	rsp, err := c.EnvironmentsRedeploy(ctx, environmentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsRedeployResponse(rsp)
+}
+
 // EnvironmentsRelaunchWithResponse Relaunch a terminal environment
 //
 // Clones a `destroyed` or `canceled` environment's repositories, branches, TTL and visibility into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
@@ -7856,6 +8050,108 @@ func ParseEnvironmentsExtendResponse(rsp *http.Response) (*EnvironmentsExtendRes
 	switch {
 	case rsp.StatusCode == 429:
 		var headers EnvironmentsExtendResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnvironmentsRedeployResponse parses an HTTP response from a EnvironmentsRedeployWithResponse call
+func ParseEnvironmentsRedeployResponse(rsp *http.Response) (*EnvironmentsRedeployResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnvironmentsRedeployResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnvironmentMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsRedeployResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
