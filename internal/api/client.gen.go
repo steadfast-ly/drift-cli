@@ -1108,6 +1108,13 @@ type ClientInterface interface {
 	// Corresponds with POST /environments/{environmentId}/cancel (the `EnvironmentsCancel` operationId).
 	EnvironmentsCancel(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// EnvironmentsTriggerE2e Trigger an e2e test run
+	//
+	// Triggers an e2e test run against the environment. Only valid when the environment is running with infrastructure ready. Returns 409 if a run is already in progress. Returns 502 if the workflow dispatch fails.
+	//
+	// Corresponds with POST /environments/{environmentId}/e2e (the `EnvironmentsTriggerE2e` operationId).
+	EnvironmentsTriggerE2e(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// EnvironmentsExtendWithBody Extend an environment's TTL
 	//
 	// Adds hours to the expiry. Bounded per request and cumulatively: a request that would carry the total past drift's ceiling is rejected with 400 and nothing is changed. NOT idempotent — two calls extend twice.
@@ -1477,6 +1484,23 @@ func (c *Client) EnvironmentsDestroy(ctx context.Context, environmentId openapi_
 // Corresponds with POST /environments/{environmentId}/cancel (the `EnvironmentsCancel` operationId).
 func (c *Client) EnvironmentsCancel(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewEnvironmentsCancelRequest(c.Server, environmentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsTriggerE2e Trigger an e2e test run
+//
+// Triggers an e2e test run against the environment. Only valid when the environment is running with infrastructure ready. Returns 409 if a run is already in progress. Returns 502 if the workflow dispatch fails.
+//
+// Corresponds with POST /environments/{environmentId}/e2e (the `EnvironmentsTriggerE2e` operationId).
+func (c *Client) EnvironmentsTriggerE2e(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsTriggerE2eRequest(c.Server, environmentId)
 	if err != nil {
 		return nil, err
 	}
@@ -2425,6 +2449,40 @@ func NewEnvironmentsCancelRequest(server string, environmentId openapi_types.UUI
 	}
 
 	operationPath := fmt.Sprintf("/environments/%s/cancel", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewEnvironmentsTriggerE2eRequest constructs an http.Request for the EnvironmentsTriggerE2e method
+func NewEnvironmentsTriggerE2eRequest(server string, environmentId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/environments/%s/e2e", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -3531,6 +3589,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /environments/{environmentId}/cancel (the `EnvironmentsCancel` operationId).
 	EnvironmentsCancelWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsCancelResponse, error)
 
+	// EnvironmentsTriggerE2eWithResponse Trigger an e2e test run
+	//
+	// Triggers an e2e test run against the environment. Only valid when the environment is running with infrastructure ready. Returns 409 if a run is already in progress. Returns 502 if the workflow dispatch fails.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /environments/{environmentId}/e2e (the `EnvironmentsTriggerE2e` operationId).
+	EnvironmentsTriggerE2eWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsTriggerE2eResponse, error)
+
 	// EnvironmentsExtendWithBodyWithResponse Extend an environment's TTL
 	//
 	// Adds hours to the expiry. Bounded per request and cumulatively: a request that would carry the total past drift's ceiling is rejected with 400 and nothing is changed. NOT idempotent — two calls extend twice.
@@ -4471,6 +4538,123 @@ func (r EnvironmentsCancelResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r EnvironmentsCancelResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// EnvironmentsTriggerE2eResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsTriggerE2e
+type EnvironmentsTriggerE2eResponse429Headers struct {
+	RetryAfter int
+}
+
+type EnvironmentsTriggerE2eResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		E2eRunId      openapi_types.UUID `json:"e2eRunId"`
+		EnvironmentId openapi_types.UUID `json:"environmentId"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsTriggerE2eResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnvironmentsTriggerE2eResponse) GetJSON200() *struct {
+	E2eRunId      openapi_types.UUID `json:"e2eRunId"`
+	EnvironmentId openapi_types.UUID `json:"environmentId"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EnvironmentsTriggerE2eResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnvironmentsTriggerE2eResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EnvironmentsTriggerE2eResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r EnvironmentsTriggerE2eResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r EnvironmentsTriggerE2eResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsTriggerE2eResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EnvironmentsTriggerE2eResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r EnvironmentsTriggerE2eResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EnvironmentsTriggerE2eResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r EnvironmentsTriggerE2eResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnvironmentsTriggerE2eResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnvironmentsTriggerE2eResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnvironmentsTriggerE2eResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -6906,6 +7090,21 @@ func (c *ClientWithResponses) EnvironmentsCancelWithResponse(ctx context.Context
 	return ParseEnvironmentsCancelResponse(rsp)
 }
 
+// EnvironmentsTriggerE2eWithResponse Trigger an e2e test run
+//
+// Triggers an e2e test run against the environment. Only valid when the environment is running with infrastructure ready. Returns 409 if a run is already in progress. Returns 502 if the workflow dispatch fails.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /environments/{environmentId}/e2e (the `EnvironmentsTriggerE2e` operationId).
+func (c *ClientWithResponses) EnvironmentsTriggerE2eWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsTriggerE2eResponse, error) {
+	rsp, err := c.EnvironmentsTriggerE2e(ctx, environmentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsTriggerE2eResponse(rsp)
+}
+
 // EnvironmentsExtendWithBodyWithResponse Extend an environment's TTL
 //
 // Adds hours to the expiry. Bounded per request and cumulatively: a request that would carry the total past drift's ceiling is rejected with 400 and nothing is changed. NOT idempotent — two calls extend twice.
@@ -7955,6 +8154,111 @@ func ParseEnvironmentsCancelResponse(rsp *http.Response) (*EnvironmentsCancelRes
 	switch {
 	case rsp.StatusCode == 429:
 		var headers EnvironmentsCancelResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnvironmentsTriggerE2eResponse parses an HTTP response from a EnvironmentsTriggerE2eWithResponse call
+func ParseEnvironmentsTriggerE2eResponse(rsp *http.Response) (*EnvironmentsTriggerE2eResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnvironmentsTriggerE2eResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			E2eRunId      openapi_types.UUID `json:"e2eRunId"`
+			EnvironmentId openapi_types.UUID `json:"environmentId"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsTriggerE2eResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
