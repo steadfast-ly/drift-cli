@@ -1062,7 +1062,7 @@ type ClientInterface interface {
 	// Corresponds with GET /audit-log/actors (the `AuditActors` operationId).
 	AuditActors(ctx context.Context, params *AuditActorsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// AuthWhoami Describe the calling credential
+	// AuthWhoami Describe the calling credential [spec-sync drive test]
 	//
 	// Reports the caller's own email, effective role, and — for a bearer credential — its label and expiry. Takes no parameters and can only describe the credential presented on the request; there is no way to ask about another principal or to list the credentials one holds.
 	//
@@ -1381,7 +1381,7 @@ func (c *Client) AuditActors(ctx context.Context, params *AuditActorsParams, req
 	return c.Client.Do(req)
 }
 
-// AuthWhoami Describe the calling credential
+// AuthWhoami Describe the calling credential [spec-sync drive test]
 //
 // Reports the caller's own email, effective role, and — for a bearer credential — its label and expiry. Takes no parameters and can only describe the credential presented on the request; there is no way to ask about another principal or to list the credentials one holds.
 //
@@ -3477,7 +3477,7 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /audit-log/actors (the `AuditActors` operationId).
 	AuditActorsWithResponse(ctx context.Context, params *AuditActorsParams, reqEditors ...RequestEditorFn) (*AuditActorsResponse, error)
 
-	// AuthWhoamiWithResponse Describe the calling credential
+	// AuthWhoamiWithResponse Describe the calling credential [spec-sync drive test]
 	//
 	// Reports the caller's own email, effective role, and — for a bearer credential — its label and expiry. Takes no parameters and can only describe the credential presented on the request; there is no way to ask about another principal or to list the credentials one holds.
 	//
@@ -6816,7 +6816,7 @@ func (c *ClientWithResponses) AuditActorsWithResponse(ctx context.Context, param
 	return ParseAuditActorsResponse(rsp)
 }
 
-// AuthWhoamiWithResponse Describe the calling credential
+// AuthWhoamiWithResponse Describe the calling credential [spec-sync drive test]
 //
 // Reports the caller's own email, effective role, and — for a bearer credential — its label and expiry. Takes no parameters and can only describe the credential presented on the request; there is no way to ask about another principal or to list the credentials one holds.
 //

@@ -1273,7 +1273,7 @@
     "/auth/whoami": {
       "get": {
         "operationId": "auth.whoami",
-        "summary": "Describe the calling credential",
+        "summary": "Describe the calling credential [spec-sync drive test]",
         "description": "Reports the caller's own email, effective role, and — for a bearer credential — its label and expiry. Takes no parameters and can only describe the credential presented on the request; there is no way to ask about another principal or to list the credentials one holds.",
         "tags": [
           "auth"
