@@ -43,6 +43,9 @@ var (
 	policyRelaunch = waitPolicy{api.EnvironmentStatusRunning, 30 * time.Minute, true}
 	// No build — scale up and wait for ArgoCD to report healthy.
 	policyWake = waitPolicy{api.EnvironmentStatusRunning, 10 * time.Minute, true}
+	// No build — re-resolve and re-commit the gitops manifest, then wait
+	// for ArgoCD to report healthy.
+	policyRedeploy = waitPolicy{api.EnvironmentStatusRunning, 10 * time.Minute, true}
 	// One build, then the rollout that follows it.
 	policyRetryBuild = waitPolicy{api.EnvironmentStatusRunning, 30 * time.Minute, true}
 	// Destroy convergence is a cron with an escalation window; ten minutes is
@@ -441,6 +444,36 @@ func newEnvWakeCommand(app *App) *cobra.Command {
 		},
 	}
 	flags.register(cmd, policyWake)
+	return cmd
+}
+
+func newEnvRedeployCommand(app *App) *cobra.Command {
+	flags := &waitFlags{}
+	cmd := &cobra.Command{
+		Use:   "redeploy <slug-or-id>",
+		Short: "Redeploy a failed environment",
+		Long: "Re-resolve configs and re-commit the gitops manifest for a\n" +
+			"deploy_failed environment.\n\n" +
+			"Only valid from deploy_failed — the environment's existing builds\n" +
+			"are reused, so no new build is dispatched.\n\n" +
+			"Blocks until the environment is running again.\n\n" +
+			cliexit.Help,
+		Args: exactArgs(1, "the environment slug or id"),
+		RunE: func(c *cobra.Command, args []string) error {
+			return runMutation(c.Context(), app, "redeploy", args[0], policyRedeploy, flags,
+				func(ctx context.Context, sess *Session, e *envRef) error {
+					resp, err := sess.API.EnvironmentsRedeployWithResponse(ctx, e.ID)
+					if err != nil {
+						return client.Transport(err, sess.Resolved.Endpoint)
+					}
+					if resp.JSON200 == nil {
+						return client.Fail(resp, resp.Headers429)
+					}
+					return nil
+				})
+		},
+	}
+	flags.register(cmd, policyRedeploy)
 	return cmd
 }
 

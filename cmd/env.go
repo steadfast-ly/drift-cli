@@ -25,7 +25,7 @@ func newEnvCommand(app *App) *cobra.Command {
 			"canceled, so a slug reused over time addresses the one live\n" +
 			"environment holding it; address a torn-down environment by id.\n\n" +
 			"Commands that start work BLOCK by default and take --no-wait:\n" +
-			"create, relaunch, wake, retry-build, add-service and swap-branch.\n" +
+			"create, relaunch, wake, redeploy, retry-build, add-service and swap-branch.\n" +
 			"Commands that end it return immediately and take --wait: rm, sleep\n" +
 			"and cancel. `drift env wait` follows either afterwards.\n\n" +
 			cliexit.Help,
@@ -41,6 +41,7 @@ func newEnvCommand(app *App) *cobra.Command {
 		newEnvRelaunchCommand(app),
 		newEnvSleepCommand(app),
 		newEnvWakeCommand(app),
+		newEnvRedeployCommand(app),
 		newEnvExtendCommand(app),
 		newEnvVisibilityCommand(app, true),
 		newEnvVisibilityCommand(app, false),

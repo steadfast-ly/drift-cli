@@ -544,6 +544,7 @@ func TestDefaultWaitPolicyPerCommand(t *testing.T) {
 		{"wake blocks", []string{"env", "wake", "proof-alpha"}, true},
 		{"relaunch blocks", []string{"env", "relaunch", "proof-alpha", "--yes"}, true},
 		{"retry-build blocks", []string{"env", "retry-build", "proof-alpha"}, true},
+		{"redeploy blocks", []string{"env", "redeploy", "proof-alpha"}, true},
 		{"rm returns", []string{"env", "rm", "proof-alpha", "--yes"}, false},
 		{"sleep returns", []string{"env", "sleep", "proof-alpha"}, false},
 		{"cancel returns", []string{"env", "cancel", "proof-alpha"}, false},
@@ -676,6 +677,102 @@ func TestWaitAndNoWaitTogetherIsAUsageError(t *testing.T) {
 	h := newMutHarness(t, s)
 	if _, _, code := h.run("env", "sleep", "proof-alpha", "--wait", "--no-wait"); code != cliexit.Usage {
 		t.Fatalf("exit %d, want %d", code, cliexit.Usage)
+	}
+}
+
+// --- redeploy ---------------------------------------------------------------
+
+func TestRedeployCallsTheServerAndWaitsForRunning(t *testing.T) {
+	s := newMutServer(t)
+	s.statuses = []string{"deploy_failed", "deploying", "running"}
+	h := newMutHarness(t, s)
+
+	out, errOut, code := h.run("env", "redeploy", "proof-alpha")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if s.seen("redeploy") != 1 {
+		t.Fatalf("expected one redeploy call, got %d; calls: %v", s.seen("redeploy"), s.calls)
+	}
+	if !strings.Contains(out, "running") {
+		t.Fatalf("final state not reported: %s", out)
+	}
+	if !strings.Contains(out, "true") {
+		t.Fatalf("waited column not true: %s", out)
+	}
+}
+
+func TestRedeployNoWaitReturnsImmediately(t *testing.T) {
+	s := newMutServer(t)
+	s.statuses = []string{"deploying"}
+	h := newMutHarness(t, s)
+
+	out, errOut, code := h.run("env", "redeploy", "proof-alpha", "--no-wait")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if s.seen("redeploy") != 1 {
+		t.Fatalf("expected one redeploy call; calls: %v", s.calls)
+	}
+	if !strings.Contains(out, "deploying") {
+		t.Fatalf("status after mutation not reported: %s", out)
+	}
+	if !strings.Contains(out, "false") {
+		t.Fatalf("waited column not false: %s", out)
+	}
+}
+
+func TestRedeployNotFoundExitsNonZero(t *testing.T) {
+	s := newMutServer(t)
+	h := newMutHarness(t, s)
+
+	_, _, code := h.run("env", "redeploy", "nonexistent")
+	if code == cliexit.OK {
+		t.Fatal("expected a non-zero exit for a missing env")
+	}
+	if s.seen("redeploy") != 0 {
+		t.Fatal("the redeploy endpoint was called despite a 404 on resolve")
+	}
+}
+
+func TestRedeployConflictSurfacesTheRefusal(t *testing.T) {
+	s := newMutServer(t)
+	s.statuses = []string{"running"}
+	h := newMutHarness(t, s)
+
+	// Intercept the redeploy POST and return a 409, mirroring the server's
+	// invalid-transition problem shape.
+	base := s.Config.Handler
+	s.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rest := strings.TrimPrefix(r.URL.Path, "/api/v1/environments/")
+		if r.Method == http.MethodPost && strings.HasSuffix(rest, "/redeploy") {
+			s.record("redeploy")
+			state := "running"
+			event := "REDEPLOY"
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(409)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"defined": true, "code": "CONFLICT", "status": 409,
+				"message": "Cannot redeploy environment in running state",
+				"data": map[string]any{
+					"type":  "urn:drift:problem:invalid-transition",
+					"state": state, "event": event,
+				},
+			})
+			return
+		}
+		base.ServeHTTP(w, r)
+	})
+
+	_, errOut, code := h.run("env", "redeploy", "proof-alpha")
+	if code != cliexit.Conflict {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.Conflict, errOut)
+	}
+	if s.seen("redeploy") != 1 {
+		t.Fatalf("expected exactly one redeploy call; calls: %v", s.calls)
+	}
+	if !strings.Contains(errOut, "Cannot redeploy") {
+		t.Fatalf("the refusal message was not surfaced: %s", errOut)
 	}
 }
 
@@ -1045,6 +1142,7 @@ func TestGoldenOutput(t *testing.T) {
 		// promotes scripts the promotion status queue, when the case needs one.
 		statuses []string
 	}{
+		{"env_redeploy_table", []string{"env", "redeploy", "proof-alpha", "--no-wait"}, []string{"deploying"}},
 		{"env_sleep_table", []string{"env", "sleep", "proof-alpha"}, []string{"sleeping"}},
 		{"env_sleep_json", []string{"env", "sleep", "proof-alpha", "-o", "json"}, []string{"sleeping"}},
 		{"env_rm_wide", []string{"env", "rm", "proof-alpha", "--yes", "-o", "wide"}, []string{"destroying"}},

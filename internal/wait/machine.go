@@ -126,6 +126,7 @@ var envMachine = map[api.EnvironmentStatus][]edge{
 	api.EnvironmentStatusDeployFailed: {
 		{"ARGOCD_HEALTHY", api.EnvironmentStatusRunning, System},
 		{"ARGOCD_PROGRESSING", api.EnvironmentStatusDeploying, System},
+		{"REDEPLOY", api.EnvironmentStatusDeploying, User},
 		{"REBUILD", api.EnvironmentStatusBuilding, User},
 		{"DESTROY", api.EnvironmentStatusDestroying, User},
 		{"TOGGLE_VISIBILITY", api.EnvironmentStatusDeployFailed, User},

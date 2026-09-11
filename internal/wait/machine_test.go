@@ -65,6 +65,30 @@ func assertSameStates(t *testing.T, what string, want, got []string) {
 	}
 }
 
+// User-origin edges are invisible to Reachable() (which walks System edges
+// only) and to every wait test (which drives a mock server). Without an
+// explicit pin, one can be deleted and every test stays green. This assertion
+// catches that for REDEPLOY; pre-existing User edges are a follow-up.
+func TestRedeployEdgeExistsFromDeployFailed(t *testing.T) {
+	edges := envMachine[api.EnvironmentStatusDeployFailed]
+	found := false
+	for _, e := range edges {
+		if e.Event == "REDEPLOY" {
+			if e.To != api.EnvironmentStatusDeploying {
+				t.Fatalf("REDEPLOY targets %s, want deploying", e.To)
+			}
+			if e.Origin != User {
+				t.Fatalf("REDEPLOY origin is %d, want User (%d)", e.Origin, User)
+			}
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("deploy_failed has no REDEPLOY edge — the machine does not model the redeploy verb")
+	}
+}
+
 // THE test. `deploy_failed` reads like a terminal failure and is not one: the
 // machine has ARGOCD_HEALTHY and ARGOCD_PROGRESSING leading out of it, both
 // server-raised, which is what makes `deploying -> deploy_failed -> running` an

@@ -1,0 +1,4 @@
+Action:  redeploy
+Slug:    proof-alpha
+Status:  deploying
+Waited:  false
