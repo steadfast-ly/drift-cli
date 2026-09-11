@@ -11,6 +11,20 @@ repository under Apache-2.0").
 If you believe you have found a security vulnerability, contact Steadfast
 through your engagement.
 
+## Spec and generated client
+
+A spec change (`spec/openapi.json`) and its regenerated client
+(`internal/api/client.gen.go`) must land in the same commit. CI enforces this
+with `make check-generated` -- a commit that carries one without the other
+fails the build.
+
+For server releases, `.github/workflows/spec-sync.yaml` automates the update:
+the server pushes the new spec to a `spec-sync/` branch, the workflow
+regenerates the client into the same commit, and opens a CI-checked PR.
+
+For manual updates, `make vendor-spec SERVER_REPO=/path/to/drift/checkout`
+revendors and regenerates in one step.
+
 ## Filing issues
 
 Findings and improvement ideas should be raised with the maintainer for triage

@@ -102,7 +102,8 @@ check-generated: check-codegen-version
 
 # Revendor the contract from a server checkout, then regenerate. The servers are
 # VPN-gated and this repository's CI can reach neither, so the spec travels as a
-# committed artifact rather than as a live fetch (DESIGN.md §4).
+# committed artifact rather than as a live fetch (see CONTRIBUTING.md). For
+# server releases, .github/workflows/spec-sync.yaml automates this path.
 .PHONY: vendor-spec
 vendor-spec: ## SERVER_REPO=/path/to/drift make vendor-spec
 	@test -n "$(SERVER_REPO)" || { echo "set SERVER_REPO=/path/to/a/drift/checkout"; exit 1; }

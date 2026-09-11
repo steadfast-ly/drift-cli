@@ -1,0 +1,153 @@
+# Spec sync -- regenerate the generated client when the server pushes a new
+# openapi.json, so the spec and its generated client always land in the same
+# commit (the "same-commit invariant").
+#
+# WHY A BRANCH PUSH (not repository_dispatch / artifact):
+#   The server is private and its openapi.json (~143 KB) exceeds the
+#   client_payload cap (~64 KB). No release asset or workflow artifact is
+#   published either -- the spec exists only in the release job's checkout.
+#   The server's existing spec-push machinery writes the file into a branch on
+#   this repo via a PAT, which is the delivery AND the trigger in one step.
+#
+# WHY AN APP TOKEN FOR EVERY WRITE:
+#   Events caused by the default GITHUB_TOKEN trigger NO workflows (GitHub's
+#   anti-recursion guard). A GITHUB_TOKEN-created PR would open with no checks;
+#   a GITHUB_TOKEN push to an open PR's head would fire no CI. All writes
+#   (force-with-lease push, gh pr create) therefore use a token minted from the
+#   estate GitHub App, so that pull_request / push CI fires on the final head.
+#
+# WHY THE SELF-RETRIGGER CONVERGES:
+#   The App-token push to the spec-sync/* branch re-triggers THIS workflow.
+#   The second run regenerates, finds no diff (the no-op guard), finds the PR
+#   already exists, and exits cleanly. The no-diff guard is the recursion
+#   terminator; no marker-commit or actor-based guards are needed.
+#
+# WHY AMEND (not a second commit):
+#   The invariant is "same commit". A two-commit PR merged with a merge commit
+#   would leave an intermediate spec-only commit in history. Amending keeps the
+#   PR at exactly one commit carrying both files.
+
+name: Spec sync
+
+on:
+  push:
+    branches: ['spec-sync/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spec-sync-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # actions/checkout persists GITHUB_TOKEN as an http extraheader for
+          # all github.com HTTPS requests; headers are additive, so the explicit
+          # App-token URL on the push would still authenticate as GITHUB_TOKEN
+          # and silently fire no workflows.
+          persist-credentials: false
+
+      - name: Fetch main
+        run: git fetch origin main
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.5"
+          cache: true
+
+      # Pinned exactly. A floating generator would make `check-generated`
+      # fail on an unrelated upstream release and turn the contract gate into
+      # noise nobody trusts.
+      - name: Install oapi-codegen
+        run: go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0
+
+      - name: Mint the repo-scoped App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.RENOVATE_APP_ID }}
+          private-key: ${{ secrets.RENOVATE_APP_PRIVATE_KEY }}
+
+      - name: Check for spec changes against main
+        id: spec-diff
+        run: |
+          if git diff --quiet origin/main HEAD -- spec/openapi.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Regenerate client
+        if: steps.spec-diff.outputs.changed == 'true'
+        run: make generate
+
+      - name: Amend with regenerated client if changed
+        id: amend
+        if: steps.spec-diff.outputs.changed == 'true'
+        run: |
+          echo "pre_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          if git diff --quiet -- internal/api/client.gen.go; then
+            echo "Generated client unchanged; no amend needed."
+            echo "amended=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Read the current commit message and append a regen note.
+          msg="$(git log -1 --format=%B)"
+          msg="${msg}
+
+          Regenerated internal/api/client.gen.go from the updated spec.
+
+          Refs #9"
+          git add internal/api/client.gen.go
+          git -c user.name="drift-release[bot]" \
+              -c user.email="drift-release@users.noreply.github.com" \
+              commit --amend -m "$msg"
+          echo "amended=true" >> "$GITHUB_OUTPUT"
+
+      - name: Push amended commit
+        if: steps.amend.outputs.amended == 'true'
+        env:
+          PRE_SHA: ${{ steps.amend.outputs.pre_sha }}
+        run: |
+          # Explicit lease: bare --force-with-lease has no remote-tracking ref
+          # for a URL destination; leasing on the pre-amend SHA pins exactly
+          # "replace the server's commit and nothing newer".
+          test -n "$PRE_SHA"
+          git push --force-with-lease="refs/heads/${GITHUB_REF_NAME}:${PRE_SHA}" \
+            "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}.git" \
+            "HEAD:$GITHUB_REF"
+
+      - name: Open PR if none exists
+        if: steps.spec-diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          branch="${GITHUB_REF_NAME}"
+          version="${GITHUB_REF_NAME#spec-sync/}"
+          existing="$(gh pr list --head "$branch" --json number --jq 'length')"
+          if [ "$existing" -gt 0 ]; then
+            echo "PR already exists for $branch; skipping creation."
+            exit 0
+          fi
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "chore(spec): sync openapi.json + client from drift ${version}" \
+            --body "$(cat <<'BODY'
+          Syncs `spec/openapi.json` and regenerates `internal/api/client.gen.go` so
+          that both land in the same commit -- the same-commit invariant that
+          `make check-generated` enforces in CI.
+
+          This PR is CI-checked when opened; a green run is expected but not
+          promised. If CI is red, the spec change breaks handwritten CLI code and
+          the fix belongs on this branch before merge.
+
+          Refs #9
+          BODY
+          )"
