@@ -72,6 +72,7 @@ return immediately. `--wait` and `--no-wait` override.
 | `rm` | returns | `destroyed` | 20m |
 | `sleep` | returns | `sleeping` | 10m |
 | `cancel` | returns | `canceled` | 5m |
+| `e2e` | returns | audit entry | 125m |
 
 `drift env wait <slug-or-id> --for <state>` follows any of them afterwards:
 
@@ -175,6 +176,23 @@ drift env tunnel my-env
 The tunnel blocks until Ctrl-C. `--port` overrides the local bind port.
 
 Both commands require drift server >= 0.15.0.
+
+## End-to-end testing
+
+Trigger an e2e test run against an environment:
+
+```bash
+# Fire and observe -- prints the run id and returns.
+drift env e2e my-env
+
+# Wait for the result.
+drift env e2e my-env --wait
+drift env e2e my-env --wait --wait-timeout 60m
+```
+
+Without `--wait`, the command returns immediately (exit 0) after the server
+accepts the trigger. With `--wait`, it polls the audit log until the run
+completes: exit 0 on pass, non-zero on failure.
 
 ## Destroy
 
