@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -51,9 +52,11 @@ func newEnvCreateCommand(app *App) *cobra.Command {
 			"nothing is inferred and --slug and --repo are required. Inference is\n" +
 			"a convenience for a human at a keyboard who can see what it proposed\n" +
 			"and say no; a script must say what it means.\n\n" +
-			"--repo takes `name:branch` and repeats, which is how a multi-service\n" +
-			"environment is described. The name is resolved to an id client-side\n" +
-			"against the server's repository list.\n\n" +
+			"--repo takes `name:branch` (or `name:branch:pr` to attach a pull\n" +
+			"request number) and repeats, which is how a multi-service environment\n" +
+			"is described. Without a PR the server resolves it from the branch.\n" +
+			"The name is resolved to an id client-side against the server's\n" +
+			"repository list.\n\n" +
 			"Blocks until the environment is running.\n\n" + cliexit.Help,
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
@@ -63,10 +66,10 @@ func newEnvCreateCommand(app *App) *cobra.Command {
 	fl := cmd.Flags()
 	fl.StringVar(&f.slug, "slug", "", "environment slug (inferred from the branch name)")
 	fl.StringVar(&f.ticket, "ticket", "", "issue key, e.g. PROJ-1234 (inferred from the branch name)")
-	fl.StringArrayVar(&f.repos, "repo", nil, "`name:branch` to include; repeat for a multi-service environment")
+	fl.StringArrayVar(&f.repos, "repo", nil, "`name:branch` or `name:branch:pr` to include; repeat for multi-service")
 	fl.IntVar(&f.ttlHours, "ttl", 0, "lifetime in hours (server default 48, maximum 120)")
 	fl.BoolVar(&f.public, "public", false, "make the environment reachable without the VPN")
-	fl.IntVar(&f.prNumber, "pr", 0, "pull request number (inferred via gh)")
+	fl.IntVar(&f.prNumber, "pr", 0, "pull request number for a single-repo plan (inferred via gh); use name:branch:pr for multi-service")
 	fl.StringVar(&f.prTitle, "pr-title", "", "pull request title (inferred via gh)")
 	fl.StringVar(&f.prURL, "pr-url", "", "pull request URL (inferred via gh)")
 	fl.BoolVar(&f.yes, "yes", false, "skip the confirmation prompt")
@@ -82,7 +85,6 @@ type plan struct {
 	TTL    int
 	Public bool
 	Repos  []planRepo
-	PR     *infer.PullRequest
 	// Inferred records which fields came from the working directory, so the
 	// confirmation can show what was guessed rather than what was typed.
 	Inferred map[string]bool
@@ -92,6 +94,11 @@ type planRepo struct {
 	Name   string
 	Branch string
 	ID     uuid.UUID
+	// PR is the pull request for THIS repo, if any. When nil the server
+	// resolves it (exactly-one-open-PR by head branch, else null). Populated
+	// by an explicit `name:branch:pr` segment, the `--pr` flag (single repo
+	// only), or inference (single inferred repo only).
+	PR *infer.PullRequest
 }
 
 func runEnvCreate(ctx context.Context, app *App, f *createFlags) error {
@@ -204,17 +211,18 @@ func (p *plan) body() api.EnvironmentsCreateJSONRequestBody {
 	for i, r := range p.Repos {
 		body.Repos[i].RepositoryId = r.ID
 		body.Repos[i].Branch = r.Branch
-		// The pull request describes ONE branch, so it rides on every service
-		// only in the case that produced it: a single inferred repository built
-		// from the branch the PR is open against. `buildPlan` is where that is
-		// decided; by here `p.PR` is either meant for these services or nil.
-		if p.PR != nil {
-			n, title, url := p.PR.Number, p.PR.Title, p.PR.URL
+		// Each repo carries its OWN pull request. When nil the server resolves
+		// (exactly-one-open-PR by head branch, else null), so nothing is sent
+		// and the server is authoritative.
+		if r.PR != nil {
+			n := r.PR.Number
 			body.Repos[i].PrNumber = &n
-			if title != "" {
+			if r.PR.Title != "" {
+				title := r.PR.Title
 				body.Repos[i].PrTitle = &title
 			}
-			if url != "" {
+			if r.PR.URL != "" {
+				url := r.PR.URL
 				body.Repos[i].PrUrl = &url
 			}
 		}
@@ -248,26 +256,45 @@ func buildPlan(f *createFlags, d infer.Result, inferring bool) (*plan, error) {
 	switch {
 	case len(f.repos) > 0:
 		for _, spec := range f.repos {
-			name, branch, err := splitRepoBranch(spec)
+			name, branch, pr, err := splitRepoBranchPR(spec)
 			if err != nil {
 				return nil, err
 			}
-			p.Repos = append(p.Repos, planRepo{Name: name, Branch: branch})
+			r := planRepo{Name: name, Branch: branch}
+			if pr > 0 {
+				r.PR = &infer.PullRequest{Number: pr}
+			}
+			p.Repos = append(p.Repos, r)
 		}
 	case inferring && d.Remote != "" && d.Branch != "":
 		p.Repos = append(p.Repos, planRepo{Name: d.Remote, Branch: d.Branch})
 		p.Inferred["repo"] = true
 	}
 
-	// A PR given on the command line wins whole; otherwise the inferred one is
-	// used only when a single repository was ALSO inferred, since attaching one
-	// branch's pull request to a hand-listed set of services would be a
-	// fabrication.
-	switch {
-	case f.prNumber > 0:
-		p.PR = &infer.PullRequest{Number: f.prNumber, Title: f.prTitle, URL: f.prURL}
-	case inferring && d.PR != nil && p.Inferred["repo"]:
-		p.PR = d.PR
+	// --pr attaches a PR to the single repo in the plan. With 2+ repos the
+	// caller must use the per-spec `name:branch:pr` syntax instead, because
+	// the flag cannot say WHICH repo it belongs to.
+	if f.prNumber > 0 {
+		if len(p.Repos) > 1 {
+			return nil, usageErrorf(
+				"--pr applies to one repo, but the plan has %d; use name:branch:pr instead",
+				len(p.Repos))
+		}
+		if len(p.Repos) == 1 && p.Repos[0].PR != nil {
+			return nil, usageErrorf(
+				"--pr conflicts with the :pr segment on %s; use one or the other",
+				p.Repos[0].Name)
+		}
+		if len(p.Repos) == 1 {
+			p.Repos[0].PR = &infer.PullRequest{
+				Number: f.prNumber, Title: f.prTitle, URL: f.prURL,
+			}
+		}
+	} else if inferring && d.PR != nil && p.Inferred["repo"] && len(p.Repos) == 1 {
+		// The inferred PR applies only to the single inferred repo, since
+		// attaching one branch's pull request to a hand-listed set of services
+		// would be a fabrication.
+		p.Repos[0].PR = d.PR
 		p.Inferred["pr"] = true
 	}
 
@@ -341,19 +368,20 @@ func (p *plan) summary() string {
 		fmt.Fprintf(&b, "  ticket   %s%s\n", p.Ticket, inferredMark(p.Inferred["ticket"]))
 	}
 	for _, r := range p.Repos {
-		fmt.Fprintf(&b, "  service  %s @ %s%s\n", r.Name, r.Branch, inferredMark(p.Inferred["repo"]))
-	}
-	if p.PR != nil {
-		title := p.PR.Title
-		if title == "" {
-			title = "(no title)"
+		line := fmt.Sprintf("  service  %s @ %s%s", r.Name, r.Branch, inferredMark(p.Inferred["repo"]))
+		if r.PR != nil {
+			line += fmt.Sprintf("  pr #%d", r.PR.Number)
+			if r.PR.Title != "" {
+				line += " " + r.PR.Title
+			}
+			line += inferredMark(p.Inferred["pr"])
 		}
-		fmt.Fprintf(&b, "  pr       #%d %s%s\n", p.PR.Number, title, inferredMark(p.Inferred["pr"]))
-		// The URL is SENT, so it is shown. Displaying the number and title while
-		// silently attaching a link the operator never saw is the one part of
-		// the plan they could not check.
-		if p.PR.URL != "" {
-			fmt.Fprintf(&b, "           %s\n", p.PR.URL)
+		fmt.Fprintln(&b, line)
+		// The URL is SENT, so it is shown. Displaying the number and title
+		// while silently attaching a link the operator never saw is the one
+		// part of the plan they could not check.
+		if r.PR != nil && r.PR.URL != "" {
+			fmt.Fprintf(&b, "           %s\n", r.PR.URL)
 		}
 	}
 	if p.TTL > 0 {
@@ -372,6 +400,49 @@ func inferredMark(yes bool) string {
 		return "   (inferred)"
 	}
 	return ""
+}
+
+// splitRepoBranchPR parses `name:branch` or `name:branch:pr` for env create.
+//
+// The third segment is optional and create-only: the mutate verbs (swap-branch,
+// add-service) use splitRepoBranch and keep `repo:branch` only, because the
+// server resolves the PR on swap/add.
+//
+// Parsing: the FIRST colon separates the name, then if the remainder's LAST
+// colon-delimited segment is all digits (> 0), it is treated as a pull request
+// number. Git ref names cannot contain colons, so there is no ambiguity: a
+// branch named `release/2024` is `repo:release/2024` (no third segment), and
+// `repo:release/2024:99` has branch `release/2024` with PR 99.
+func splitRepoBranchPR(s string) (repo, branch string, pr int, err error) {
+	repo, rest, err := splitRepoBranch(s)
+	if err != nil {
+		return "", "", 0, err
+	}
+	// Look for the last colon: if the part after it is all digits, it's a PR.
+	lastColon := strings.LastIndex(rest, ":")
+	if lastColon < 0 {
+		return repo, rest, 0, nil
+	}
+	tail := rest[lastColon+1:]
+	if tail == "" {
+		return "", "", 0, usageErrorf(
+			"expected name:branch or name:branch:pr, got %q (trailing colon)", s)
+	}
+	n, parseErr := strconv.Atoi(tail)
+	if parseErr != nil {
+		return "", "", 0, usageErrorf(
+			"expected a pull request number after name:branch:, got %q in %q", tail, s)
+	}
+	if n <= 0 {
+		return "", "", 0, usageErrorf(
+			"pull request number must be positive, got %d in %q", n, s)
+	}
+	branch = rest[:lastColon]
+	if branch == "" {
+		return "", "", 0, usageErrorf(
+			"expected name:branch or name:branch:pr, got %q (empty branch)", s)
+	}
+	return repo, branch, n, nil
 }
 
 // --- env wait ---------------------------------------------------------------

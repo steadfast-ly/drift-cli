@@ -33,26 +33,31 @@ drift env create \
 
 ### Multi-service environments
 
-Repeat `--repo` for each service:
+Repeat `--repo` for each service. To attach a pull request number to a
+specific service, use the `name:branch:pr` form:
 
 ```bash
 drift env create \
   --slug multi-svc \
-  --repo frontend:feature/x \
+  --repo frontend:feature/x:42 \
   --repo backend:feature/x \
   --yes
 ```
+
+Repos without a `:pr` segment get their PR resolved by the server
+(exactly-one-open-PR by head branch, else none).
 
 ### Useful flags
 
 | Flag | Purpose |
 | ---- | ------- |
 | `--slug` | Environment slug |
-| `--repo name:branch` | Repository and branch (repeatable) |
+| `--repo name:branch[:pr]` | Repository, branch and optional PR number (repeatable) |
 | `--ticket PROJ-1234` | Issue key |
 | `--ttl 72` | Lifetime in hours (default 48, max 120) |
 | `--public` | Make the environment reachable without the VPN |
-| `--pr`, `--pr-title`, `--pr-url` | Pull request metadata |
+| `--pr` | Pull request number (single-repo plan only; use `name:branch:pr` for multi-service) |
+| `--pr-title`, `--pr-url` | Pull request title and URL (companions to `--pr`) |
 | `--no-infer` | Ignore working-directory inference, use only flags |
 | `--yes` | Skip the confirmation prompt |
 
@@ -121,6 +126,10 @@ drift env remove-service my-env another-repo --yes
 
 Adding a service requires its dependencies to already be present in the
 environment. Removing a service is destructive and confirms on a terminal.
+
+Neither `swap-branch` nor `add-service` accepts a `--pr` flag. When the
+branch changes, the server re-resolves the pull request the same way it
+does at creation: exactly one open PR by head branch, otherwise none.
 
 ## Retry a failed build
 
