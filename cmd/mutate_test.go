@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/steadfast-ly/drift-cli/internal/auth"
 	"github.com/steadfast-ly/drift-cli/internal/cliexit"
+	"github.com/steadfast-ly/drift-cli/internal/infer"
 )
 
 var updateGolden = flag.Bool("update", false, "rewrite the golden files in cmd/testdata")
@@ -976,6 +978,298 @@ func TestMonorepoResolvesChartKeyFirst(t *testing.T) {
 	}
 	if !strings.Contains(errOut, "binder") || !strings.Contains(errOut, "forge") {
 		t.Fatalf("the disambiguating names were not offered: %s", errOut)
+	}
+}
+
+// --- per-repo PR parsing and guards -----------------------------------------
+
+func TestSplitRepoBranchPR(t *testing.T) {
+	cases := []struct {
+		name       string
+		input      string
+		wantRepo   string
+		wantBranch string
+		wantPR     int
+		wantErr    bool
+	}{
+		{"plain", "widget:topic", "widget", "topic", 0, false},
+		{"with pr", "widget:topic:42", "widget", "topic", 42, false},
+		{"branch with slash", "widget:feature/foo:99", "widget", "feature/foo", 99, false},
+		{"no pr segment", "nodus:sr/migration-check", "nodus", "sr/migration-check", 0, false},
+		{"trailing colon", "widget:topic:", "", "", 0, true},
+		{"non-numeric pr", "widget:topic:abc", "", "", 0, true},
+		{"zero pr", "widget:topic:0", "", "", 0, true},
+		{"negative pr", "widget:topic:-1", "", "", 0, true},
+		{"empty branch with pr", "widget::42", "", "", 0, true},
+		{"no colon at all", "widget", "", "", 0, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			repo, branch, pr, err := splitRepoBranchPR(c.input)
+			if c.wantErr {
+				if err == nil {
+					t.Fatalf("expected an error for %q", c.input)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error for %q: %v", c.input, err)
+			}
+			if repo != c.wantRepo || branch != c.wantBranch || pr != c.wantPR {
+				t.Fatalf("splitRepoBranchPR(%q) = (%q, %q, %d), want (%q, %q, %d)",
+					c.input, repo, branch, pr, c.wantRepo, c.wantBranch, c.wantPR)
+			}
+		})
+	}
+}
+
+// --pr with 2+ repos is a usage error.
+func TestPRFlagWithMultipleReposIsUsageError(t *testing.T) {
+	s := newMutServer(t)
+	s.extraRepos = []map[string]any{{
+		"id": svcID, "owner": "acme", "name": "gadget", "fullName": "acme/gadget",
+		"displayName": "Gadget", "description": nil, "defaultBranch": "main",
+		"helmChartKey": "gadget", "isActive": true,
+		"stgUrl": nil, "rcUrl": nil, "prdUrl": nil,
+		"applicationGroupId": nil, "applicationGroup": nil,
+	}}
+	h := newMutHarness(t, s)
+
+	_, errOut, code := h.run("env", "create", "--slug", "proof-alpha",
+		"--repo", "widget:topic", "--repo", "gadget:topic",
+		"--pr", "42", "--yes", "--no-wait")
+	if code != cliexit.Usage {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.Usage, errOut)
+	}
+	if !strings.Contains(errOut, "name:branch:pr") {
+		t.Fatalf("the usage error does not suggest the alternative syntax: %s", errOut)
+	}
+}
+
+// --pr conflicts with a :pr segment on the same single repo.
+func TestPRFlagConflictsWithSegment(t *testing.T) {
+	s := newMutServer(t)
+	h := newMutHarness(t, s)
+
+	_, errOut, code := h.run("env", "create", "--slug", "proof-alpha",
+		"--repo", "widget:topic:99", "--pr", "42", "--yes", "--no-wait")
+	if code != cliexit.Usage {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.Usage, errOut)
+	}
+	if !strings.Contains(errOut, "conflicts") {
+		t.Fatalf("the error does not say 'conflicts': %s", errOut)
+	}
+}
+
+// Per-repo PR stamping: each repo gets only its own PR; absent repos get nil.
+func TestPerRepoPRStamping(t *testing.T) {
+	s := newMutServer(t)
+	s.extraRepos = []map[string]any{{
+		"id": svcID, "owner": "acme", "name": "gadget", "fullName": "acme/gadget",
+		"displayName": "Gadget", "description": nil, "defaultBranch": "main",
+		"helmChartKey": "gadget", "isActive": true,
+		"stgUrl": nil, "rcUrl": nil, "prdUrl": nil,
+		"applicationGroupId": nil, "applicationGroup": nil,
+	}}
+
+	// Record the full body the CLI sends.
+	var sentBody map[string]any
+	base := s.Config.Handler
+	s.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/api/v1/environments" {
+			body, _ := readJSON(r)
+			sentBody = body
+			// Recreate the body reader for the underlying handler.
+			encoded, _ := json.Marshal(body)
+			r.Body = io.NopCloser(bytes.NewReader(encoded))
+		}
+		base.ServeHTTP(w, r)
+	})
+
+	h := newMutHarness(t, s)
+	_, errOut, code := h.run("env", "create", "--slug", "proof-alpha",
+		"--repo", "widget:topic:1088",
+		"--repo", "gadget:feature/x",
+		"--yes", "--no-wait")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+
+	repos, ok := sentBody["repos"].([]any)
+	if !ok || len(repos) != 2 {
+		t.Fatalf("expected 2 repos in body, got: %v", sentBody["repos"])
+	}
+
+	// First repo (widget) should have prNumber = 1088.
+	r0 := repos[0].(map[string]any)
+	if r0["prNumber"] == nil {
+		t.Fatal("widget's prNumber should be 1088, got nil")
+	}
+	if int(r0["prNumber"].(float64)) != 1088 {
+		t.Fatalf("widget prNumber = %v, want 1088", r0["prNumber"])
+	}
+
+	// Second repo (gadget) should have NO prNumber.
+	r1 := repos[1].(map[string]any)
+	if r1["prNumber"] != nil {
+		t.Fatalf("gadget should have no prNumber, got %v", r1["prNumber"])
+	}
+}
+
+// --pr with a single repo still works.
+func TestPRFlagSingleRepoStillWorks(t *testing.T) {
+	s := newMutServer(t)
+	h := newMutHarness(t, s)
+
+	_, errOut, code := h.run("env", "create", "--slug", "proof-alpha",
+		"--repo", "widget:topic", "--pr", "42",
+		"--pr-title", "Test PR", "--pr-url", "https://github.com/acme/widget/pull/42",
+		"--yes", "--no-wait")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+}
+
+// --pr-title and --pr-url without --pr are silently ignored today. This test
+// pins that behavior so a future change to error there is a deliberate one.
+func TestPRTitleAndURLWithoutPRNumberAreIgnored(t *testing.T) {
+	s := newMutServer(t)
+	h := newMutHarness(t, s)
+
+	_, errOut, code := h.run("env", "create", "--slug", "proof-alpha",
+		"--repo", "widget:topic",
+		"--pr-title", "Orphan title", "--pr-url", "https://github.com/acme/widget/pull/99",
+		"--yes", "--no-wait")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d, want 0 — companion flags without --pr should be ignored\n%s", code, errOut)
+	}
+	// The summary must NOT mention a PR, since --pr was not given.
+	if strings.Contains(errOut, "pr #") {
+		t.Fatalf("a PR appeared in the summary without --pr: %s", errOut)
+	}
+}
+
+// Per-repo confirm output: PR is shown on the service line, not as a separate line.
+func TestPerRepoPRInSummary(t *testing.T) {
+	s := newMutServer(t)
+	s.extraRepos = []map[string]any{{
+		"id": svcID, "owner": "acme", "name": "gadget", "fullName": "acme/gadget",
+		"displayName": "Gadget", "description": nil, "defaultBranch": "main",
+		"helmChartKey": "gadget", "isActive": true,
+		"stgUrl": nil, "rcUrl": nil, "prdUrl": nil,
+		"applicationGroupId": nil, "applicationGroup": nil,
+	}}
+	h := newMutHarness(t, s)
+
+	_, errOut, code := h.run("env", "create", "--slug", "proof-alpha",
+		"--repo", "widget:topic:1088",
+		"--repo", "gadget:feature/x",
+		"--yes", "--no-wait")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	// The confirmation summary goes to stderr.
+	if !strings.Contains(errOut, "widget @ topic  pr #1088") {
+		t.Fatalf("widget's PR not shown on service line: %s", errOut)
+	}
+	if strings.Contains(errOut, "gadget") && strings.Contains(errOut, "pr #") {
+		// gadget should not have a PR on its line.
+		for _, line := range strings.Split(errOut, "\n") {
+			if strings.Contains(line, "gadget") && strings.Contains(line, "pr #") {
+				t.Fatalf("gadget should not have a PR: %s", line)
+			}
+		}
+	}
+}
+
+// The inferred marks must sit next to the field they annotate: the repo mark
+// after the branch, the PR mark after the PR text. With the marks at the wrong
+// positions, "pr #42   (inferred)" looks like the PR was inferred (it was not),
+// and two bare "(inferred)" at line end are indistinguishable.
+func TestSummaryInferredMarksPlacement(t *testing.T) {
+	t.Run("inferred repo + explicit pr", func(t *testing.T) {
+		p := &plan{
+			Slug: "test",
+			Repos: []planRepo{{
+				Name:   "widget",
+				Branch: "topic",
+				PR:     &infer.PullRequest{Number: 42, Title: "Fix it"},
+			}},
+			Inferred: map[string]bool{"repo": true},
+		}
+		s := p.summary()
+		// The repo mark must appear between the branch and the PR section.
+		if !strings.Contains(s, "widget @ topic   (inferred)  pr #42 Fix it") {
+			t.Fatalf("mark not adjacent to branch:\n%s", s)
+		}
+		// There must be exactly ONE (inferred) on the service line.
+		for _, line := range strings.Split(s, "\n") {
+			if strings.Contains(line, "service") {
+				count := strings.Count(line, "(inferred)")
+				if count != 1 {
+					t.Fatalf("expected 1 (inferred) mark, got %d: %q", count, line)
+				}
+			}
+		}
+	})
+
+	t.Run("inferred repo + inferred pr", func(t *testing.T) {
+		p := &plan{
+			Slug: "test",
+			Repos: []planRepo{{
+				Name:   "widget",
+				Branch: "topic",
+				PR:     &infer.PullRequest{Number: 99, Title: "Draft"},
+			}},
+			Inferred: map[string]bool{"repo": true, "pr": true},
+		}
+		s := p.summary()
+		// Both marks must appear, each adjacent to what it annotates.
+		if !strings.Contains(s, "widget @ topic   (inferred)  pr #99 Draft   (inferred)") {
+			t.Fatalf("marks not in the right places:\n%s", s)
+		}
+		// There must be exactly TWO (inferred) on the service line.
+		for _, line := range strings.Split(s, "\n") {
+			if strings.Contains(line, "service") {
+				count := strings.Count(line, "(inferred)")
+				if count != 2 {
+					t.Fatalf("expected 2 (inferred) marks, got %d: %q", count, line)
+				}
+			}
+		}
+	})
+
+	t.Run("explicit repo + explicit pr", func(t *testing.T) {
+		p := &plan{
+			Slug: "test",
+			Repos: []planRepo{{
+				Name:   "widget",
+				Branch: "topic",
+				PR:     &infer.PullRequest{Number: 42},
+			}},
+			Inferred: map[string]bool{},
+		}
+		s := p.summary()
+		if strings.Contains(s, "(inferred)") {
+			t.Fatalf("no marks expected for all-explicit:\n%s", s)
+		}
+	})
+}
+
+// Mutate verbs' syntax is unchanged (splitRepoBranch, not splitRepoBranchPR).
+func TestMutateVerbsSyntaxUnchanged(t *testing.T) {
+	s := newMutServer(t)
+	h := newMutHarness(t, s)
+
+	// add-service with a :pr segment should be treated as branch, not PR.
+	// splitRepoBranch splits on first colon only, so "widget:topic:42" gives
+	// branch "topic:42" (the whole remainder), which is a valid branch name
+	// as far as the CLI is concerned.
+	_, _, code := h.run("env", "add-service", "proof-alpha", "widget:topic:42")
+	// It should reach the server (branch = "topic:42"). The server might reject
+	// it but the CLI does not parse the :42 as a PR.
+	if code == cliexit.Usage {
+		t.Fatal("add-service should not parse :42 as a PR segment")
 	}
 }
 
