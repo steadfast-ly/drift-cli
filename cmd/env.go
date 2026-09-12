@@ -112,6 +112,7 @@ func newEnvListCommand(app *App) *cobra.Command {
 	var limit, offset int
 	var mine bool
 	var owner string
+	var all bool
 
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -120,11 +121,13 @@ func newEnvListCommand(app *App) *cobra.Command {
 		Long: "List environments.\n\n" +
 			"Paginated server-side: --limit is capped at 50 by the contract and\n" +
 			"--offset walks the pages. When more results exist than were returned,\n" +
-			"a note is written to stderr so a piped JSON stream stays parseable.\n\n" +
+			"a note is written to stderr so a piped JSON stream stays parseable.\n" +
+			"Pass --all to fetch every page and print one combined result.\n\n" +
 			cliexit.Help,
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
-			return runEnvList(c.Context(), app, statuses, limit, offset, mine, owner, c.Flags().Changed("owner"))
+			return runEnvList(c.Context(), app, statuses, limit, offset, mine, owner,
+				c.Flags().Changed("owner"), all, c.Flags().Changed("limit"))
 		},
 	}
 	cmd.Flags().StringSliceVar(&statuses, "status", nil,
@@ -133,10 +136,25 @@ func newEnvListCommand(app *App) *cobra.Command {
 	cmd.Flags().IntVar(&offset, "offset", 0, "number of environments to skip")
 	cmd.Flags().BoolVar(&mine, "mine", false, "only environments you created (resolves your email via whoami)")
 	cmd.Flags().StringVar(&owner, "owner", "", "only environments created by this email (exact match)")
+	cmd.Flags().BoolVar(&all, "all", false, "fetch every page and print one combined result")
 	return cmd
 }
 
-func runEnvList(ctx context.Context, app *App, statuses []string, limit, offset int, mine bool, owner string, ownerChanged bool) error {
+// fetchEnvListPage fetches one page of environments and maps transport and HTTP
+// failures exactly like the single-page path. In a walk a failure on ANY page
+// is fatal: a partial result is never printed.
+func fetchEnvListPage(ctx context.Context, sess *Session, params *api.EnvironmentsListParams) (*api.EnvironmentPage, error) {
+	resp, err := sess.API.EnvironmentsListWithResponse(ctx, params)
+	if err != nil {
+		return nil, client.Transport(err, sess.Resolved.Endpoint)
+	}
+	if resp.JSON200 == nil {
+		return nil, client.Fail(resp, resp.Headers429)
+	}
+	return resp.JSON200, nil
+}
+
+func runEnvList(ctx context.Context, app *App, statuses []string, limit, offset int, mine bool, owner string, ownerChanged bool, all bool, limitChanged bool) error {
 	if mine && ownerChanged {
 		return usageErrorf("--mine and --owner are mutually exclusive")
 	}
@@ -145,12 +163,30 @@ func runEnvList(ctx context.Context, app *App, statuses []string, limit, offset 
 	if err := output.ValidateFields(app.Out.JSONFields, cols); err != nil {
 		return usageErrorf("%s", err.Error())
 	}
+	// --all and --limit contradict, whatever the value: --all fixes its own page
+	// size, so an explicit --limit 0 or --limit -5 must still be a usage error
+	// rather than a silently overridden number. The conflict is the flag's
+	// PRESENCE, not its numeric positivity.
+	if all && limitChanged {
+		return usageErrorf("--all and --limit are mutually exclusive")
+	}
+	// validatePage is unconditional. With --all, `limit` stays 0 unless --limit
+	// was explicitly flagged (which is already rejected above), so this checks
+	// exactly the offset: the walk's cursor advances from the given start, and a
+	// negative value would fetch the first page at offset 0 (the parameter is
+	// unset when it is not positive) while the cursor lands mid-page,
+	// re-requesting rows the first page already returned.
 	if err := validatePage(limit, offset); err != nil {
 		return err
 	}
 
 	params := &api.EnvironmentsListParams{}
-	if limit > 0 {
+	if all {
+		// The walk asks for the contract maximum so a busy server is drained in
+		// the fewest round trips.
+		limit = maxPageSize
+		params.Limit = &limit
+	} else if limit > 0 {
 		params.Limit = &limit
 	}
 	if offset > 0 {
@@ -185,15 +221,24 @@ func runEnvList(ctx context.Context, app *App, statuses []string, limit, offset 
 		params.Creator = &owner
 	}
 
-	resp, err := sess.API.EnvironmentsListWithResponse(ctx, params)
-	if err != nil {
-		return client.Transport(err, sess.Resolved.Endpoint)
+	// params is built once — creator and statuses included — and reused for
+	// every page request; only the offset advances inside the walk. The whoami
+	// resolution above happens exactly once, before the walk begins.
+	if !all {
+		return envListSinglePage(ctx, app, sess, params, cols)
 	}
-	if resp.JSON200 == nil {
-		return client.Fail(resp, resp.Headers429)
+	return envListWalk(ctx, app, sess, params, cols, offset)
+}
+
+// envListSinglePage renders one page — the plain `env list` path. The
+// pagination extra carries the page's own values and the stderr note tells the
+// user how to reach the rest.
+func envListSinglePage(ctx context.Context, app *App, sess *Session, params *api.EnvironmentsListParams, cols []output.Column) error {
+	page, err := fetchEnvListPage(ctx, sess, params)
+	if err != nil {
+		return err
 	}
 
-	page := *resp.JSON200
 	rows := make([]output.Row, 0, len(page.Items))
 	for _, e := range page.Items {
 		rows = append(rows, envRow(e))
@@ -218,6 +263,72 @@ func runEnvList(ctx context.Context, app *App, statuses []string, limit, offset 
 			page.Pagination.Offset+len(page.Items))
 	}
 	return nil
+}
+
+// maxWalkPages caps how many pages one `--all` walk may fetch. An
+// offset-ignoring upstream (a proxy or load balancer) that repeats the same
+// non-empty page with hasMore=true would otherwise hang the walk forever: the
+// cursor keeps advancing past one page per request, so the empty-page check
+// never fires — every page IS non-empty — and the server never runs dry. Ten
+// thousand pages is 500,000 environments at the 50-per-page contract ceiling,
+// orders of magnitude past any real deployment; hitting it is the server fault
+// it is reported as, never a sign the walk is healthy.
+const maxWalkPages = 10000
+
+// envListWalk fetches every page — starting at the chosen offset — until the
+// server reports no more, and prints one combined result.
+//
+// The cursor advances by the number of items ACTUALLY returned, not by the
+// requested limit, so a server that shortens a page mid-window neither skips
+// nor repeats rows. The empty-page check is the completeness guard: --all
+// promises every result, so a server that claims more while returning nothing
+// would either loop or silently truncate — the walk fails loudly instead of
+// spinning or printing a partial result. The page ceiling is the other
+// defensive stop: an upstream that repeats a non-empty page forever is caught
+// by maxWalkPages, since the empty-page check cannot see it.
+func envListWalk(ctx context.Context, app *App, sess *Session, params *api.EnvironmentsListParams, cols []output.Column, start int) error {
+	rows := make([]output.Row, 0, maxPageSize)
+	cur := start
+	for n := 0; ; n++ {
+		// Checked before the fetch so an endless server costs exactly
+		// maxWalkPages requests, never one more.
+		if n >= maxWalkPages {
+			return fmt.Errorf("--all aborted after %d pages: server keeps reporting more results", maxWalkPages)
+		}
+		page, err := fetchEnvListPage(ctx, sess, params)
+		if err != nil {
+			return err
+		}
+		// --all promises completeness: an empty page that claims more would
+		// either loop or silently truncate the accumulated rows — fail loudly
+		// instead. A terminal empty page (hasMore=false) is the legitimate
+		// success path.
+		if len(page.Items) == 0 && page.Pagination.HasMore {
+			return fmt.Errorf("--all aborted: server returned an empty page while reporting more results")
+		}
+		for _, e := range page.Items {
+			rows = append(rows, envRow(e))
+		}
+		if !page.Pagination.HasMore {
+			break
+		}
+		cur += len(page.Items)
+		params.Offset = &cur
+	}
+
+	doc := &output.Doc{
+		Columns: cols,
+		Rows:    rows,
+		Extra: map[string]any{"pagination": map[string]any{
+			// `limit` is the total rows the walk returned, not a per-page
+			// ceiling, and `hasMore` is always false: nothing is left to fetch.
+			"limit":   len(rows),
+			"offset":  start,
+			"hasMore": false,
+		}},
+		EmptyMessage: "No environments matched.",
+	}
+	return app.Out.Write(doc)
 }
 
 // parseStatuses validates the filter client-side.

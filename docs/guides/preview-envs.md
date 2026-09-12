@@ -206,6 +206,7 @@ drift env list
 drift env list --status running,sleeping
 drift env list --mine
 drift env list --owner alice@example.com
+drift env list --all
 drift env get my-env
 drift env get my-env -o json
 drift env get my-env --json slug,status,expires
@@ -216,6 +217,9 @@ by creator (an exact match). `--mine` and `--owner` are mutually exclusive.
 Both combine with `--status`, `--limit` and
 `--offset`, and the resulting Owner column shows `-` for environments created
 before the server began recording a creator.
+
+`--all` fetches every page of results and prints one combined listing; it
+combines with `--status`, `--mine` and `--owner`, but not with `--limit`.
 
 ## Database access
 

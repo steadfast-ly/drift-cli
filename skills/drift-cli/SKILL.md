@@ -38,7 +38,7 @@ drift context current        Show the current context
 drift context add <name>     Add or update a context (--endpoint required)
 drift context remove <name>  Remove a context and its credential
 
-drift env list               List environments (--status repeatable; --mine/--owner filter by creator)
+drift env list               List environments (--status repeatable; --mine/--owner filter by creator; --all walks every page)
 drift env get <ref>          Show one environment with services and builds
 drift env create             Create a preview environment
 drift env rm <ref>           Tear down an environment
