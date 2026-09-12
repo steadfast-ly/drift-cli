@@ -128,7 +128,8 @@ drift env create \
   --ttl 24 \
   --yes
 
-# ... run tests against the environment ...
+# Trigger e2e tests and wait for the result.
+drift env e2e "pr-${PR_NUMBER}" --wait
 
 # Tear it down.
 drift env rm "pr-${PR_NUMBER}" --yes --wait

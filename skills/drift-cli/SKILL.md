@@ -54,6 +54,7 @@ drift env remove-service <ref> <repo>
 drift env swap-branch <ref> <repo>:<new-branch>
 drift env retry-build <ref> [repo]
 drift env wait <ref>         Wait for a state (--for <state>)
+drift env e2e <ref>          Trigger an e2e test run (--wait to follow)
 
 drift release status         What is deployed to stg and rc
 drift release history        Past promotions
@@ -193,6 +194,16 @@ drift release status --json service,rc_tag,rc_health
 
 ```bash
 drift release promote rc svc-a svc-b --yes
+```
+
+### Trigger e2e tests
+
+```bash
+# Fire and forget.
+drift env e2e my-feature
+
+# Wait for the result (exits 0 on pass, non-zero on failure).
+drift env e2e my-feature --wait
 ```
 
 ### Audit who did something

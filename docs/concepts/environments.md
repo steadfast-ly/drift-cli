@@ -107,6 +107,35 @@ installed by inspecting `mysql --version` output.
 The `db-access` endpoint requires drift server >= 0.15.0. An older server
 returns exit 3 with a version hint.
 
+## End-to-end testing
+
+`drift env e2e <slug>` triggers an end-to-end test run against an
+environment. The server dispatches the configured test workflow and
+returns a run id.
+
+Without `--wait`, the command prints the run id and returns immediately
+(exit 0). With `--wait`, it polls the audit log until the run's outcome
+appears:
+
+- **passed** -- exit 0.
+- **failed** -- non-zero exit, with the failure reason when the server
+  provides one.
+- **error** (e.g. `dispatch_failed`) -- non-zero exit, with the reason.
+- **timeout** -- exit 6. The default `--wait-timeout` is 125 minutes,
+  sized five minutes past the server's own 120-minute tracking ceiling.
+
+### Exit codes
+
+| Scenario | Exit code |
+| -------- | --------- |
+| Trigger accepted (no wait) | 0 |
+| Run passed (with wait) | 0 |
+| Run failed | 5 (conflict) |
+| Run errored | 1 (error) |
+| 409 (run already active) | 5 |
+| 404 (env not found) | 3 |
+| Wait timed out | 6 |
+
 ## Visibility
 
 Environments are **private** by default -- reachable only from within the
