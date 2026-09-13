@@ -245,6 +245,9 @@ func runReleaseHistory(ctx context.Context, app *App, limit, offset int) error {
 	if err := output.ValidateFields(app.Out.JSONFields, cols); err != nil {
 		return usageErrorf("%s", err.Error())
 	}
+	if err := validatePage(limit, offset); err != nil {
+		return err
+	}
 	sess, err := app.Connect(ctx, FeatureReleasesRead)
 	if err != nil {
 		return err

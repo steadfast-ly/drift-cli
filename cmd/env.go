@@ -145,6 +145,9 @@ func runEnvList(ctx context.Context, app *App, statuses []string, limit, offset 
 	if err := output.ValidateFields(app.Out.JSONFields, cols); err != nil {
 		return usageErrorf("%s", err.Error())
 	}
+	if err := validatePage(limit, offset); err != nil {
+		return err
+	}
 
 	params := &api.EnvironmentsListParams{}
 	if limit > 0 {

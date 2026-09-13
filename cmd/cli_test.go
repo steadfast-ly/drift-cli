@@ -288,6 +288,27 @@ func newFakeDrift(t *testing.T, doc map[string]any) *fakeServer {
 		})
 	})
 
+	// --- releases ---
+	mux.HandleFunc("/api/v1/releases/promotions/history", func(w http.ResponseWriter, r *http.Request) {
+		if !authed(r) {
+			problem(w, 401, "UNAUTHORIZED", "Authentication required",
+				"urn:drift:problem:unauthenticated", "")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"items": []map[string]any{{
+				"id": "33333333-3333-3333-3333-333333333333", "createdAt": "2026-08-28T10:00:00Z",
+				"promotionType": "rc", "status": "completed", "services": []string{"widget"},
+				"createdBy": "alice@example.com", "hotfixBranch": nil,
+				"completedAt": "2026-08-28T10:05:00Z", "statusMessage": nil,
+				"serviceHealthStatuses": map[string]any{}, "versionSnapshot": []any{},
+				"workflowDispatches": []any{},
+			}},
+			"pagination": map[string]any{"limit": 20, "offset": 0, "hasMore": false},
+		})
+	})
+
 	// --- generic echo for api passthrough tests ---
 	mux.HandleFunc("/api/v1/echo", func(w http.ResponseWriter, r *http.Request) {
 		if !authed(r) {
@@ -2178,6 +2199,77 @@ func TestAuditListLimitOffsetValidation(t *testing.T) {
 			_, _, code := h.run(c.args...)
 			if code != c.want {
 				t.Fatalf("exit %d, want %d\n%s", code, c.want, h.stderr.String())
+			}
+		})
+	}
+}
+
+// A rejection decided client-side must not have been paid for with a round
+// trip: neither the discovery document nor the API may have been touched.
+func assertNoRequest(t *testing.T, srv *fakeServer, hits, revalidations, requests int) {
+	t.Helper()
+	if srv.discoveryHits != hits || srv.discoveryRevalidations != revalidations || len(srv.authHeaders) != requests {
+		t.Fatalf("a usage failure reached the server: discovery %d→%d, revalidations %d→%d, requests %d→%d",
+			hits, srv.discoveryHits, revalidations, srv.discoveryRevalidations, requests, len(srv.authHeaders))
+	}
+}
+
+func TestEnvListLimitOffsetValidation(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	cases := []struct {
+		name string
+		args []string
+		want int
+	}{
+		{"negative limit", []string{"env", "list", "--limit", "-1"}, cliexit.Usage},
+		{"limit too high", []string{"env", "list", "--limit", "51"}, cliexit.Usage},
+		{"negative offset", []string{"env", "list", "--offset", "-1"}, cliexit.Usage},
+		{"valid limit", []string{"env", "list", "--limit", "50"}, cliexit.OK},
+		// --mine resolves the caller's email via whoami, so a bad page must be
+		// rejected client-side without ever paying for a whoami round trip.
+		{"mine with negative limit", []string{"env", "list", "--mine", "--limit", "-5"}, cliexit.Usage},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			hits, revalidations, requests := srv.discoveryHits, srv.discoveryRevalidations, len(srv.authHeaders)
+			_, _, code := h.run(c.args...)
+			if code != c.want {
+				t.Fatalf("exit %d, want %d\n%s", code, c.want, h.stderr.String())
+			}
+			if c.want == cliexit.Usage {
+				assertNoRequest(t, srv, hits, revalidations, requests)
+			}
+		})
+	}
+}
+
+func TestReleaseHistoryLimitOffsetValidation(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	cases := []struct {
+		name string
+		args []string
+		want int
+	}{
+		{"negative limit", []string{"release", "history", "--limit", "-1"}, cliexit.Usage},
+		{"limit too high", []string{"release", "history", "--limit", "51"}, cliexit.Usage},
+		{"negative offset", []string{"release", "history", "--offset", "-1"}, cliexit.Usage},
+		{"valid limit", []string{"release", "history", "--limit", "50"}, cliexit.OK},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			hits, revalidations, requests := srv.discoveryHits, srv.discoveryRevalidations, len(srv.authHeaders)
+			_, _, code := h.run(c.args...)
+			if code != c.want {
+				t.Fatalf("exit %d, want %d\n%s", code, c.want, h.stderr.String())
+			}
+			if c.want == cliexit.Usage {
+				assertNoRequest(t, srv, hits, revalidations, requests)
 			}
 		})
 	}
