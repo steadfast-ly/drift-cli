@@ -65,6 +65,44 @@ siblings automatically at create time. When adding a service to an existing
 environment, its dependencies must already be present -- if they are not, the
 server returns a 409 or 400.
 
+## Database migrations
+
+Install profiles can declare database-related services and co-publish a
+database-migration image for each of them. An environment runs the migrations
+published under exactly one selected **migration source**: an ECR repository
+naming a database service that is both profile-eligible and included in the
+environment.
+
+The source is chosen at **create time** and persisted with the environment.
+`drift env create --migration-source <ecr-repository>` selects it explicitly;
+the flag maps directly to the optional `migrationSourceEcrRepository` request
+field. Omission delegates the choice to the server:
+
+- The profile's configured default, when it is uniquely included;
+- otherwise the sole eligible included source;
+- an actionable error when several eligible sources remain and no default
+  applies (an explicit choice is required);
+- an actionable missing-source error when none exist.
+
+The server is the only authority on eligibility. A value that does not name a
+profile-eligible, uniquely-present database service is rejected with a
+validation error before any side effects, and a profile without a
+database-migration block refuses an explicit source as unsupported. The CLI
+never infers a source from the working directory and never prompts for one.
+
+Explicit selection also requires a server that advertises the
+`environments.migration-source` capability, exposed only for Installs whose
+profile has a database-migration block. The CLI refuses an explicit source
+against a server without the capability before any create write, with a
+feature-unsupported error naming the context and server version and a hint to
+upgrade or use a supporting context; omission needs no special capability and
+keeps working against every server that supports plain `env create`.
+
+A migration-divergence **warning** -- surfaced as the environment's status
+message -- compares selected commits only among eligible, included database
+services that share a source repository. A UI service, even one in the same
+source repository at a different commit, never triggers it.
+
 ## Database access
 
 `drift env tunnel` and `drift env db` connect to an environment's database

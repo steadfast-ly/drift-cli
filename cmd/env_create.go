@@ -24,17 +24,18 @@ const inferTimeout = 5 * time.Second
 // createFlags is every field of a create, each of which overrides whatever the
 // working directory implied.
 type createFlags struct {
-	slug     string
-	ticket   string
-	repos    []string
-	ttlHours int
-	public   bool
-	prNumber int
-	prTitle  string
-	prURL    string
-	yes      bool
-	noInfer  bool
-	wait     waitFlags
+	slug            string
+	ticket          string
+	repos           []string
+	ttlHours        int
+	public          bool
+	prNumber        int
+	prTitle         string
+	prURL           string
+	migrationSource string
+	yes             bool
+	noInfer         bool
+	wait            waitFlags
 }
 
 func newEnvCreateCommand(app *App) *cobra.Command {
@@ -57,9 +58,29 @@ func newEnvCreateCommand(app *App) *cobra.Command {
 			"is described. Without a PR the server resolves it from the branch.\n" +
 			"The name is resolved to an id client-side against the server's\n" +
 			"repository list.\n\n" +
+			"--migration-source selects the ECR repository of the database-migration\n" +
+			"service whose co-published migration image this environment runs. The\n" +
+			"server is the authority on eligibility and presence: when the flag is\n" +
+			"omitted the server applies its own profile default (or errors when no\n" +
+			"eligible source can be resolved), and when it is given the server\n" +
+			"refuses a value that is not an eligible, uniquely-present source. The\n" +
+			"CLI neither guesses a source nor prompts for one. Passing an empty\n" +
+			"--migration-source is a usage error: only omitting the flag delegates\n" +
+			"to the server's profile default.\n\n" +
 			"Blocks until the environment is running.\n\n" + cliexit.Help,
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
+			// An explicitly empty (or whitespace-only) --migration-source is a
+			// usage error, NOT omission. `Changed` is what distinguishes the
+			// operator saying "" from not saying anything at all: an empty CI
+			// variable must not silently select the server's default, which is
+			// exactly the explicit-choice-vs-omission boundary. Checked here,
+			// before inference, Connect and any create write. True omission
+			// still delegates to the server profile unchanged.
+			if c.Flags().Changed("migration-source") && strings.TrimSpace(f.migrationSource) == "" {
+				return usageErrorf(
+					"--migration-source must not be empty when given; omit the flag to use the server's profile default")
+			}
 			return runEnvCreate(c.Context(), app, f)
 		},
 	}
@@ -72,6 +93,8 @@ func newEnvCreateCommand(app *App) *cobra.Command {
 	fl.IntVar(&f.prNumber, "pr", 0, "pull request number for a single-repo plan (inferred via gh); use name:branch:pr for multi-service")
 	fl.StringVar(&f.prTitle, "pr-title", "", "pull request title (inferred via gh)")
 	fl.StringVar(&f.prURL, "pr-url", "", "pull request URL (inferred via gh)")
+	fl.StringVar(&f.migrationSource, "migration-source", "",
+		"ECR repository of the database-migration service whose co-published migration image this environment runs (server profile default when omitted)")
 	fl.BoolVar(&f.yes, "yes", false, "skip the confirmation prompt")
 	fl.BoolVar(&f.noInfer, "no-infer", false, "ignore the working directory and use only flags")
 	f.wait.register(cmd, policyCreate)
@@ -85,6 +108,10 @@ type plan struct {
 	TTL    int
 	Public bool
 	Repos  []planRepo
+	// MigrationSource is the explicitly chosen ECR repository of the
+	// database-migration service, if any. Empty means "let the server apply
+	// its profile default" — the CLI never infers or prompts for it.
+	MigrationSource string
 	// Inferred records which fields came from the working directory, so the
 	// confirmation can show what was guessed rather than what was typed.
 	Inferred map[string]bool
@@ -143,7 +170,18 @@ func runEnvCreate(ctx context.Context, app *App, f *createFlags) error {
 		return err
 	}
 
-	sess, err := app.Connect(ctx, FeatureEnvironmentsWrite, FeatureRepositoriesRead)
+	// An explicit source is refused against a server that cannot honour it.
+	// The server advertises `environments.migration-source` only when its
+	// profile has a database-migration block; an older server that drops the
+	// unknown field and silently deploys its own default would be a
+	// wrong-environment bug, so we gate BEFORE the confirmation and any create
+	// write. Omission keeps the existing capabilities only, so it still works
+	// against every server `env create` already worked against.
+	features := []string{FeatureEnvironmentsWrite, FeatureRepositoriesRead}
+	if f.migrationSource != "" {
+		features = append(features, FeatureEnvironmentsMigrationSource)
+	}
+	sess, err := app.Connect(ctx, features...)
 	if err != nil {
 		return err
 	}
@@ -198,6 +236,13 @@ func (p *plan) body() api.EnvironmentsCreateJSONRequestBody {
 		ticket := p.Ticket
 		body.TicketId = &ticket
 	}
+	// Sent ONLY when the operator chose a source. Omission leaves the field
+	// absent (not an empty string) so the server applies its profile default;
+	// the CLI does not guess a source or ask for one.
+	if p.MigrationSource != "" {
+		source := p.MigrationSource
+		body.MigrationSourceEcrRepository = &source
+	}
 	if p.TTL > 0 {
 		ttl := p.TTL
 		body.TtlHours = &ttl
@@ -236,7 +281,7 @@ func grow[S ~[]E, E any](s S, n int) S { return append(s, make(S, n)...) }
 
 // buildPlan merges inference with flags and refuses anything the contract will.
 func buildPlan(f *createFlags, d infer.Result, inferring bool) (*plan, error) {
-	p := &plan{TTL: f.ttlHours, Public: f.public, Inferred: map[string]bool{}}
+	p := &plan{TTL: f.ttlHours, Public: f.public, MigrationSource: f.migrationSource, Inferred: map[string]bool{}}
 
 	switch {
 	case f.slug != "":
@@ -366,6 +411,13 @@ func (p *plan) summary() string {
 	fmt.Fprintf(&b, "  slug     %s%s\n", p.Slug, inferredMark(p.Inferred["slug"]))
 	if p.Ticket != "" {
 		fmt.Fprintf(&b, "  ticket   %s%s\n", p.Ticket, inferredMark(p.Inferred["ticket"]))
+	}
+	// Shown only when the operator chose it: the value is SENT, so it is
+	// disclosed, and an omitted source is the server's business, not a field
+	// the CLI can claim to know. No default is displayed because there is no
+	// client-side default.
+	if p.MigrationSource != "" {
+		fmt.Fprintf(&b, "  migration-source  %s\n", p.MigrationSource)
 	}
 	for _, r := range p.Repos {
 		line := fmt.Sprintf("  service  %s @ %s%s", r.Name, r.Branch, inferredMark(p.Inferred["repo"]))

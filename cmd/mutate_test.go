@@ -1116,6 +1116,51 @@ func TestPerRepoPRStamping(t *testing.T) {
 	}
 }
 
+// An explicit --migration-source against a server that advertises
+// environments.write but not environments.migration-source must be refused
+// BEFORE any create write, with a feature-unsupported failure. This guards the
+// safety boundary where an older server would silently drop the unknown field
+// and deploy its own default migration source.
+func TestMigrationSourceRefusedOnServerWithoutCapability(t *testing.T) {
+	s := newMutServer(t)
+	h := newMutHarness(t, s)
+
+	_, errOut, code := h.run("env", "create", "--slug", "proof-alpha",
+		"--repo", "widget:topic", "--migration-source", "orders-api",
+		"--yes", "--no-wait")
+	if code != cliexit.Error {
+		t.Fatalf("exit %d, want %d (feature-unsupported)\n%s", code, cliexit.Error, errOut)
+	}
+	if s.seen("create:proof-alpha") != 0 {
+		t.Fatal("an explicit source reached the server even though it does not advertise the capability")
+	}
+	if !strings.Contains(errOut, "does not support") {
+		t.Fatalf("the feature-unsupported failure was not reported:\n%s", errOut)
+	}
+}
+
+// An EXPLICIT empty --migration-source is a usage error before any inference,
+// Connect or create write. Treating it as omission would let an empty CI
+// variable silently select the server's default behind the operator's back,
+// which is exactly the explicit-choice-vs-omission boundary.
+func TestMigrationSourceExplicitEmptyIsUsageError(t *testing.T) {
+	s := newMutServer(t)
+	h := newMutHarness(t, s)
+
+	_, errOut, code := h.run("env", "create", "--slug", "proof-alpha",
+		"--repo", "widget:topic", "--migration-source", "",
+		"--yes", "--no-wait")
+	if code != cliexit.Usage {
+		t.Fatalf("exit %d, want %d (usage)\n%s", code, cliexit.Usage, errOut)
+	}
+	if s.seen("create:proof-alpha") != 0 {
+		t.Fatal("an explicitly empty --migration-source reached the server")
+	}
+	if !strings.Contains(errOut, "--migration-source") {
+		t.Fatalf("the usage error does not name the flag:\n%s", errOut)
+	}
+}
+
 // --pr with a single repo still works.
 func TestPRFlagSingleRepoStillWorks(t *testing.T) {
 	s := newMutServer(t)

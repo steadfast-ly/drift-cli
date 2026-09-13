@@ -172,6 +172,23 @@ drift env create --slug my-feature --repo my-service:feature/branch --yes
 drift env get my-feature --json slug,status,expires
 ```
 
+`--migration-source <ecr-repository>` explicitly selects the
+database-migration service whose co-published migration image the
+environment runs. The server is the authority on eligibility and
+presence; when the flag is omitted the server applies its profile
+default (and errors when no eligible source can be resolved). Never
+infer or prompt for the source -- the CLI does not choose migrations.
+An explicitly empty or whitespace-only value is a usage error, not
+omission: a script variable that expands to "" must fail, never
+silently select the default.
+
+Explicit selection requires the server to advertise the
+`environments.migration-source` capability; against an older server the
+create fails before any create write (feature-unsupported). A
+single-source Install whose sole eligible database service is the
+configured default needs no flag, and differing frontend commits do
+not trigger a migration warning.
+
 ### Extend an environment
 
 ```bash
