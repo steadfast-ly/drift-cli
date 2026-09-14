@@ -204,10 +204,18 @@ drift env unshare my-env    # revert to private
 ```bash
 drift env list
 drift env list --status running,sleeping
+drift env list --mine
+drift env list --owner alice@example.com
 drift env get my-env
 drift env get my-env -o json
 drift env get my-env --json slug,status,expires
 ```
+
+`--mine` lists only the environments you created; `--owner <email>` filters
+by creator (an exact match). `--mine` and `--owner` are mutually exclusive.
+Both combine with `--status`, `--limit` and
+`--offset`, and the resulting Owner column shows `-` for environments created
+before the server began recording a creator.
 
 ## Database access
 

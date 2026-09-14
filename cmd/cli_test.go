@@ -33,6 +33,8 @@ type fakeServer struct {
 	authHeaders            []string
 	clientVers             []string
 	lastAuditQuery         url.Values
+	envListQueries         []url.Values
+	whoamiCalls            int
 }
 
 // newFakeDrift serves the discovery document and just enough of /api/v1 to
@@ -84,14 +86,31 @@ func newFakeDrift(t *testing.T, doc map[string]any) *fakeServer {
 				"urn:drift:problem:unauthenticated", "The bearer credential is missing, expired or revoked.")
 			return
 		}
+		fs.envListQueries = append(fs.envListQueries, r.URL.Query())
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"items": []map[string]any{{
-				"id": "b92b68a9-877a-4f14-a92e-db1a62b803d9", "slug": "proof-alpha",
-				"ticketId": "PROJ-1001", "namespace": "pr-proof-alpha", "status": "running",
-				"expiresAt": "2026-07-27T10:40:00Z", "ttlHours": 48, "sleptAt": nil, "isPublic": true,
-				"statusMessage": nil,
-			}},
+			"items": []map[string]any{
+				{
+					"id": "b92b68a9-877a-4f14-a92e-db1a62b803d9", "slug": "proof-alpha",
+					"ticketId": "PROJ-1001", "namespace": "pr-proof-alpha", "status": "running",
+					"expiresAt": "2026-07-27T10:40:00Z", "ttlHours": 48, "sleptAt": nil, "isPublic": true,
+					"statusMessage": nil, "createdBy": "operator@example.com",
+				},
+				{
+					"id": "c4d5e6f7-8a9b-4c0d-8e1f-2a3b4c5d6e70", "slug": "proof-other",
+					"ticketId": "PROJ-1002", "namespace": "pr-proof-other", "status": "sleeping",
+					"expiresAt": "2026-07-28T10:40:00Z", "ttlHours": 24, "sleptAt": nil, "isPublic": false,
+					"statusMessage": nil, "createdBy": "alice@example.com",
+				},
+				{
+					// An environment created before the server began recording
+					// the creator: the CLI must render its Owner as `-`.
+					"id": "d5e6f7a8-9b0c-4d1e-9f2a-3b4c5d6e7f81", "slug": "proof-anon",
+					"ticketId": "PROJ-1003", "namespace": "pr-proof-anon", "status": "destroyed",
+					"expiresAt": "2026-07-26T10:40:00Z", "ttlHours": 48, "sleptAt": nil, "isPublic": false,
+					"statusMessage": nil, "createdBy": nil,
+				},
+			},
 			"pagination": map[string]any{"limit": 20, "offset": 0, "hasMore": false},
 		})
 	})
@@ -160,6 +179,7 @@ func newFakeDrift(t *testing.T, doc map[string]any) *fakeServer {
 	})
 
 	mux.HandleFunc("/api/v1/auth/whoami", func(w http.ResponseWriter, r *http.Request) {
+		fs.whoamiCalls++
 		if !authed(r) {
 			problem(w, 401, "UNAUTHORIZED", "Authentication required",
 				"urn:drift:problem:unauthenticated", "The bearer credential is missing, expired or revoked.")
@@ -428,6 +448,118 @@ func TestExitCodesEndToEnd(t *testing.T) {
 				t.Fatalf("exit %d, want %d\nstderr: %s", code, c.want, h.stderr.String())
 			}
 		})
+	}
+}
+
+// --mine and --owner are mutually exclusive: combining them is a usage error
+// that must be reported before any request reaches the server (not even
+// discovery).
+func TestEnvListOwnerFlagsMutuallyExclusive(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	_, errOut, code := h.run("env", "list", "--mine", "--owner", "alice@example.com")
+	if code != cliexit.Usage {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.Usage, errOut)
+	}
+	if !strings.Contains(errOut, "--mine and --owner are mutually exclusive") {
+		t.Fatalf("no mutual-exclusion message: %s", errOut)
+	}
+	if srv.discoveryHits != 0 || len(srv.envListQueries) != 0 || srv.whoamiCalls != 0 {
+		t.Fatalf("usage error still hit the server: discovery=%d list=%d whoami=%d",
+			srv.discoveryHits, len(srv.envListQueries), srv.whoamiCalls)
+	}
+
+	// The clash is detected by flag presence, so an explicitly-empty --owner
+	// (which alone would mean "no filter") must still be rejected with --mine.
+	_, errOut, code = h.run("env", "list", "--mine", "--owner", "")
+	if code != cliexit.Usage {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.Usage, errOut)
+	}
+	if !strings.Contains(errOut, "--mine and --owner are mutually exclusive") {
+		t.Fatalf("no mutual-exclusion message: %s", errOut)
+	}
+	if srv.discoveryHits != 0 || len(srv.envListQueries) != 0 || srv.whoamiCalls != 0 {
+		t.Fatalf("usage error still hit the server: discovery=%d list=%d whoami=%d",
+			srv.discoveryHits, len(srv.envListQueries), srv.whoamiCalls)
+	}
+}
+
+// --owner sends the given email verbatim as the server's `creator` filter.
+func TestEnvListOwnerFilter(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	_, _, code := h.run("env", "list", "--owner", "alice@example.com")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, h.stderr.String())
+	}
+	if len(srv.envListQueries) != 1 {
+		t.Fatalf("expected 1 list request, got %d", len(srv.envListQueries))
+	}
+	if got := srv.envListQueries[0].Get("creator"); got != "alice@example.com" {
+		t.Fatalf("creator param = %q, want alice@example.com", got)
+	}
+	if srv.whoamiCalls != 0 {
+		t.Fatalf("--owner must not call whoami, got %d calls", srv.whoamiCalls)
+	}
+}
+
+// --mine resolves the caller's email via whoami first, then sends it as the
+// `creator` filter on the list request.
+func TestEnvListMineResolvesWhoami(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	_, _, code := h.run("env", "list", "--mine")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, h.stderr.String())
+	}
+	if srv.whoamiCalls != 1 {
+		t.Fatalf("whoami called %d times, want 1", srv.whoamiCalls)
+	}
+	if len(srv.envListQueries) != 1 {
+		t.Fatalf("expected 1 list request, got %d", len(srv.envListQueries))
+	}
+	if got := srv.envListQueries[0].Get("creator"); got != "operator@example.com" {
+		t.Fatalf("creator param = %q, want operator@example.com (the whoami email)", got)
+	}
+}
+
+// The table's Owner column renders `-` for an environment whose creator the
+// server never recorded.
+func TestEnvListTableShowsDashForUnknownOwner(t *testing.T) {
+	srv := newFakeDrift(t, defaultDoc(""))
+	h := newHarness(t)
+	h.setup(t, srv, goodToken)
+
+	out, _, code := h.run("env", "list")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, h.stderr.String())
+	}
+	if !strings.Contains(out, "OWNER") {
+		t.Fatalf("no OWNER column header:\n%s", out)
+	}
+	if !strings.Contains(out, "operator@example.com") {
+		t.Fatalf("owner email missing from output:\n%s", out)
+	}
+	var foundAnon bool
+	for _, line := range strings.Split(out, "\n") {
+		if !strings.HasPrefix(line, "proof-anon") {
+			continue
+		}
+		foundAnon = true
+		fields := strings.Fields(line)
+		// slug, status, ticket, owner, expires
+		if len(fields) < 4 || fields[3] != "-" {
+			t.Fatalf("proof-anon owner cell missing or wrong, want -, line: %q, fields: %q", line, fields)
+		}
+	}
+	if !foundAnon {
+		t.Fatalf("anonymous env missing from output:\n%s", out)
 	}
 }
 

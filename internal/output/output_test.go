@@ -57,6 +57,7 @@ func sampleDoc() *Doc {
 			{Name: "slug", Header: "Slug"},
 			StatusColumn("status", "Status"),
 			{Name: "ticket", Header: "Ticket"},
+			{Name: "owner", Header: "Owner"},
 			{Name: "expires", Header: "Expires"},
 			{Name: "id", Header: "Id", Wide: true},
 			{Name: "slept_at", Header: "Slept", Wide: true},
@@ -65,12 +66,12 @@ func sampleDoc() *Doc {
 		Rows: []Row{
 			{
 				"slug": "proof-alpha", "status": "running", "ticket": &ticket,
-				"expires": fixed, "id": "b92b68a9-877a-4f14-a92e-db1a62b803d9",
+				"owner": "operator@example.com", "expires": fixed, "id": "b92b68a9-877a-4f14-a92e-db1a62b803d9",
 				"slept_at": (*time.Time)(nil), "public": true,
 			},
 			{
 				"slug": "a-much-longer-environment-slug", "status": "deploy_failed",
-				"ticket": (*string)(nil), "expires": fixed.Add(48 * time.Hour),
+				"ticket": (*string)(nil), "owner": (*string)(nil), "expires": fixed.Add(48 * time.Hour),
 				"id": "093c8639-3405-441e-8bc2-b9c75f32a3c0", "slept_at": &slept, "public": false,
 			},
 		},
@@ -88,6 +89,22 @@ func render(t *testing.T, w *Writer, d *Doc) (string, string) {
 		t.Fatal(err)
 	}
 	return out.String(), errOut.String()
+}
+
+// detailDoc is the single-environment view: sampleDoc's columns minus the
+// Owner column, which belongs to the list view only (the CLI's env get omits
+// it, mirroring envGetColumns).
+func detailDoc() *Doc {
+	d := sampleDoc()
+	d.Single = true
+	d.Rows = d.Rows[:1]
+	for i, c := range d.Columns {
+		if c.Name == "owner" {
+			d.Columns = append(d.Columns[:i:i], d.Columns[i+1:]...)
+			break
+		}
+	}
+	return d
 }
 
 func TestGoldenTable(t *testing.T) {
@@ -117,18 +134,14 @@ func TestGoldenJSONFieldProjection(t *testing.T) {
 }
 
 func TestGoldenDetail(t *testing.T) {
-	d := sampleDoc()
-	d.Single = true
-	d.Rows = d.Rows[:1]
+	d := detailDoc()
 	d.Extra = map[string]any{"services": []map[string]any{{"branch": "main", "pr": nil}}}
 	got, _ := render(t, &Writer{Format: FormatTable}, d)
 	assertGolden(t, "env_get_table.golden", got)
 }
 
 func TestGoldenDetailJSON(t *testing.T) {
-	d := sampleDoc()
-	d.Single = true
-	d.Rows = d.Rows[:1]
+	d := detailDoc()
 	d.Extra = map[string]any{"services": []map[string]any{{"branch": "main", "pr": nil}}}
 	got, _ := render(t, &Writer{Format: FormatJSON}, d)
 	assertGolden(t, "env_get_json.golden", got)
