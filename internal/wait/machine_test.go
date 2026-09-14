@@ -2,6 +2,7 @@ package wait
 
 import (
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/steadfast-ly/drift-cli/internal/api"
@@ -193,5 +194,57 @@ func TestPromotionFailureStatesAreFinal(t *testing.T) {
 	}
 	if !PromotionFailed(api.PromotionStatusDeployFailed) || PromotionFailed(api.PromotionStatusCompleted) {
 		t.Error("promotion failure classification is wrong")
+	}
+}
+
+// WaitableStates is the menu `--for` completes against. It is derived rather
+// than listed so a state the contract adds shows up here without a second
+// edit, and it must be sorted — completion and help print it as-is.
+func TestWaitableStatesIsTheSortedMachineKeySet(t *testing.T) {
+	want := make([]string, 0, len(envMachine))
+	for s := range envMachine {
+		want = append(want, string(s))
+	}
+	sort.Strings(want)
+	got := WaitableStates()
+	if len(got) != len(want) {
+		t.Fatalf("WaitableStates() has %d states, machine has %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("WaitableStates() = %v, machine key set = %v", got, want)
+		}
+	}
+}
+
+func TestParseStateAcceptsContractStates(t *testing.T) {
+	for _, s := range []string{"running", "deploy_failed", "destroyed", "sleeping"} {
+		got, ok := ParseState(s)
+		if !ok || got != api.EnvironmentStatus(s) {
+			t.Errorf("ParseState(%q) = %q, %v; want %q, true", s, got, ok, s)
+		}
+	}
+}
+
+// `--for` comes from the command line, so whitespace must not matter.
+func TestParseStateTrimsWhitespace(t *testing.T) {
+	for _, s := range []string{"  running", "running\n", "\tdeploy_failed \n"} {
+		got, ok := ParseState(s)
+		if !ok {
+			t.Errorf("ParseState(%q) rejected a trimmed valid state", s)
+		}
+		if want := api.EnvironmentStatus(strings.TrimSpace(s)); got != want {
+			t.Errorf("ParseState(%q) = %q, want %q", s, got, want)
+		}
+	}
+}
+
+// The empty string and anything outside the contract enum are not waitable
+// states; accepting them would turn a typo into a thirty-minute no-op.
+func TestParseStateRejectsUnknownAndEmpty(t *testing.T) {
+	for _, s := range []string{"", "   ", "hibernating", "Running", "RUNNING"} {
+		if _, ok := ParseState(s); ok {
+			t.Errorf("ParseState(%q) accepted a state outside the contract", s)
+		}
 	}
 }

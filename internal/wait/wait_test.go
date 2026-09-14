@@ -530,12 +530,28 @@ func TestProgressOffTerminalPrintsOnlyChanges(t *testing.T) {
 	}
 }
 
-func TestProgressStopIsIdempotent(t *testing.T) {
+// Stop erases the animated line entirely — spaces over the drawn width,
+// bounded by carriage returns — so the command's own output does not look like
+// part of the animation. It is called from a defer AND by the caller, so the
+// second call must write nothing. The frame is drawn synchronously (see
+// TestAnimatedProgressWritesCarriageReturnFrames) so nothing here depends on
+// the spinner's ticker firing.
+func TestProgressStopClearsTheLineAndIsIdempotent(t *testing.T) {
 	var buf bytes.Buffer
 	p := NewProgress(&buf, true)
-	p.Observed(api.EnvironmentStatusBuilding, 0)
+	p.Observed(api.EnvironmentStatusBuilding, 3*time.Second)
+	p.draw("⠋")
+	width := len([]rune("⠋ building (3s)"))
 	p.Stop()
+
+	if out := buf.String(); !strings.HasSuffix(out, "\r"+strings.Repeat(" ", width)+"\r") {
+		t.Fatalf("Stop did not clear the animated line: %q", out)
+	}
+	before := buf.String()
 	p.Stop()
+	if after := buf.String(); after != before {
+		t.Fatalf("a second Stop wrote %q more output", strings.TrimPrefix(after, before))
+	}
 }
 
 type recordingReporter struct {
@@ -549,8 +565,449 @@ func (r *recordingReporter) Observed(s api.EnvironmentStatus, _ time.Duration) {
 func (r *recordingReporter) Throttled(d time.Duration) { r.throttled = append(r.throttled, d) }
 func (r *recordingReporter) Stop()                     {}
 
+type recordingPromotionReporter struct {
+	throttled []time.Duration
+}
+
+// Observed is a no-op: this reporter is used only to assert that the throttle
+// path calls Throttled, so observation is intentionally not recorded.
+func (r *recordingPromotionReporter) Observed(api.PromotionStatus, time.Duration) {}
+func (r *recordingPromotionReporter) Throttled(d time.Duration) {
+	r.throttled = append(r.throttled, d)
+}
+func (r *recordingPromotionReporter) Stop() {}
+
 // clientRetryAfter reaches the client package's guard from here, so the bound
 // is asserted on the code the CLI actually runs rather than on a copy of it.
 func clientRetryAfter(h *struct{ RetryAfter int }) time.Duration {
 	return client.RetryAfter(h)
+}
+
+// --- default timeout ---------------------------------------------------------
+
+// The default timeout is a function rather than one constant because destroy
+// convergence is owned by a two-minute cron with an eight-minute escalation
+// window: a legitimate teardown routinely exceeds ten minutes, so `destroyed`
+// and `destroying` get twenty. The build/deploy path gets thirty; everything
+// else gets the plain ten.
+func TestDefaultTimeoutFor(t *testing.T) {
+	cases := []struct {
+		goal api.EnvironmentStatus
+		want time.Duration
+	}{
+		{api.EnvironmentStatusDestroyed, 20 * time.Minute},
+		{api.EnvironmentStatusDestroying, 20 * time.Minute},
+		{api.EnvironmentStatusBuilding, 30 * time.Minute},
+		{api.EnvironmentStatusDeploying, 30 * time.Minute},
+		{api.EnvironmentStatusRunning, 30 * time.Minute},
+		{api.EnvironmentStatusRequested, 10 * time.Minute},
+		{api.EnvironmentStatusBuildFailed, 10 * time.Minute},
+		{api.EnvironmentStatusDeployFailed, 10 * time.Minute},
+		{api.EnvironmentStatusCanceled, 10 * time.Minute},
+		{api.EnvironmentStatusSleeping, 10 * time.Minute},
+		{api.EnvironmentStatusWaking, 10 * time.Minute},
+	}
+	for _, c := range cases {
+		if got := DefaultTimeoutFor(c.goal); got != c.want {
+			t.Errorf("DefaultTimeoutFor(%s) = %s, want %s", c.goal, got, c.want)
+		}
+	}
+}
+
+// --- options -----------------------------------------------------------------
+
+// Zero means the documented default, field by field. These accessors are what
+// the wait consults, so a zero Interval must not turn into "poll as fast as
+// possible" and a zero FailureWindow must not turn into "give up at once".
+func TestOptionsZeroValuesUseThePackageDefaults(t *testing.T) {
+	o := Options{}
+	if got := o.interval(); got != DefaultInterval {
+		t.Fatalf("zero Interval defaulted to %s, want %s", got, DefaultInterval)
+	}
+	if got := o.streak(); got != DefaultFailureStreak {
+		t.Fatalf("zero FailureStreak defaulted to %d, want %d", got, DefaultFailureStreak)
+	}
+	if got := o.failureWindow(); got != DefaultFailureWindow {
+		t.Fatalf("zero FailureWindow defaulted to %s, want %s", got, DefaultFailureWindow)
+	}
+}
+
+func TestOptionsHonourExplicitValues(t *testing.T) {
+	c := &fakeClock{t: time.Unix(0, 0)}
+	o := Options{
+		Interval: 5 * time.Second, FailureStreak: 7, FailureWindow: 90 * time.Second,
+		now: c.now, sleep: c.sleep,
+	}
+	if got := o.interval(); got != 5*time.Second {
+		t.Fatalf("Interval defaulted to %s, want 5s", got)
+	}
+	if got := o.streak(); got != 7 {
+		t.Fatalf("FailureStreak defaulted to %d, want 7", got)
+	}
+	if got := o.failureWindow(); got != 90*time.Second {
+		t.Fatalf("FailureWindow defaulted to %s, want 90s", got)
+	}
+	if got := o.clock()(); !got.Equal(c.t) {
+		t.Fatalf("clock read %s, want the injected %s", got, c.t)
+	}
+}
+
+// The accessors feed the wait itself: an explicit short window is honoured
+// rather than the 30-second default.
+func TestWaitHonoursAnExplicitFailureWindow(t *testing.T) {
+	c := &fakeClock{t: time.Unix(0, 0)}
+	s := &script{obs: []Observation{deployFailed()}}
+	opts := newOpts(api.EnvironmentStatusRunning, c)
+	opts.FailureWindow = 10 * time.Second
+	_, err := Wait(context.Background(), opts, s.poll)
+	if cliexit.CodeOf(err) != cliexit.Conflict {
+		t.Fatalf("exit %d, want %d (%v)", cliexit.CodeOf(err), cliexit.Conflict, err)
+	}
+	held := c.t.Sub(time.Unix(0, 0))
+	if held < opts.FailureWindow || held >= DefaultFailureWindow {
+		t.Fatalf("held %s: the explicit 10s window was not honoured over the %s default",
+			held, DefaultFailureWindow)
+	}
+}
+
+// --- realSleep ---------------------------------------------------------------
+
+// realSleep is the production sleeper: it must actually wait, not return
+// early. Five milliseconds is enough to prove the timer path without slowing
+// the suite.
+func TestRealSleepWaitsTheDuration(t *testing.T) {
+	start := time.Now()
+	if err := realSleep(context.Background(), 5*time.Millisecond); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if elapsed := time.Since(start); elapsed < 5*time.Millisecond {
+		t.Fatalf("returned after %s, before the requested %s", elapsed, 5*time.Millisecond)
+	}
+}
+
+// A context that is already cancelled must get the answer immediately, not
+// after the full sleep.
+func TestRealSleepHonoursACancelledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := realSleep(ctx, 20*time.Millisecond); !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v, want context.Canceled", err)
+	}
+}
+
+// A sleeper that reports the context's deadline means the wait itself ran out
+// of time, which is exit 6 — reached here through the sleeper instead of the
+// deadline check, but the same code.
+func TestASleeperThatReportsDeadlineExceededIsATimeout(t *testing.T) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer cancel()
+	c := &fakeClock{t: time.Unix(0, 0)}
+	s := &script{obs: []Observation{building()}}
+	opts := newOpts(api.EnvironmentStatusRunning, c)
+	opts.sleep = func(context.Context, time.Duration) error { return ctx.Err() }
+	_, err := Wait(ctx, opts, s.poll)
+	if cliexit.CodeOf(err) != cliexit.WaitTimeout {
+		t.Fatalf("exit %d, want %d (%v)", cliexit.CodeOf(err), cliexit.WaitTimeout, err)
+	}
+}
+
+// --- promotion wait edges ----------------------------------------------------
+
+func TestWaitPromotionTimesOutWithExitSix(t *testing.T) {
+	c := &fakeClock{t: time.Unix(0, 0)}
+	poll := func(context.Context) (PromotionObservation, error) {
+		return PromotionObservation{Status: api.PromotionStatusPromoting}, nil
+	}
+	_, err := WaitPromotion(context.Background(), PromotionOptions{
+		Timeout: 30 * time.Second, Interval: 3 * time.Second, Ref: "pr-1",
+		now: c.now, sleep: c.sleep,
+	}, poll)
+	if cliexit.CodeOf(err) != cliexit.WaitTimeout {
+		t.Fatalf("exit %d, want %d (%v)", cliexit.CodeOf(err), cliexit.WaitTimeout, err)
+	}
+	// Same detail as the environment wait: the last status observed is named.
+	var ee *cliexit.ExitError
+	if !errors.As(err, &ee) || !strings.Contains(ee.Detail, "promoting") {
+		t.Fatalf("the timeout does not report the last status seen: %v", err)
+	}
+	// And it must not overshoot the deadline: the last sleep is skipped rather
+	// than taken and then noticed.
+	if elapsed := c.t.Sub(time.Unix(0, 0)); elapsed > 30*time.Second {
+		t.Fatalf("overshot the deadline by %s", elapsed-30*time.Second)
+	}
+}
+
+func TestWaitPromotionRateLimitBacksOffAndContinues(t *testing.T) {
+	c := &fakeClock{t: time.Unix(0, 0)}
+	limited := &cliexit.ExitError{Code: cliexit.RateLimited, RetryAfter: 42 * time.Second}
+	calls := 0
+	poll := func(context.Context) (PromotionObservation, error) {
+		calls++
+		if calls == 1 {
+			return PromotionObservation{}, limited
+		}
+		return PromotionObservation{Status: api.PromotionStatusCompleted}, nil
+	}
+	rec := &recordingPromotionReporter{}
+	got, err := WaitPromotion(context.Background(), PromotionOptions{
+		Timeout: 20 * time.Minute, Interval: 3 * time.Second, Ref: "pr-1",
+		now: c.now, sleep: c.sleep, Reporter: rec,
+	}, poll)
+	if err != nil {
+		t.Fatalf("a 429 aborted the promotion wait: %v", err)
+	}
+	if got != api.PromotionStatusCompleted {
+		t.Fatalf("final status %s, want completed", got)
+	}
+	// One backoff of the server's own 42 seconds, and nothing else.
+	if elapsed := c.t.Sub(time.Unix(0, 0)); elapsed != 42*time.Second {
+		t.Fatalf("elapsed %s, want 42s", elapsed)
+	}
+	if len(rec.throttled) != 1 || rec.throttled[0] != 42*time.Second {
+		t.Fatalf("backoff not reported: %v", rec.throttled)
+	}
+}
+
+// Any other error aborts, unchanged: retrying would only produce the same
+// error more slowly.
+func TestWaitPromotionNonRateLimitErrorAborts(t *testing.T) {
+	c := &fakeClock{t: time.Unix(0, 0)}
+	boom := &cliexit.ExitError{Code: cliexit.NotFound, Message: "promotion not found"}
+	poll := func(context.Context) (PromotionObservation, error) {
+		return PromotionObservation{}, boom
+	}
+	_, err := WaitPromotion(context.Background(), PromotionOptions{
+		Timeout: 20 * time.Minute, Interval: 3 * time.Second,
+		now: c.now, sleep: c.sleep,
+	}, poll)
+	if cliexit.CodeOf(err) != cliexit.NotFound {
+		t.Fatalf("exit %d, want %d", cliexit.CodeOf(err), cliexit.NotFound)
+	}
+}
+
+func TestWaitPromotionCancellationIsNotATimeout(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	c := &fakeClock{t: time.Unix(0, 0)}
+	poll := func(context.Context) (PromotionObservation, error) {
+		return PromotionObservation{Status: api.PromotionStatusPromoting}, nil
+	}
+	_, err := WaitPromotion(ctx, PromotionOptions{
+		Timeout: 20 * time.Minute, Interval: 3 * time.Second,
+		now: c.now,
+		sleep: func(context.Context, time.Duration) error {
+			cancel()
+			return ctx.Err()
+		},
+	}, poll)
+	if cliexit.CodeOf(err) != cliexit.Error {
+		t.Fatalf("exit %d, want %d (%v)", cliexit.CodeOf(err), cliexit.Error, err)
+	}
+}
+
+// The Reporter is optional; a nil one must not panic on an observation, on a
+// rate-limit notice, or on the deferred Stop.
+func TestWaitPromotionNilReporterUsesTheNopReporter(t *testing.T) {
+	c := &fakeClock{t: time.Unix(0, 0)}
+	poll := func(context.Context) (PromotionObservation, error) {
+		return PromotionObservation{Status: api.PromotionStatusCompleted}, nil
+	}
+	if _, err := WaitPromotion(context.Background(), PromotionOptions{
+		Timeout: time.Minute, Interval: 3 * time.Second,
+		now: c.now, sleep: c.sleep,
+	}, poll); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	c2 := &fakeClock{t: time.Unix(0, 0)}
+	limited := &cliexit.ExitError{Code: cliexit.RateLimited, RetryAfter: 5 * time.Second}
+	calls := 0
+	throttled := func(context.Context) (PromotionObservation, error) {
+		calls++
+		if calls == 1 {
+			return PromotionObservation{}, limited
+		}
+		return PromotionObservation{Status: api.PromotionStatusCompleted}, nil
+	}
+	if _, err := WaitPromotion(context.Background(), PromotionOptions{
+		Timeout: time.Minute, Interval: 3 * time.Second,
+		now: c2.now, sleep: c2.sleep,
+	}, throttled); err != nil {
+		t.Fatalf("unexpected error on the throttle path: %v", err)
+	}
+}
+
+// Zero means "the default" for both fields — the source comment notes this was
+// NOT always true, and that `--wait-timeout 0` used to mean "poll once and
+// time out". Pinned here so the regression stays dead.
+func TestWaitPromotionZeroTimeoutMeansTheDefault(t *testing.T) {
+	c := &fakeClock{t: time.Unix(0, 0)}
+	poll := func(context.Context) (PromotionObservation, error) {
+		return PromotionObservation{Status: api.PromotionStatusPromoting}, nil
+	}
+	_, err := WaitPromotion(context.Background(), PromotionOptions{
+		Ref: "pr-1", now: c.now, sleep: c.sleep,
+	}, poll)
+	if cliexit.CodeOf(err) != cliexit.WaitTimeout {
+		t.Fatalf("exit %d, want %d", cliexit.CodeOf(err), cliexit.WaitTimeout)
+	}
+	// The default deadline was honoured to within one poll interval: the wait
+	// stops no earlier than one interval before the deadline and no later than
+	// the deadline itself. That the last poll lands exactly one interval short
+	// is loop ordering, not a contract, so the assertion is bounded rather than
+	// pinned to that point.
+	lo := DefaultPromotionTimeout - DefaultInterval
+	hi := DefaultPromotionTimeout
+	if elapsed := c.t.Sub(time.Unix(0, 0)); elapsed < lo || elapsed > hi {
+		t.Fatalf("elapsed %s, want between %s and %s (the %s default, within one %s interval)",
+			elapsed, lo, hi, DefaultPromotionTimeout, DefaultInterval)
+	}
+}
+
+// --- progress: promotion adapter (off-terminal) ------------------------------
+
+func TestPromotionProgressRecordsTransitionsOffTerminal(t *testing.T) {
+	var buf bytes.Buffer
+	p := NewProgress(&buf, false)
+	pr := p.ForPromotion()
+	pr.Observed(api.PromotionStatusDispatched, 0)
+	pr.Observed(api.PromotionStatusPromoting, 3*time.Second)
+	pr.Observed(api.PromotionStatusPromoting, 6*time.Second) // unchanged: no line
+	pr.Observed(api.PromotionStatusDeploying, 9*time.Second)
+	p.Stop()
+
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	want := []string{"dispatched (0s)", "promoting (3s)", "deploying (9s)"}
+	if len(lines) != len(want) {
+		t.Fatalf("got %d lines %q, want %d", len(lines), lines, len(want))
+	}
+	for i := range want {
+		if lines[i] != want[i] {
+			t.Fatalf("line %d = %q, want %q", i, lines[i], want[i])
+		}
+	}
+}
+
+// The adapter reports into the same record as the parent, so a promotion state
+// that is already the last state shown prints nothing.
+func TestPromotionProgressSharesTheParentsState(t *testing.T) {
+	var buf bytes.Buffer
+	p := NewProgress(&buf, false)
+	p.Observed(api.EnvironmentStatusDeploying, 3*time.Second)
+	p.ForPromotion().Observed(api.PromotionStatusDeploying, 6*time.Second)
+	p.Stop()
+	if got := buf.String(); got != "deploying (3s)\n" {
+		t.Fatalf("got %q, want the single environment line", got)
+	}
+}
+
+// Throttling is reported even though it is not a state change: a wait that
+// stalls while backing off needs to say why.
+func TestProgressThrottledExplainsTheBackoffOffTerminal(t *testing.T) {
+	var buf bytes.Buffer
+	p := NewProgress(&buf, false)
+	p.Observed(api.EnvironmentStatusDeploying, 3*time.Second)
+	p.Throttled(42 * time.Second)
+	p.Stop()
+	if got := buf.String(); !strings.Contains(got, "rate limited; retrying in 42s\n") {
+		t.Fatalf("no throttle line in %q", got)
+	}
+}
+
+// --- progress: on-terminal animation -----------------------------------------
+
+// On a terminal the reporter redraws one line in place. The spinner's own
+// 120ms ticker is not something a test can wait on deterministically, so the
+// frames are drawn synchronously here and the assertions are about what was
+// written — not about how many ticks happened to land before Stop.
+func TestAnimatedProgressWritesCarriageReturnFrames(t *testing.T) {
+	var buf bytes.Buffer
+	p := NewProgress(&buf, true)
+	p.Observed(api.EnvironmentStatusBuilding, 3*time.Second)
+	p.draw("⠋")
+	p.draw("⠙")
+	p.Stop()
+
+	out := buf.String()
+	if !strings.Contains(out, "\r⠋ building (3s)") {
+		t.Fatalf("first frame missing from %q", out)
+	}
+	if !strings.Contains(out, "\r⠙ building (3s)") {
+		t.Fatalf("second frame missing from %q", out)
+	}
+	// The animated form never advances the line: no newlines, ever.
+	if strings.Contains(out, "\n") {
+		t.Fatalf("an animated frame contains a newline: %q", out)
+	}
+}
+
+// A shorter state must be padded to its predecessor's width, or its tail would
+// survive on a terminal that does not honour ANSI erase sequences.
+func TestAnimatedProgressPadsToEraseALongerLine(t *testing.T) {
+	var buf bytes.Buffer
+	p := NewProgress(&buf, true)
+	p.Observed(api.EnvironmentStatusDeployFailed, 3*time.Second)
+	p.draw("⠋")
+	p.Observed(api.EnvironmentStatusRunning, 6*time.Second)
+	p.draw("⠋")
+	p.Stop()
+
+	// The spinner's ticker may have redrawn either state with any rune before
+	// the manual draw landed, so the leading rune is not asserted. What matters
+	// is the first frame carrying each state and the width relationship between
+	// them.
+	long, short := "", ""
+	for _, f := range strings.Split(buf.String(), "\r") {
+		if long == "" && strings.Contains(f, "deploy_failed (3s)") {
+			long = f
+		}
+		if short == "" && strings.Contains(f, "running (6s)") {
+			short = f
+		}
+	}
+	if long == "" {
+		t.Fatalf("long frame missing from %q", buf.String())
+	}
+	if short == "" {
+		t.Fatalf("short frame missing from %q", buf.String())
+	}
+	// The short line must be padded out to the long line's width, or its tail
+	// would survive on a terminal that does not honour ANSI erase sequences.
+	if len([]rune(short)) != len([]rune(long)) {
+		t.Fatalf("short frame %q (%d runes) is not padded to the long frame %q (%d runes)",
+			short, len([]rune(short)), long, len([]rune(long)))
+	}
+	// Padding is trailing spaces, never an ANSI erase.
+	if trimmed := strings.TrimRight(short, " "); !strings.HasSuffix(trimmed, " running (6s)") {
+		t.Fatalf("short frame %q is not padded with trailing spaces", short)
+	}
+}
+
+// With nothing observed yet the spinner has nothing to say; a draw before the
+// first state must write nothing at all.
+func TestAnimatedProgressDrawBeforeAnyStateWritesNothing(t *testing.T) {
+	var buf bytes.Buffer
+	p := NewProgress(&buf, true)
+	defer p.Stop() // cleanup if the test fails before the explicit Stop below
+	p.draw("⠋")
+	// Join the spinner before inspecting the buffer: even if a regression moved
+	// the draw into the spinner goroutine, the write is only guaranteed to have
+	// landed once Stop has returned.
+	p.Stop()
+	if buf.Len() != 0 {
+		t.Fatalf("a frame was drawn before any state existed: %q", buf.String())
+	}
+}
+
+// In animated mode a rate limit is reflected in the live line, not dropped —
+// a wait that stalls while backing off needs to say why on screen too.
+func TestAnimatedProgressRendersTheThrottledFrame(t *testing.T) {
+	var buf bytes.Buffer
+	p := NewProgress(&buf, true)
+	p.Observed(api.EnvironmentStatusBuilding, 3*time.Second)
+	p.Throttled(42 * time.Second)
+	p.draw("⠙")
+	p.Stop()
+	if out := buf.String(); !strings.Contains(out, "\r⠙ building — rate limited, retrying in 42s") {
+		t.Fatalf("throttled frame missing from %q", out)
+	}
 }
