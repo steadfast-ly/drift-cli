@@ -184,6 +184,16 @@
                 "type": "null"
               }
             ]
+          },
+          "createdBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -197,7 +207,8 @@
           "ttlHours",
           "sleptAt",
           "isPublic",
-          "migrationSourceEcrRepository"
+          "migrationSourceEcrRepository",
+          "createdBy"
         ]
       },
       "EnvironmentService": {
@@ -1377,7 +1388,7 @@
       "get": {
         "operationId": "environments.list",
         "summary": "List environments",
-        "description": "Environments newest first. Pass `status` one or more times to narrow to a status set; omit it for every environment including terminal ones.",
+        "description": "Environments newest first. Pass `status` one or more times to narrow to a status set; omit it for every environment including terminal ones. Pass `creator` to narrow to environments created by that email (exact match).",
         "tags": [
           "environments"
         ],
@@ -1428,6 +1439,16 @@
             },
             "style": "form",
             "explode": true,
+            "allowReserved": true
+          },
+          {
+            "name": "creator",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 320
+            },
             "allowReserved": true
           }
         ],

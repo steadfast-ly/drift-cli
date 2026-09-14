@@ -65,6 +65,7 @@ func envColumns() []output.Column {
 		{Name: "slug", Header: "Slug"},
 		output.StatusColumn("status", "Status"),
 		{Name: "ticket", Header: "Ticket"},
+		{Name: "owner", Header: "Owner"},
 		{Name: "expires", Header: "Expires"},
 		{Name: "id", Header: "Id", Wide: true},
 		{Name: "namespace", Header: "Namespace", Wide: true},
@@ -80,6 +81,7 @@ func envRow(e api.Environment) output.Row {
 		"slug":      e.Slug,
 		"status":    string(e.Status),
 		"ticket":    e.TicketId,
+		"owner":     e.CreatedBy,
 		"expires":   e.ExpiresAt,
 		"id":        e.Id.String(),
 		"namespace": e.Namespace,
@@ -92,9 +94,24 @@ func envRow(e api.Environment) output.Row {
 	}
 }
 
+// envGetColumns is the single-environment detail column set: envColumns minus
+// the owner column. Owner is the `env list` filter aid, not shown in the
+// detail view.
+func envGetColumns() []output.Column {
+	cols := envColumns()
+	for i, c := range cols {
+		if c.Name == "owner" {
+			return append(cols[:i:i], cols[i+1:]...)
+		}
+	}
+	return cols
+}
+
 func newEnvListCommand(app *App) *cobra.Command {
 	var statuses []string
 	var limit, offset int
+	var mine bool
+	var owner string
 
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -107,17 +124,23 @@ func newEnvListCommand(app *App) *cobra.Command {
 			cliexit.Help,
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
-			return runEnvList(c.Context(), app, statuses, limit, offset)
+			return runEnvList(c.Context(), app, statuses, limit, offset, mine, owner, c.Flags().Changed("owner"))
 		},
 	}
 	cmd.Flags().StringSliceVar(&statuses, "status", nil,
 		"filter by status; repeatable or comma-separated (e.g. running,sleeping)")
 	cmd.Flags().IntVar(&limit, "limit", 0, "maximum number of environments to return (server default 20, max 50)")
 	cmd.Flags().IntVar(&offset, "offset", 0, "number of environments to skip")
+	cmd.Flags().BoolVar(&mine, "mine", false, "only environments you created (resolves your email via whoami)")
+	cmd.Flags().StringVar(&owner, "owner", "", "only environments created by this email (exact match)")
 	return cmd
 }
 
-func runEnvList(ctx context.Context, app *App, statuses []string, limit, offset int) error {
+func runEnvList(ctx context.Context, app *App, statuses []string, limit, offset int, mine bool, owner string, ownerChanged bool) error {
+	if mine && ownerChanged {
+		return usageErrorf("--mine and --owner are mutually exclusive")
+	}
+
 	cols := envColumns()
 	if err := output.ValidateFields(app.Out.JSONFields, cols); err != nil {
 		return usageErrorf("%s", err.Error())
@@ -141,6 +164,22 @@ func runEnvList(ctx context.Context, app *App, statuses []string, limit, offset 
 	sess, err := app.Connect(ctx, FeatureEnvironmentsRead)
 	if err != nil {
 		return err
+	}
+
+	if mine {
+		// --mine resolves the caller's own email, so filtering stays a pure
+		// server-side exact match on the same string the server recorded at
+		// create time. A whoami failure is a normal request error, not usage.
+		who, err := sess.API.AuthWhoamiWithResponse(ctx)
+		if err != nil {
+			return client.Transport(err, sess.Resolved.Endpoint)
+		}
+		if who.JSON200 == nil {
+			return client.Fail(who, who.Headers429)
+		}
+		params.Creator = &who.JSON200.Email
+	} else if owner != "" {
+		params.Creator = &owner
 	}
 
 	resp, err := sess.API.EnvironmentsListWithResponse(ctx, params)
@@ -234,7 +273,7 @@ func newEnvGetCommand(app *App) *cobra.Command {
 }
 
 func runEnvGet(ctx context.Context, app *App, ref string) error {
-	cols := envColumns()
+	cols := envGetColumns()
 	if err := output.ValidateFields(app.Out.JSONFields, cols); err != nil {
 		return usageErrorf("%s", err.Error())
 	}

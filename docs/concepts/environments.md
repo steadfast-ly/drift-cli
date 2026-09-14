@@ -11,6 +11,15 @@ A slug resolves only environments that are neither `destroyed` nor `canceled`,
 so a slug reused over time addresses the one live environment holding it.
 To address a torn-down environment, use its UUID.
 
+## Ownership
+
+Every environment records the email of the creator at create time.
+`drift env list --mine` lists only the environments you created (resolving
+your email via whoami), and `drift env list --owner <email>` filters by
+creator with an exact match. Environments created before the server began
+recording a creator have no owner and render as `-` in the Owner column.
+`--mine` and `--owner` are mutually exclusive.
+
 ## Lifecycle
 
 An environment moves through these states:
