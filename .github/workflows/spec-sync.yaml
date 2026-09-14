@@ -44,7 +44,7 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           # actions/checkout persists GITHUB_TOKEN as an http extraheader for
@@ -56,7 +56,7 @@ jobs:
       - name: Fetch main
         run: git fetch origin main
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: "1.26.5"
           cache: true
