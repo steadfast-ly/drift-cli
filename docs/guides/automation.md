@@ -134,3 +134,14 @@ drift env e2e "pr-${PR_NUMBER}" --wait
 # Tear it down.
 drift env rm "pr-${PR_NUMBER}" --yes --wait
 ```
+
+When a deterministic database-migration source matters, pin it with
+`--migration-source <ecr-repository>`; the server rejects a value that
+is not an eligible, uniquely-present source before the environment is
+created. Pinning also requires a server that advertises the
+`environments.migration-source` capability; against an older server the
+create fails before any create write (exit 1, feature-unsupported), so
+a script that pins is safe and a script that omits keeps working.
+Omit the flag to delegate the choice to the server's profile default --
+the CLI never infers a source, so a script that omits it gets exactly
+the same request an interactive create would.

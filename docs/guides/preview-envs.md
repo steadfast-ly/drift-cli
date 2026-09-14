@@ -47,6 +47,58 @@ drift env create \
 Repos without a `:pr` segment get their PR resolved by the server
 (exactly-one-open-PR by head branch, else none).
 
+### Database migrations
+
+On Install profiles that co-publish database-migration images, the
+environment's migration image is the profile's migration-image repository
+(e.g. `db-migrations`), co-published under the selected database service's
+image tag. `--migration-source` names the ECR repository of that **database
+service** -- the service whose selected tag supplies the migration artifact
+-- not the migration-image repository itself. Choose it explicitly:
+
+```bash
+drift env create \
+  --slug my-feature \
+  --repo my-service:feature/branch \
+  --migration-source orders-api \
+  --yes
+```
+
+The flag maps directly to the optional `migrationSourceEcrRepository` request
+field and is shown in the confirmation plan. The **server** is the only
+authority on what is eligible:
+
+- The value must name a database-migration service from the Install's profile
+  **and** be a service included in the environment.
+- A value that is not an eligible, uniquely-present source is rejected before
+  the environment is created.
+- A profile without a database-migration block refuses any explicit source as
+  unsupported.
+
+When the flag is omitted the server applies its own rules — the profile's
+configured default when uniquely included, otherwise the sole eligible
+included source, an actionable error when several eligible sources remain, or
+a missing-source error when none do. The CLI does **not** infer a source from
+the working directory and never prompts for one: omission means "the server
+decides". Passing an explicitly empty `--migration-source` (including
+whitespace-only) is a usage error rather than omission, so an empty script
+variable can never silently select the default.
+
+Explicit selection requires a server that advertises the
+`environments.migration-source` capability, which the server exposes only for
+Installs whose profile has a database-migration block. Against a server
+without it, the create is refused **before any create write**, with a
+feature-unsupported error naming the context and the server version and a
+hint to upgrade the server or use a context that supports the feature — an
+older server must never silently drop the field and deploy its own default.
+Omitting the flag needs no special capability, so it keeps working against
+every server that supports plain `env create`.
+
+Migration-divergence warnings are the server's, not the CLI's. They compare
+selected commits only among eligible, included database services — a UI
+service, even in the same source repository at a different commit, never
+produces one.
+
 ### Useful flags
 
 | Flag | Purpose |
@@ -56,6 +108,7 @@ Repos without a `:pr` segment get their PR resolved by the server
 | `--ticket PROJ-1234` | Issue key |
 | `--ttl 72` | Lifetime in hours (default 48, max 120) |
 | `--public` | Make the environment reachable without the VPN |
+| `--migration-source <repo>` | ECR repository of the database service whose selected tag supplies the migration image (server profile default when omitted) |
 | `--pr` | Pull request number (single-repo plan only; use `name:branch:pr` for multi-service) |
 | `--pr-title`, `--pr-url` | Pull request title and URL (companions to `--pr`) |
 | `--no-infer` | Ignore working-directory inference, use only flags |
