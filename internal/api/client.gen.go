@@ -534,16 +534,18 @@ type DbAccessDirectEngine string
 
 // Environment defines model for Environment.
 type Environment struct {
-	ExpiresAt     time.Time          `json:"expiresAt"`
-	Id            openapi_types.UUID `json:"id"`
-	IsPublic      bool               `json:"isPublic"`
-	Namespace     string             `json:"namespace"`
-	SleptAt       *time.Time         `json:"sleptAt"`
-	Slug          string             `json:"slug"`
-	Status        EnvironmentStatus  `json:"status"`
-	StatusMessage *string            `json:"statusMessage"`
-	TicketId      *string            `json:"ticketId"`
-	TtlHours      int                `json:"ttlHours"`
+	CreatedBy                    *string            `json:"createdBy"`
+	ExpiresAt                    time.Time          `json:"expiresAt"`
+	Id                           openapi_types.UUID `json:"id"`
+	IsPublic                     bool               `json:"isPublic"`
+	MigrationSourceEcrRepository *string            `json:"migrationSourceEcrRepository"`
+	Namespace                    string             `json:"namespace"`
+	SleptAt                      *time.Time         `json:"sleptAt"`
+	Slug                         string             `json:"slug"`
+	Status                       EnvironmentStatus  `json:"status"`
+	StatusMessage                *string            `json:"statusMessage"`
+	TicketId                     *string            `json:"ticketId"`
+	TtlHours                     int                `json:"ttlHours"`
 }
 
 // EnvironmentStatus defines model for Environment.Status.
@@ -776,9 +778,10 @@ type AuditActorsParams struct {
 
 // EnvironmentsListParams defines parameters for EnvironmentsList.
 type EnvironmentsListParams struct {
-	Limit  *int                            `form:"limit,omitempty" json:"limit,omitempty"`
-	Offset *int                            `form:"offset,omitempty" json:"offset,omitempty"`
-	Status *[]EnvironmentsListParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+	Limit   *int                            `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset  *int                            `form:"offset,omitempty" json:"offset,omitempty"`
+	Status  *[]EnvironmentsListParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+	Creator *string                         `form:"creator,omitempty" json:"creator,omitempty"`
 }
 
 // EnvironmentsListParamsStatus defines parameters for EnvironmentsList.
@@ -786,8 +789,9 @@ type EnvironmentsListParamsStatus string
 
 // EnvironmentsCreateJSONBody defines parameters for EnvironmentsCreate.
 type EnvironmentsCreateJSONBody struct {
-	IsPublic *bool `json:"isPublic,omitempty"`
-	Repos    []struct {
+	IsPublic                     *bool   `json:"isPublic,omitempty"`
+	MigrationSourceEcrRepository *string `json:"migrationSourceEcrRepository,omitempty"`
+	Repos                        []struct {
 		Branch       string             `json:"branch"`
 		PrNumber     *int               `json:"prNumber,omitempty"`
 		PrTitle      *string            `json:"prTitle,omitempty"`
@@ -1071,7 +1075,7 @@ type ClientInterface interface {
 
 	// EnvironmentsList List environments
 	//
-	// Environments newest first. Pass `status` one or more times to narrow to a status set; omit it for every environment including terminal ones.
+	// Environments newest first. Pass `status` one or more times to narrow to a status set; omit it for every environment including terminal ones. Pass `creator` to narrow to environments created by that email (exact match).
 	//
 	// Corresponds with GET /environments (the `EnvironmentsList` operationId).
 	EnvironmentsList(ctx context.Context, params *EnvironmentsListParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1407,7 +1411,7 @@ func (c *Client) AuthWhoami(ctx context.Context, reqEditors ...RequestEditorFn) 
 
 // EnvironmentsList List environments
 //
-// Environments newest first. Pass `status` one or more times to narrow to a status set; omit it for every environment including terminal ones.
+// Environments newest first. Pass `status` one or more times to narrow to a status set; omit it for every environment including terminal ones. Pass `creator` to narrow to environments created by that email (exact match).
 //
 // Corresponds with GET /environments (the `EnvironmentsList` operationId).
 func (c *Client) EnvironmentsList(ctx context.Context, params *EnvironmentsListParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -2335,6 +2339,18 @@ func NewEnvironmentsListRequest(server string, params *EnvironmentsListParams) (
 		if params.Status != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status", *params.Status, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Creator != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "creator", *params.Creator, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -3546,7 +3562,7 @@ type ClientWithResponsesInterface interface {
 
 	// EnvironmentsListWithResponse List environments
 	//
-	// Environments newest first. Pass `status` one or more times to narrow to a status set; omit it for every environment including terminal ones.
+	// Environments newest first. Pass `status` one or more times to narrow to a status set; omit it for every environment including terminal ones. Pass `creator` to narrow to environments created by that email (exact match).
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -7017,7 +7033,7 @@ func (c *ClientWithResponses) AuthWhoamiWithResponse(ctx context.Context, reqEdi
 
 // EnvironmentsListWithResponse List environments
 //
-// Environments newest first. Pass `status` one or more times to narrow to a status set; omit it for every environment including terminal ones.
+// Environments newest first. Pass `status` one or more times to narrow to a status set; omit it for every environment including terminal ones. Pass `creator` to narrow to environments created by that email (exact match).
 //
 // Returns a wrapper object for the known response body format(s).
 //
