@@ -8,6 +8,12 @@ on:
 permissions:
   contents: read
 
+# One CI run per ref: a newer push cancels the in-flight run for the same
+# branch/PR instead of queueing a duplicate behind it.
+concurrency:
+  group: ci-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
