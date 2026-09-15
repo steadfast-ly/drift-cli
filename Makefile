@@ -127,6 +127,34 @@ clean:
 	rm -f drift
 	rm -rf site/ docs/reference/commands/
 
+# A release is an annotated semver tag pushed to origin -- release.yaml runs
+# on tag push and builds the versioned binaries. Nothing releases on a merge
+# to main. The tag targets origin/main's freshly-fetched HEAD, never the
+# local checkout, so a stale or dirty worktree cannot release unpushed code.
+# Tags are immutable: repair a bad release by cutting the next version, never
+# by re-tagging. Server spec bumps arrive as spec-sync PRs (CONTRIBUTING.md);
+# merge those BEFORE cutting a release that should carry the new contract.
+.PHONY: release
+release: ## VERSION=X.Y.Z make release -- tag origin/main and push
+	@test -n "$(VERSION)" || { echo "usage: VERSION=X.Y.Z make release"; exit 1; }
+	@v="$(VERSION)"; v="$${v#v}"; \
+	echo "$$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$$' \
+		|| { echo "error: VERSION must be X.Y.Z (got '$(VERSION)')"; exit 1; }; \
+	git fetch origin; \
+	if git rev-parse -q --verify "refs/tags/v$$v" >/dev/null \
+		|| git ls-remote --exit-code --tags origin "refs/tags/v$$v" >/dev/null 2>&1; then \
+		echo "error: v$$v already exists -- tags are immutable, cut the next version"; exit 1; \
+	fi; \
+	target=$$(git rev-parse origin/main); \
+	echo "==> previous release: $$(git tag --sort=-v:refname | head -1)"; \
+	echo "==> v$$v will tag origin/main:"; \
+	git log -1 --oneline "$$target"; \
+	printf '==> push tag v%s? [y/N] ' "$$v"; read -r answer; \
+	case "$$answer" in [yY]*) ;; *) echo "aborted; nothing pushed"; exit 1;; esac; \
+	git tag -a "v$$v" -m "v$$v" "$$target"; \
+	git push origin "v$$v"; \
+	echo "==> v$$v pushed; the release workflow is running under GitHub Actions"
+
 .PHONY: help
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \

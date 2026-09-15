@@ -25,6 +25,16 @@ regenerates the client into the same commit, and opens a CI-checked PR.
 For manual updates, `make vendor-spec SERVER_REPO=/path/to/drift/checkout`
 revendors and regenerates in one step.
 
+## Releases
+
+`VERSION=X.Y.Z make release` is the sanctioned release procedure: it fetches,
+refuses a version that already exists, tags origin/main's HEAD with an
+annotated `vX.Y.Z` and pushes it -- `.github/workflows/release.yaml` builds
+the versioned binaries from the tag. Nothing releases on a merge to main, and
+tags are immutable: repair a bad release by cutting the next version, never
+by re-tagging. Merge any pending spec-sync PR first when the release should
+carry a new server contract.
+
 ## Filing issues
 
 Findings and improvement ideas should be raised with the maintainer for triage
