@@ -66,6 +66,15 @@ type mutServer struct {
 	// prd403Elevation causes the prd promote endpoint to return a 403 with the
 	// elevation-required problem type.
 	prd403Elevation bool
+	// e2eTestsBranch adds the profile-conditional `e2e-tests-branch`
+	// capability to the served discovery document when true (refreshDiscoveryDoc
+	// must be called after setting it). Off by default, so an e2e trigger
+	// without --tests-branch — and a --tests-branch refusal — work against the
+	// plain mutServer.
+	e2eTestsBranch bool
+	// discoveryDoc is the served `/.well-known/drift.json` body, rebuilt by
+	// refreshDiscoveryDoc from the capability flags above.
+	discoveryDoc []byte
 }
 
 func (s *mutServer) nextStatus() string {
@@ -112,6 +121,30 @@ func (s *mutServer) seen(what string) int {
 	return n
 }
 
+// refreshDiscoveryDoc rebuilds the served discovery document from the
+// server's capability flags. Capabilities like `e2e-tests-branch` are
+// profile-conditional on a real server, so a test that exercises them flips
+// the flag and refreshes. Called with the fields already set; safe before the
+// server starts serving.
+func (s *mutServer) refreshDiscoveryDoc() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	features := []string{
+		"environments.read", "environments.write", "repositories.read",
+		"releases.read", "promotions.rc", "promotions.hotfix", "promotions.prd",
+	}
+	if s.e2eTestsBranch {
+		features = append(features, "e2e-tests-branch")
+	}
+	doc, _ := json.Marshal(map[string]any{
+		"org": "acme", "version": "1.0.0", "auth": "sso",
+		"services":               map[string]string{"api.v1": "/api/v1"},
+		"features_supported":     features,
+		"minimum_client_version": "0.1.0",
+	})
+	s.discoveryDoc = doc
+}
+
 func writeProblem(w http.ResponseWriter, status int, code, msg, ptype, detail string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -124,18 +157,13 @@ func writeProblem(w http.ResponseWriter, status int, code, msg, ptype, detail st
 func newMutServer(t *testing.T) *mutServer {
 	t.Helper()
 	s := &mutServer{rateLimitAfter: -1, retryAfter: 1}
+	s.refreshDiscoveryDoc()
 	mux := http.NewServeMux()
 
-	doc, _ := json.Marshal(map[string]any{
-		"org": "acme", "version": "1.0.0", "auth": "sso",
-		"services": map[string]string{"api.v1": "/api/v1"},
-		"features_supported": []string{
-			"environments.read", "environments.write", "repositories.read",
-			"releases.read", "promotions.rc", "promotions.hotfix", "promotions.prd",
-		},
-		"minimum_client_version": "0.1.0",
-	})
 	mux.HandleFunc("/.well-known/drift.json", func(w http.ResponseWriter, _ *http.Request) {
+		s.mu.Lock()
+		doc := s.discoveryDoc
+		s.mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(doc)
 	})

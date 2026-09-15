@@ -54,7 +54,7 @@ drift env remove-service <ref> <repo>
 drift env swap-branch <ref> <repo>:<new-branch>
 drift env retry-build <ref> [repo]
 drift env wait <ref>         Wait for a state (--for <state>)
-drift env e2e <ref>          Trigger an e2e test run (--wait to follow)
+drift env e2e <ref>          Trigger an e2e test run (--wait to follow; --tests-branch <branch> to pick the test code)
 
 drift release status         What is deployed to stg and rc
 drift release history        Past promotions
@@ -221,7 +221,20 @@ drift env e2e my-feature
 
 # Wait for the result (exits 0 on pass, non-zero on failure).
 drift env e2e my-feature --wait
+
+# Run the e2e suite's TEST code from a specific branch of the e2e repository
+# (the workflow definition still runs from the profile ref).
+drift env e2e my-feature --wait --tests-branch feature/e2e-updates
 ```
+
+`--tests-branch` is for branches whose application-behaviour changes
+need matching test changes. The server validates the value: a branch
+that does not exist in the e2e repository fails with exit 2 before any
+dispatch. Setting the flag requires the server to advertise the
+`e2e-tests-branch` capability; against an older server the trigger is
+refused before the POST (exit 1, feature-unsupported) rather than
+silently running default tests. Omit the flag when the suite should run
+from the profile's `e2e.ref`.
 
 ### Audit who did something
 

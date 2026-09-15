@@ -22,12 +22,18 @@ const (
 	// does not, so a single-source Install keeps working against an older
 	// server rather than being dragged up by the flag's existence.
 	FeatureEnvironmentsMigrationSource = "environments.migration-source"
-	FeatureRepositoriesRead            = "repositories.read"
-	FeatureReleasesRead                = "releases.read"
-	FeaturePromotionsRc                = "promotions.rc"
-	FeaturePromotionsHotfix            = "promotions.hotfix"
-	FeaturePromotionsPrd               = "promotions.prd"
-	FeatureAuditLogRead                = "audit-log.read"
+	// FeatureE2eTestsBranch is profile-conditional: the server advertises it
+	// only for Installs whose profile has an e2e block. An explicit
+	// --tests-branch requires it; an omitted one does not, so an old or
+	// e2e-less server keeps triggering default runs rather than being dragged
+	// up by the flag's existence.
+	FeatureE2eTestsBranch   = "e2e-tests-branch"
+	FeatureRepositoriesRead = "repositories.read"
+	FeatureReleasesRead     = "releases.read"
+	FeaturePromotionsRc     = "promotions.rc"
+	FeaturePromotionsHotfix = "promotions.hotfix"
+	FeaturePromotionsPrd    = "promotions.prd"
+	FeatureAuditLogRead     = "audit-log.read"
 )
 
 // NewRootCommand builds the command tree.
