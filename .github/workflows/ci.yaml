@@ -25,6 +25,10 @@ jobs:
           go-version: "1.26.5"
           cache: true
 
+      # The recipes below are just recipes; the justfile is their only home.
+      - name: Install just
+        uses: extractions/setup-just@v3
+
       # Pinned exactly. A floating generator would make `check-generated`
       # fail on an unrelated upstream release and turn the contract gate into
       # noise nobody trusts.
@@ -32,22 +36,22 @@ jobs:
         run: go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0
 
       - name: gofmt
-        run: make fmt-check
+        run: just fmt-check
 
       - name: go vet
-        run: make vet
+        run: just vet
 
       # The gate the whole generated-client rule rests on: if the committed
       # client and the vendored spec disagree, the build fails here rather than
       # at runtime against a live server.
       - name: Generated client matches the vendored spec
-        run: make check-generated
+        run: just check-generated
 
       - name: Tests
-        run: make test
+        run: just test
 
       - name: Tests (race detector)
-        run: make test-race
+        run: just test-race
 
       - name: Build
-        run: make build
+        run: just build

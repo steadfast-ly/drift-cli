@@ -8,8 +8,8 @@ before:
     # requests: a tag that ships a client disagreeing with its vendored spec is
     # exactly the artifact nobody can debug later.
     - go mod download
-    - make check-generated
-    - make test
+    - just check-generated
+    - just test
 
 builds:
   - id: drift

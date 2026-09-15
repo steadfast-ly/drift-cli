@@ -7,6 +7,12 @@ on:
 permissions:
   contents: write
 
+# Never cancelled: a duplicated tag-push event would otherwise race two
+# goreleaser runs against the same GitHub Release (observed live on v0.12.0).
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
@@ -18,6 +24,10 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: "1.26.5"
+
+      # The goreleaser hooks below run `just check-generated` and `just test`.
+      - name: Install just
+        uses: extractions/setup-just@v3
 
       - name: Install oapi-codegen
         run: go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0

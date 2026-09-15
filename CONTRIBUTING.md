@@ -15,19 +15,19 @@ through your engagement.
 
 A spec change (`spec/openapi.json`) and its regenerated client
 (`internal/api/client.gen.go`) must land in the same commit. CI enforces this
-with `make check-generated` -- a commit that carries one without the other
+with `just check-generated` -- a commit that carries one without the other
 fails the build.
 
 For server releases, `.github/workflows/spec-sync.yaml` automates the update:
 the server pushes the new spec to a `spec-sync/` branch, the workflow
 regenerates the client into the same commit, and opens a CI-checked PR.
 
-For manual updates, `make vendor-spec SERVER_REPO=/path/to/drift/checkout`
+For manual updates, `just vendor-spec /path/to/drift/checkout`
 revendors and regenerates in one step.
 
 ## Releases
 
-`VERSION=X.Y.Z make release` is the sanctioned release procedure: it fetches,
+`just release X.Y.Z` is the sanctioned release procedure: it fetches,
 refuses a version that already exists, tags origin/main's HEAD with an
 annotated `vX.Y.Z` and pushes it -- `.github/workflows/release.yaml` builds
 the versioned binaries from the tag. Nothing releases on a merge to main, and

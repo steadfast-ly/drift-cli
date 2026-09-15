@@ -229,7 +229,7 @@ func runEnvCreate(ctx context.Context, app *App, f *createFlags) error {
 // The repos element is an ANONYMOUS struct in the generated client, so it is
 // filled in place after growing the slice rather than by writing the type out
 // again. Restating it here would be a second copy of a generated shape that
-// nothing checks — exactly the drift `make check-generated` exists to prevent.
+// nothing checks — exactly the drift `just check-generated` exists to prevent.
 func (p *plan) body() api.EnvironmentsCreateJSONRequestBody {
 	body := api.EnvironmentsCreateJSONRequestBody{Slug: p.Slug}
 	if p.Ticket != "" {

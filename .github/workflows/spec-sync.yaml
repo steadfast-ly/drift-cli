@@ -61,6 +61,11 @@ jobs:
           go-version: "1.26.5"
           cache: true
 
+      # The `just generate` recipe below is the only sanctioned way to
+      # regenerate the client.
+      - name: Install just
+        uses: extractions/setup-just@v3
+
       # Pinned exactly. A floating generator would make `check-generated`
       # fail on an unrelated upstream release and turn the contract gate into
       # noise nobody trusts.
@@ -85,7 +90,7 @@ jobs:
 
       - name: Regenerate client
         if: steps.spec-diff.outputs.changed == 'true'
-        run: make generate
+        run: just generate
 
       - name: Amend with regenerated client if changed
         id: amend
@@ -142,7 +147,7 @@ jobs:
             --body "$(cat <<'BODY'
           Syncs `spec/openapi.json` and regenerates `internal/api/client.gen.go` so
           that both land in the same commit -- the same-commit invariant that
-          `make check-generated` enforces in CI.
+          `just check-generated` enforces in CI.
 
           This PR is CI-checked when opened; a green run is expected but not
           promised. If CI is red, the spec change breaks handwritten CLI code and

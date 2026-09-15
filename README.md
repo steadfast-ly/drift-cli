@@ -58,23 +58,23 @@ troubleshooting.
 ## Development
 
 ```sh
-make            # fmt-check, vet, check-generated, test, test-race
-make generate   # regenerate internal/api from spec/openapi.json
-make tools      # install the pinned oapi-codegen
-make docs-gen   # generate command-reference pages
-make docs-build # build the docs site (requires mkdocs-material)
+just            # fmt-check, vet, check-generated, test, test-race
+just generate   # regenerate internal/api from spec/openapi.json
+just tools      # install the pinned oapi-codegen
+just docs-gen   # generate command-reference pages
+just docs-build # build the docs site (requires mkdocs-material)
 ```
 
 `internal/api` is **generated** from `spec/openapi.json` by
 [`oapi-codegen`](https://github.com/oapi-codegen/oapi-codegen) v2.8.0 and is
-never hand-edited. `make check-generated` runs in CI and fails the build if
+never hand-edited. `just check-generated` runs in CI and fails the build if
 the committed client and the vendored spec disagree.
 
 Golden output files live in `internal/output/testdata`. Regenerate them
 deliberately, and read the diff:
 
 ```sh
-make test-update-golden
+just test-update-golden
 ```
 
 ## Licence

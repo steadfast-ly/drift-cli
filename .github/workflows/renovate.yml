@@ -10,7 +10,7 @@ name: Renovate
 # CREDENTIAL -- LOAD-BEARING, do not "simplify" to the default GITHUB_TOKEN.
 # PRs opened with GITHUB_TOKEN do not trigger `on: pull_request` workflows
 # (GitHub's recursion guard), so CI would never run on Renovate's PRs -- and
-# PR CI running `make check-generated` plus the test suite is the designed
+# PR CI running `just check-generated` plus the test suite is the designed
 # backstop here: it is what proves a Go dependency bump still compiles and
 # tests green against the committed generated client before anyone merges.
 # The job therefore mints its token from a repo-scoped GitHub App via
