@@ -803,6 +803,11 @@ type EnvironmentsCreateJSONBody struct {
 	TtlHours *int    `json:"ttlHours,omitempty"`
 }
 
+// EnvironmentsTriggerE2eJSONBody defines parameters for EnvironmentsTriggerE2e.
+type EnvironmentsTriggerE2eJSONBody struct {
+	TestsBranch *string `json:"testsBranch,omitempty"`
+}
+
 // EnvironmentsExtendJSONBody defines parameters for EnvironmentsExtend.
 type EnvironmentsExtendJSONBody struct {
 	AdditionalHours int `json:"additionalHours"`
@@ -891,6 +896,9 @@ type RepositoriesBranchesParams struct {
 
 // EnvironmentsCreateJSONRequestBody defines body for EnvironmentsCreate for application/json ContentType.
 type EnvironmentsCreateJSONRequestBody EnvironmentsCreateJSONBody
+
+// EnvironmentsTriggerE2eJSONRequestBody defines body for EnvironmentsTriggerE2e for application/json ContentType.
+type EnvironmentsTriggerE2eJSONRequestBody EnvironmentsTriggerE2eJSONBody
 
 // EnvironmentsExtendJSONRequestBody defines body for EnvironmentsExtend for application/json ContentType.
 type EnvironmentsExtendJSONRequestBody EnvironmentsExtendJSONBody
@@ -1112,12 +1120,23 @@ type ClientInterface interface {
 	// Corresponds with POST /environments/{environmentId}/cancel (the `EnvironmentsCancel` operationId).
 	EnvironmentsCancel(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// EnvironmentsTriggerE2eWithBody Trigger an e2e test run
+	//
+	// Triggers an e2e test run against the environment. Only valid when the environment is running with infrastructure ready. Returns 409 if a run is already in progress. Returns 502 if the workflow dispatch fails.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /environments/{environmentId}/e2e (the `EnvironmentsTriggerE2e` operationId).
+	EnvironmentsTriggerE2eWithBody(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// EnvironmentsTriggerE2e Trigger an e2e test run
 	//
 	// Triggers an e2e test run against the environment. Only valid when the environment is running with infrastructure ready. Returns 409 if a run is already in progress. Returns 502 if the workflow dispatch fails.
 	//
+	// Takes a body of the `application/json` content type.
+	//
 	// Corresponds with POST /environments/{environmentId}/e2e (the `EnvironmentsTriggerE2e` operationId).
-	EnvironmentsTriggerE2e(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	EnvironmentsTriggerE2e(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsTriggerE2eJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// EnvironmentsExtendWithBody Extend an environment's TTL
 	//
@@ -1498,13 +1517,34 @@ func (c *Client) EnvironmentsCancel(ctx context.Context, environmentId openapi_t
 	return c.Client.Do(req)
 }
 
+// EnvironmentsTriggerE2eWithBody Trigger an e2e test run
+//
+// Triggers an e2e test run against the environment. Only valid when the environment is running with infrastructure ready. Returns 409 if a run is already in progress. Returns 502 if the workflow dispatch fails.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /environments/{environmentId}/e2e (the `EnvironmentsTriggerE2e` operationId).
+func (c *Client) EnvironmentsTriggerE2eWithBody(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsTriggerE2eRequestWithBody(c.Server, environmentId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // EnvironmentsTriggerE2e Trigger an e2e test run
 //
 // Triggers an e2e test run against the environment. Only valid when the environment is running with infrastructure ready. Returns 409 if a run is already in progress. Returns 502 if the workflow dispatch fails.
 //
+// Takes a body of the `application/json` content type.
+//
 // Corresponds with POST /environments/{environmentId}/e2e (the `EnvironmentsTriggerE2e` operationId).
-func (c *Client) EnvironmentsTriggerE2e(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewEnvironmentsTriggerE2eRequest(c.Server, environmentId)
+func (c *Client) EnvironmentsTriggerE2e(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsTriggerE2eJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsTriggerE2eRequest(c.Server, environmentId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2482,8 +2522,19 @@ func NewEnvironmentsCancelRequest(server string, environmentId openapi_types.UUI
 	return req, nil
 }
 
-// NewEnvironmentsTriggerE2eRequest constructs an http.Request for the EnvironmentsTriggerE2e method
-func NewEnvironmentsTriggerE2eRequest(server string, environmentId openapi_types.UUID) (*http.Request, error) {
+// NewEnvironmentsTriggerE2eRequest calls the generic EnvironmentsTriggerE2e builder with application/json body
+func NewEnvironmentsTriggerE2eRequest(server string, environmentId openapi_types.UUID, body EnvironmentsTriggerE2eJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewEnvironmentsTriggerE2eRequestWithBody(server, environmentId, "application/json", bodyReader)
+}
+
+// NewEnvironmentsTriggerE2eRequestWithBody constructs an http.Request for the EnvironmentsTriggerE2e method, with any body, and a specified content type
+func NewEnvironmentsTriggerE2eRequestWithBody(server string, environmentId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2508,10 +2559,12 @@ func NewEnvironmentsTriggerE2eRequest(server string, environmentId openapi_types
 		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -3605,14 +3658,23 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /environments/{environmentId}/cancel (the `EnvironmentsCancel` operationId).
 	EnvironmentsCancelWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsCancelResponse, error)
 
+	// EnvironmentsTriggerE2eWithBodyWithResponse Trigger an e2e test run
+	//
+	// Triggers an e2e test run against the environment. Only valid when the environment is running with infrastructure ready. Returns 409 if a run is already in progress. Returns 502 if the workflow dispatch fails.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /environments/{environmentId}/e2e (the `EnvironmentsTriggerE2e` operationId).
+	EnvironmentsTriggerE2eWithBodyWithResponse(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EnvironmentsTriggerE2eResponse, error)
+
 	// EnvironmentsTriggerE2eWithResponse Trigger an e2e test run
 	//
 	// Triggers an e2e test run against the environment. Only valid when the environment is running with infrastructure ready. Returns 409 if a run is already in progress. Returns 502 if the workflow dispatch fails.
 	//
-	// Returns a wrapper object for the known response body format(s).
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /environments/{environmentId}/e2e (the `EnvironmentsTriggerE2e` operationId).
-	EnvironmentsTriggerE2eWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsTriggerE2eResponse, error)
+	EnvironmentsTriggerE2eWithResponse(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsTriggerE2eJSONRequestBody, reqEditors ...RequestEditorFn) (*EnvironmentsTriggerE2eResponse, error)
 
 	// EnvironmentsExtendWithBodyWithResponse Extend an environment's TTL
 	//
@@ -4572,6 +4634,7 @@ type EnvironmentsTriggerE2eResponse struct {
 	JSON200 *struct {
 		E2eRunId      openapi_types.UUID `json:"e2eRunId"`
 		EnvironmentId openapi_types.UUID `json:"environmentId"`
+		TestsBranch   *string            `json:"testsBranch,omitempty"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *ApiProblem
@@ -4599,6 +4662,7 @@ type EnvironmentsTriggerE2eResponse struct {
 func (r EnvironmentsTriggerE2eResponse) GetJSON200() *struct {
 	E2eRunId      openapi_types.UUID `json:"e2eRunId"`
 	EnvironmentId openapi_types.UUID `json:"environmentId"`
+	TestsBranch   *string            `json:"testsBranch,omitempty"`
 } {
 	return r.JSON200
 }
@@ -7106,15 +7170,30 @@ func (c *ClientWithResponses) EnvironmentsCancelWithResponse(ctx context.Context
 	return ParseEnvironmentsCancelResponse(rsp)
 }
 
+// EnvironmentsTriggerE2eWithBodyWithResponse Trigger an e2e test run
+//
+// Triggers an e2e test run against the environment. Only valid when the environment is running with infrastructure ready. Returns 409 if a run is already in progress. Returns 502 if the workflow dispatch fails.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /environments/{environmentId}/e2e (the `EnvironmentsTriggerE2e` operationId).
+func (c *ClientWithResponses) EnvironmentsTriggerE2eWithBodyWithResponse(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EnvironmentsTriggerE2eResponse, error) {
+	rsp, err := c.EnvironmentsTriggerE2eWithBody(ctx, environmentId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsTriggerE2eResponse(rsp)
+}
+
 // EnvironmentsTriggerE2eWithResponse Trigger an e2e test run
 //
 // Triggers an e2e test run against the environment. Only valid when the environment is running with infrastructure ready. Returns 409 if a run is already in progress. Returns 502 if the workflow dispatch fails.
 //
-// Returns a wrapper object for the known response body format(s).
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /environments/{environmentId}/e2e (the `EnvironmentsTriggerE2e` operationId).
-func (c *ClientWithResponses) EnvironmentsTriggerE2eWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsTriggerE2eResponse, error) {
-	rsp, err := c.EnvironmentsTriggerE2e(ctx, environmentId, reqEditors...)
+func (c *ClientWithResponses) EnvironmentsTriggerE2eWithResponse(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsTriggerE2eJSONRequestBody, reqEditors ...RequestEditorFn) (*EnvironmentsTriggerE2eResponse, error) {
+	rsp, err := c.EnvironmentsTriggerE2e(ctx, environmentId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -8201,6 +8280,7 @@ func ParseEnvironmentsTriggerE2eResponse(rsp *http.Response) (*EnvironmentsTrigg
 		var dest struct {
 			E2eRunId      openapi_types.UUID `json:"e2eRunId"`
 			EnvironmentId openapi_types.UUID `json:"environmentId"`
+			TestsBranch   *string            `json:"testsBranch,omitempty"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

@@ -22,6 +22,9 @@ type e2eServer struct {
 	auditCalls  int
 	auditScript [][]map[string]any // one per poll; last entry repeats
 	triggerCode int                // 0 means 200
+	// lastBody is the decoded request body of the most recent e2e trigger,
+	// so a test can assert exactly which fields the CLI sent.
+	lastBody map[string]any
 }
 
 func newE2eServer(t *testing.T) *e2eServer {
@@ -36,9 +39,17 @@ func newE2eServer(t *testing.T) *e2eServer {
 		rest := strings.TrimPrefix(r.URL.Path, "/api/v1/environments/")
 		if r.Method == http.MethodPost && strings.HasSuffix(rest, "/e2e") {
 			s.mutServer.record("e2e")
+			body, _ := readJSON(r)
 			s.mu.Lock()
+			s.lastBody = body
 			code := s.triggerCode
 			s.mu.Unlock()
+			if code == 400 {
+				writeProblem(w, 400, "VALIDATION_ERROR", "testsBranch must name an existing branch",
+					"urn:drift:problem:validation",
+					"the branch 'no/such/branch' does not exist in the profile's e2e repository")
+				return
+			}
 			if code == 409 {
 				writeProblem(w, 409, "CONFLICT", "Cannot trigger e2e: run already active",
 					"urn:drift:problem:invalid-transition", "")
@@ -49,11 +60,14 @@ func newE2eServer(t *testing.T) *e2eServer {
 					"urn:drift:problem:external-service", "GitHub Actions dispatch returned 404")
 				return
 			}
+			// Echo the chosen branch on a non-default run, exactly as the
+			// server's omit-when-default response does.
+			resp := map[string]any{"environmentId": envID, "e2eRunId": e2eRunID}
+			if tb, ok := body["testsBranch"].(string); ok && tb != "" {
+				resp["testsBranch"] = tb
+			}
 			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"environmentId": envID,
-				"e2eRunId":      e2eRunID,
-			})
+			_ = json.NewEncoder(w).Encode(resp)
 			return
 		}
 
@@ -110,6 +124,16 @@ func auditEntry(runID, outcome, reason string) map[string]any {
 	}
 	if reason != "" {
 		entry["details"].(map[string]any)["reason"] = reason
+	}
+	return entry
+}
+
+// auditEntryWithTests is auditEntry with a testsBranch detail, included only
+// when non-empty — mirroring the server's omit-when-default audit records.
+func auditEntryWithTests(runID, outcome, reason, testsBranch string) map[string]any {
+	entry := auditEntry(runID, outcome, reason)
+	if testsBranch != "" {
+		entry["details"].(map[string]any)["testsBranch"] = testsBranch
 	}
 	return entry
 }
@@ -360,13 +384,22 @@ func TestE2eGoldenOutput(t *testing.T) {
 	cases := []struct {
 		name string
 		args []string
+		// advertise models a server whose profile's e2e block is enabled
+		// (the e2e-tests-branch capability is advertised).
+		advertise bool
 	}{
-		{"env_e2e_table", []string{"env", "e2e", "proof-alpha"}},
-		{"env_e2e_json", []string{"env", "e2e", "proof-alpha", "-o", "json"}},
+		{"env_e2e_table", []string{"env", "e2e", "proof-alpha"}, false},
+		{"env_e2e_json", []string{"env", "e2e", "proof-alpha", "-o", "json"}, false},
+		{"env_e2e_testsbranch_table", []string{"env", "e2e", "proof-alpha", "--tests-branch", "feature/tests"}, true},
+		{"env_e2e_testsbranch_json", []string{"env", "e2e", "proof-alpha", "--tests-branch", "feature/tests", "-o", "json"}, true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			s := newE2eServer(t)
+			if c.advertise {
+				s.mutServer.e2eTestsBranch = true
+				s.mutServer.refreshDiscoveryDoc()
+			}
 			h := newMutHarness(t, s.mutServer)
 			out, errOut, code := h.run(c.args...)
 			if code != cliexit.OK {
@@ -415,5 +448,175 @@ func TestE2eWriteFeatureIsAdvertised(t *testing.T) {
 	_, errOut, code := h.run("env", "e2e", "proof-alpha")
 	if code != cliexit.OK {
 		t.Fatalf("exit %d — environments.write not in discovery doc?\n%s", code, errOut)
+	}
+}
+
+// --- --tests-branch ----------------------------------------------------------
+
+// Flag unset: no testsBranch in the request body, and — because the plain
+// mutServer does not advertise the e2e-tests-branch capability — no capability
+// is required. This is the pre-feature request, byte-identical in effect.
+func TestE2eTestsBranchUnsetSendsNoBranch(t *testing.T) {
+	s := newE2eServer(t)
+	h := newMutHarness(t, s.mutServer)
+
+	out, errOut, code := h.run("env", "e2e", "proof-alpha")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if s.mutServer.seen("e2e") != 1 {
+		t.Fatalf("expected one e2e call; calls: %v", s.mutServer.calls)
+	}
+	s.mu.Lock()
+	body := s.lastBody
+	s.mu.Unlock()
+	if _, ok := body["testsBranch"]; ok {
+		t.Fatalf("flag unset sent testsBranch in the body: %v", body)
+	}
+	_ = out
+}
+
+// Flag set against a server that advertises the capability: the request body
+// carries the branch, and the trigger output shows the echoed value.
+func TestE2eTestsBranchCarriesBranchAndEchoes(t *testing.T) {
+	s := newE2eServer(t)
+	s.mutServer.e2eTestsBranch = true
+	s.mutServer.refreshDiscoveryDoc()
+	h := newMutHarness(t, s.mutServer)
+
+	out, errOut, code := h.run("env", "e2e", "proof-alpha", "--tests-branch", "feature/tests")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	s.mu.Lock()
+	body := s.lastBody
+	s.mu.Unlock()
+	if body["testsBranch"] != "feature/tests" {
+		t.Fatalf("request body does not carry the branch: %v", body)
+	}
+	if !strings.Contains(out, "feature/tests") {
+		t.Fatalf("echoed branch not in output:\n%s", out)
+	}
+}
+
+// An EXPLICIT empty --tests-branch is a usage error before any Connect or
+// trigger write. Treating it as omission would let an empty CI variable
+// silently select the server's default behind the operator's back, which is
+// exactly the explicit-choice-vs-omission boundary.
+func TestE2eTestsBranchExplicitEmptyIsUsageError(t *testing.T) {
+	cases := []struct {
+		name string
+		val  string
+	}{
+		{"empty", ""},
+		{"whitespace-only", "   "},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			s := newE2eServer(t)
+			h := newMutHarness(t, s.mutServer)
+
+			_, errOut, code := h.run("env", "e2e", "proof-alpha", "--tests-branch", c.val)
+			if code != cliexit.Usage {
+				t.Fatalf("exit %d, want %d (usage)\n%s", code, cliexit.Usage, errOut)
+			}
+			if len(s.mutServer.calls) != 0 {
+				t.Fatalf("an explicitly empty --tests-branch reached the server: %v", s.mutServer.calls)
+			}
+			if !strings.Contains(errOut, "--tests-branch") {
+				t.Fatalf("the usage error does not name the flag:\n%s", errOut)
+			}
+		})
+	}
+}
+
+// Flag set against a server WITHOUT the capability must be refused BEFORE any
+// trigger — an old server would silently run default tests — with the same
+// feature-unsupported failure as --migration-source.
+func TestE2eTestsBranchRefusedOnServerWithoutCapability(t *testing.T) {
+	s := newE2eServer(t)
+	h := newMutHarness(t, s.mutServer)
+
+	_, errOut, code := h.run("env", "e2e", "proof-alpha", "--tests-branch", "feature/tests")
+	if code != cliexit.Error {
+		t.Fatalf("exit %d, want %d (feature-unsupported)\n%s", code, cliexit.Error, errOut)
+	}
+	if len(s.mutServer.calls) != 0 {
+		t.Fatalf("a request reached the server despite the refusal: %v", s.mutServer.calls)
+	}
+	if s.mutServer.seen("e2e") != 0 {
+		t.Fatal("an explicit tests branch reached the trigger even though the server does not advertise the capability")
+	}
+	if !strings.Contains(errOut, "does not support") {
+		t.Fatalf("the feature-unsupported failure was not reported:\n%s", errOut)
+	}
+	if !strings.Contains(errOut, "e2e-tests-branch") {
+		t.Fatalf("the refusal does not name the capability:\n%s", errOut)
+	}
+}
+
+// A nonexistent branch is the server's ValidationError to make: the CLI sends
+// the value verbatim and maps the 400 through the standard validation exit
+// path (exit 2). No client-side branch checking.
+func TestE2eTestsBranchValidationErrorExitsUsage(t *testing.T) {
+	s := newE2eServer(t)
+	s.mutServer.e2eTestsBranch = true
+	s.mutServer.refreshDiscoveryDoc()
+	s.triggerCode = 400
+	h := newMutHarness(t, s.mutServer)
+
+	_, errOut, code := h.run("env", "e2e", "proof-alpha", "--tests-branch", "no/such/branch")
+	if code != cliexit.Usage {
+		t.Fatalf("exit %d, want %d (server validation)\n%s", code, cliexit.Usage, errOut)
+	}
+	if !strings.Contains(errOut, "existing branch") {
+		t.Fatalf("the server's validation message was not surfaced:\n%s", errOut)
+	}
+}
+
+// --wait surfaces the branch the server recorded from the completed audit
+// entry's details map, not from the trigger echo. The audit value differs
+// from the trigger echo so the assertion proves the audit detail won over
+// the echo fallback.
+func TestE2eWaitSurfacesTestsBranchFromAuditDetails(t *testing.T) {
+	s := newE2eServer(t)
+	s.mutServer.e2eTestsBranch = true
+	s.mutServer.refreshDiscoveryDoc()
+	s.auditScript = [][]map[string]any{
+		{auditEntryWithTests(e2eRunID, "passed", "", "feat/tests-b")},
+	}
+	h := newMutHarness(t, s.mutServer)
+
+	out, errOut, code := h.run("env", "e2e", "proof-alpha", "--tests-branch", "feat/tests-a",
+		"--wait", "--wait-timeout", "5s")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if !strings.Contains(out, "feat/tests-b") {
+		t.Fatalf("audit testsBranch not surfaced over the trigger echo:\n%s", out)
+	}
+	if strings.Contains(out, "feat/tests-a") {
+		t.Fatalf("the trigger echo won over the audit detail:\n%s", out)
+	}
+}
+
+// Off-spec server: the completed audit entry's details omit the testsBranch.
+// The trigger echo fills in, so the output still carries the requested branch.
+func TestE2eWaitFallsBackToEchoWhenAuditOmitsBranch(t *testing.T) {
+	s := newE2eServer(t)
+	s.mutServer.e2eTestsBranch = true
+	s.mutServer.refreshDiscoveryDoc()
+	s.auditScript = [][]map[string]any{
+		{auditEntry(e2eRunID, "passed", "")}, // no testsBranch detail
+	}
+	h := newMutHarness(t, s.mutServer)
+
+	out, errOut, code := h.run("env", "e2e", "proof-alpha", "--tests-branch", "feat/tests-a",
+		"--wait", "--wait-timeout", "5s")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if !strings.Contains(out, "feat/tests-a") {
+		t.Fatalf("testsBranch not filled in from the trigger echo:\n%s", out)
 	}
 }

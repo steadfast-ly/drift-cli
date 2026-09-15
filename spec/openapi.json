@@ -3788,6 +3788,21 @@
             }
           }
         ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "testsBranch": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -3803,6 +3818,9 @@
                     "e2eRunId": {
                       "type": "string",
                       "format": "uuid"
+                    },
+                    "testsBranch": {
+                      "type": "string"
                     }
                   },
                   "required": [

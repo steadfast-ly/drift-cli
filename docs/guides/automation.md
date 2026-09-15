@@ -135,6 +135,23 @@ drift env e2e "pr-${PR_NUMBER}" --wait
 drift env rm "pr-${PR_NUMBER}" --yes --wait
 ```
 
+When a feature branch changes application behaviour and its matching test
+changes live in the e2e repository under a different branch, pin the test
+code with `--tests-branch <branch>`:
+
+```bash
+drift env e2e "pr-${PR_NUMBER}" --wait --tests-branch "${TESTS_BRANCH}"
+```
+
+The server validates the value: a branch that does not exist in the e2e
+repository fails the trigger with exit 2 (usage) before any dispatch, so a
+stale branch name cannot silently pass on the wrong test code. Pinning also
+requires a server that advertises the `e2e-tests-branch` capability; against
+an older server the trigger fails with exit 1 (feature-unsupported) before
+any POST -- an old server would silently drop the field and run default
+tests. A script that pins is safe, and a script that omits the flag keeps
+working against every server that supports plain `env e2e`.
+
 When a deterministic database-migration source matters, pin it with
 `--migration-source <ecr-repository>`; the server rejects a value that
 is not an eligible, uniquely-present source before the environment is

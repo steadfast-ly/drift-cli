@@ -4,5 +4,5 @@
   "outcome": null,
   "reason": null,
   "slug": "proof-alpha",
-  "testsBranch": null
+  "testsBranch": "feature/tests"
 }

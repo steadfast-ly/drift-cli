@@ -171,6 +171,42 @@ appears:
 - **timeout** -- exit 6. The default `--wait-timeout` is 125 minutes,
   sized five minutes past the server's own 120-minute tracking ceiling.
 
+### Choosing the tests branch
+
+The e2e suite normally runs from the profile's `e2e.ref`. A feature
+branch that changes application behaviour may need matching test changes;
+`drift env e2e <slug> --tests-branch <branch>` selects the branch of the
+profile's e2e repository whose **test code** this run checks out. The
+workflow definition itself still runs from the profile ref.
+
+The server is the only authority on the value:
+
+- The branch does not have to match the environment's service branches --
+  it is validated against the e2e repository only.
+- A branch that does not exist in the e2e repository is rejected with a
+  validation error before any dispatch (exit 2).
+- Omission keeps the exact pre-feature request: the dispatch input is
+  omitted whenever the chosen branch equals the profile ref or the flag
+  is absent, so default runs stay byte-identical.
+
+Setting `--tests-branch` requires a server that advertises the
+`e2e-tests-branch` capability (exposed only when the profile has an e2e
+block). Against an older server the trigger is refused **before the POST**
+with a feature-unsupported error (exit 1), because an old server would
+silently drop the unknown request field and run default tests --
+appearing to pass on the wrong test code. Omitting the flag needs no
+capability and works against every server that supports plain `env e2e`.
+
+The `Tests Branch` column shows the branch the server accepted and
+recorded at trigger time -- the REQUESTED branch, not an attestation of
+what the run executed. Drift dispatches that value to the org's adapter
+but cannot verify the adapter honoured it; the adapter contract requires
+adapters to fail the run rather than silently check out the default test
+code, so a mismatch surfaces as a failed run, not a silent wrong-answer
+pass. The trigger response echoes the recorded branch on a non-default
+run; with `--wait`, the branch is surfaced from the run's completed
+audit entry instead.
+
 ### Exit codes
 
 | Scenario | Exit code |
@@ -179,6 +215,8 @@ appears:
 | Run passed (with wait) | 0 |
 | Run failed | 5 (conflict) |
 | Run errored | 1 (error) |
+| `--tests-branch` against a server without the `e2e-tests-branch` capability | 1 (feature-unsupported) |
+| Invalid tests branch (rejected by the server) | 2 (usage) |
 | 409 (run already active) | 5 |
 | 404 (env not found) | 3 |
 | Wait timed out | 6 |

@@ -262,11 +262,31 @@ drift env e2e my-env
 # Wait for the result.
 drift env e2e my-env --wait
 drift env e2e my-env --wait --wait-timeout 60m
+
+# Run the test code from a specific branch of the e2e repository.
+drift env e2e my-env --tests-branch feature/e2e-updates
 ```
 
 Without `--wait`, the command returns immediately (exit 0) after the server
 accepts the trigger. With `--wait`, it polls the audit log until the run
 completes: exit 0 on pass, non-zero on failure.
+
+`--tests-branch <branch>` selects which version of the **test code** the run
+checks out; the workflow definition still runs from the profile's `e2e.ref`.
+The server is the only authority on eligibility: a branch that does not
+exist in the e2e repository is rejected with a validation error before any
+dispatch (exit 2), and a branch equal to the profile ref (or no flag at all)
+keeps the run byte-identical to a default one. Setting the flag requires a
+server that advertises the `e2e-tests-branch` capability; against an older
+server the trigger is refused before the POST (exit 1, feature-unsupported)
+rather than silently running default tests. The `Tests Branch` column
+shows the branch the server accepted and recorded at trigger time -- the
+REQUESTED branch, not an attestation of what the run executed. Drift
+dispatches that value to the org's adapter but cannot verify the adapter
+honoured it; the adapter contract requires adapters to fail the run
+rather than silently check out the default test code. The trigger
+response echoes the recorded branch on a non-default run; with `--wait`,
+the branch is surfaced from the run's completed audit entry.
 
 ## Destroy
 
