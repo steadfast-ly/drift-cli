@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Other workflows that need the full Go scope call this; a workflow_call
+  # never path-filters, the caller asked for everything.
+  workflow_call:
 
 permissions:
   contents: read
@@ -20,38 +23,74 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Docs-only changes -- markdown, docs/, skills/, mkdocs.yml, the docs
+      # workflow, LICENSE, .gitignore -- skip the Go toolchain and every Go
+      # gate below; the job still reports green. Everything else, including
+      # this workflow file itself and renovate.json, runs the full gate.
+      - name: Detect Go-relevant changes
+        id: go-paths
+        run: |
+          set -euo pipefail
+          case "$GITHUB_EVENT_NAME" in
+            pull_request)
+              base="${{ github.event.pull_request.base.sha }}"
+              ;;
+            push)
+              base="${{ github.event.before }}"
+              ;;
+            *)
+              # workflow_call: no diff to judge, run the full scope.
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
+          if [[ -z "$base" || "$base" == "null" || "$base" =~ ^0+$ ]]; then
+            # First push to a branch has no predecessor to diff against.
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! git fetch --quiet --no-tags --depth=1 origin "$base"; then
+            echo "warning: could not fetch base $base; running the full scope" >&2
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # HEAD is the head/merge commit the checkout is at. Docs-only
+          # skipping applies ONLY when at least one changed path exists and
+          # every changed path is in the docs-only set; an empty diff (or any
+          # file outside the set) runs the full gate.
+          changed="$(git diff --name-only --no-renames "$base" HEAD)"
+          if [ -z "$changed" ]; then
+            echo "warning: no changed paths detected; running the full gate" >&2
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if printf '%s\n' "$changed" \
+             | grep -qvE '^(docs/|skills/|.*\.md$|mkdocs\.yml$|LICENSE$|\.gitignore$|\.github/workflows/docs\.yaml$)'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-go@v7
+        if: steps.go-paths.outputs.changed == 'true'
         with:
           go-version: "1.26.5"
           cache: true
 
-      # The recipes below are just recipes; the justfile is their only home.
       - name: Install just
+        if: steps.go-paths.outputs.changed == 'true'
         uses: extractions/setup-just@v3
 
       # Pinned exactly. A floating generator would make `check-generated`
       # fail on an unrelated upstream release and turn the contract gate into
       # noise nobody trusts.
       - name: Install oapi-codegen
+        if: steps.go-paths.outputs.changed == 'true'
         run: go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0
 
-      - name: gofmt
-        run: just fmt-check
-
-      - name: go vet
-        run: just vet
-
-      # The gate the whole generated-client rule rests on: if the committed
-      # client and the vendored spec disagree, the build fails here rather than
-      # at runtime against a live server.
-      - name: Generated client matches the vendored spec
-        run: just check-generated
-
-      - name: Tests
-        run: just test
-
-      - name: Tests (race detector)
-        run: just test-race
-
-      - name: Build
-        run: just build
+      # The one gate: format check, vet, the generated-client contract gate,
+      # the full test suite under the race detector, and the build -- one
+      # entrypoint, a single suite execution, never the tests run twice.
+      - name: Gate
+        if: steps.go-paths.outputs.changed == 'true'
+        run: just check

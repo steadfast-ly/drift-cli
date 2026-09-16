@@ -58,7 +58,9 @@ troubleshooting.
 ## Development
 
 ```sh
-just            # fmt-check, vet, check-generated, test, test-race
+just            # the full gate: fmt-check, vet, check-generated, race tests, build (what CI runs)
+just test       # run the test suite (no race detector)
+just test-race  # run the test suite under the race detector
 just generate   # regenerate internal/api from spec/openapi.json
 just tools      # install the pinned oapi-codegen
 just docs-gen   # generate command-reference pages

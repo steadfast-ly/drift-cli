@@ -20,9 +20,12 @@ VERSION      := env_var_or_default("VERSION", `git describe --tags --always --di
 default:
     @just --list
 
-# Everything CI runs: format check, vet, the generated-client gate, and the
-# full test suite including the race detector.
-check: fmt-check vet check-generated test test-race
+# Everything CI runs: format check, vet, the generated-client gate, the full
+# test suite under the race detector, and the build. The suite executes
+# exactly ONCE here -- race coverage is a superset of plain coverage, so a
+# separate plain run would only double the most expensive step (issue #10).
+# `just test` and `just test-race` stay as standalone recipes for local use.
+check: fmt-check vet check-generated test-race build
 
 # Build ./drift with the version ldflags baked in
 build:
@@ -150,6 +153,11 @@ clean:
 # The tag targets origin/main's freshly-fetched HEAD, never the local
 # checkout, so a stale or dirty worktree cannot release unpushed code.
 #
+# A tag target whose commit message carries a GitHub skip marker is REFUSED:
+# GitHub applies those markers from the tagged commit's message to tag-push
+# events, so such a tag never starts the Release workflow -- the tag burns
+# silently (three burned tags on drift; issue #9).
+#
 # Server spec bumps arrive as spec-sync PRs (CONTRIBUTING.md); merge those
 # BEFORE cutting a release that should carry the new contract.
 # ---------------------------------------------------------------------------
@@ -169,6 +177,20 @@ release version:
         exit 1
     fi
     target="$(git rev-parse origin/main)"
+
+    # GitHub applies skip markers from the TAGGED COMMIT's message to tag-push
+    # events too, so a release tagged on a commit carrying one never starts
+    # the Release workflow -- the tag burns silently. Scan the FULL message
+    # (subject + body), case-insensitively: GitHub matches the tokens
+    # anywhere, quoted or disclaimed.
+    msg="$(git log -1 --format=%B "$target")"
+    if grep -qiE '\[(skip ci|ci skip|no ci|skip actions|actions skip)\]' <<<"$msg"; then
+        echo "error: the tag target's commit message suppresses tag workflows" >&2
+        echo "       $(git log -1 --format='%h %s' "$target")" >&2
+        echo "       land a workflow-eligible commit first, then re-run: just release $v" >&2
+        exit 1
+    fi
+
     echo "==> previous release: $(git tag --sort=-v:refname | head -1)"
     echo "==> v$v will tag origin/main:"
     git log -1 --oneline "$target"

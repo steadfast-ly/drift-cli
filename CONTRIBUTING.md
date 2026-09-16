@@ -28,12 +28,16 @@ revendors and regenerates in one step.
 ## Releases
 
 `just release X.Y.Z` is the sanctioned release procedure: it fetches,
-refuses a version that already exists, tags origin/main's HEAD with an
-annotated `vX.Y.Z` and pushes it -- `.github/workflows/release.yaml` builds
-the versioned binaries from the tag. Nothing releases on a merge to main, and
-tags are immutable: repair a bad release by cutting the next version, never
-by re-tagging. Merge any pending spec-sync PR first when the release should
-carry a new server contract.
+refuses a version that already exists and a tag target whose commit message
+carries a GitHub skip marker (those markers suppress tag-push workflows and
+would burn the tag silently), tags origin/main's HEAD with an annotated
+`vX.Y.Z` and pushes it. `.github/workflows/release.yaml` builds the versioned
+binaries from the tag, reusing the green push-to-main CI run for that exact
+commit when one exists and falling back to the full `just check` gate when it
+does not. Nothing releases on a merge to main, and tags are immutable: repair
+a bad release by cutting the next version, never by re-tagging. Merge any
+pending spec-sync PR first when the release should carry a new server
+contract.
 
 ## Filing issues
 

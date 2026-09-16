@@ -6,6 +6,8 @@ on:
 
 permissions:
   contents: write
+  # Reading workflow runs for the CI-proof lookup below.
+  actions: read
 
 # Never cancelled: a duplicated tag-push event would otherwise race two
 # goreleaser runs against the same GitHub Release (observed live on v0.12.0).
@@ -25,12 +27,63 @@ jobs:
         with:
           go-version: "1.26.5"
 
-      # The goreleaser hooks below run `just check-generated` and `just test`.
+      # Issue #10: `just release` tags origin/main's HEAD, whose push-to-main
+      # CI run went green minutes earlier. When that EXACT commit has a
+      # successful ci.yaml push run, the tag reuses it as the gate and does
+      # not re-run the suite. No proof (or a lookup failure) falls back to the
+      # full `just check` below, so an untested tag still cannot publish.
+      # `github.sha` on a tag push is the tagged commit, but resolving through
+      # the API peels annotated tags explicitly instead of trusting the event.
+      # EITHER API lookup failing (peel or runs query) must fall back to the
+      # release gate -- never abort the tag run.
+      - name: Check for a green push-to-main CI run on this exact commit
+        id: ci-proof
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! sha="$(gh api "repos/${{ github.repository }}/commits/${GITHUB_REF_NAME}" --jq '.sha')"; then
+            echo "warning: could not resolve tagged commit ${GITHUB_REF_NAME}; falling back to the release gate" >&2
+            echo "proof=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! count="$(gh api \
+            "repos/${{ github.repository }}/actions/workflows/ci.yaml/runs?event=push&branch=main&head_sha=${sha}&status=success&per_page=100" \
+            --jq '.total_count')"; then
+            echo "warning: CI proof lookup failed; falling back to the release gate" >&2
+            echo "proof=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # The API can return unexpected JSON (e.g. an error object with no
+          # total_count, which jq renders as null): refuse to compare it as a
+          # number and fall back to the gate instead of aborting the run.
+          if [[ ! "$count" =~ ^[0-9]+$ ]]; then
+            echo "warning: unexpected CI proof response '$count'; falling back to the release gate" >&2
+            echo "proof=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$count" -gt 0 ]; then
+            echo "proof=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "proof=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install just
+        if: steps.ci-proof.outputs.proof == 'false'
         uses: extractions/setup-just@v3
 
+      # Pinned exactly. A floating generator would make `check-generated`
+      # fail on an unrelated upstream release and turn the contract gate into
+      # noise nobody trusts.
       - name: Install oapi-codegen
+        if: steps.ci-proof.outputs.proof == 'false'
         run: go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0
+
+      # Fallback gate only, when there is no green main-push CI run for the
+      # tagged commit. Failing here stops the job: goreleaser must never run
+      # after a failed prerequisite.
+      - name: Release gate (no green main-push CI for this commit)
+        if: steps.ci-proof.outputs.proof == 'false'
+        run: just check
 
       - uses: goreleaser/goreleaser-action@v7
         with:

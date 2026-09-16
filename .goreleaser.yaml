@@ -4,12 +4,13 @@ project_name: drift-cli
 
 before:
   hooks:
-    # The contract gate runs before a release is cut, not only on pull
-    # requests: a tag that ships a client disagreeing with its vendored spec is
-    # exactly the artifact nobody can debug later.
+    # Module download is a build prerequisite only. The release gate itself
+    # lives in .github/workflows/release.yaml: that workflow reuses the green
+    # push-to-main ci.yaml run for the exact tagged commit when one exists,
+    # and falls back to the full `just check` when it does not (issue #10) --
+    # a tag that re-ran the suite the merge already ran green would duplicate
+    # the most expensive CI step on every release.
     - go mod download
-    - just check-generated
-    - just test
 
 builds:
   - id: drift
