@@ -24,8 +24,8 @@ default:
 # test suite under the race detector, and the build. The suite executes
 # exactly ONCE here -- race coverage is a superset of plain coverage, so a
 # separate plain run would only double the most expensive step (issue #10).
-# `just test` and `just test-race` stay as standalone recipes for local use.
-check: fmt-check vet check-generated test-race build
+# `just test` stays as a standalone recipe for local use.
+check: fmt-check vet check-generated test build
 
 # Build ./drift with the version ldflags baked in
 build:
@@ -35,13 +35,12 @@ build:
 install:
     {{ GO }} install -ldflags "-X github.com/steadfast-ly/drift-cli/cmd.Version={{ VERSION }}" .
 
-test:
-    {{ GO }} test ./...
-
 # The credential file holds every context, so a write is a read-modify-write
 # over shared state and the concurrency tests are the ones that matter here.
-test-race:
-    {{ GO }} test -race ./...
+# One target: race coverage is a superset of plain coverage, and -race
+# disables test caching; -count=1 makes that intent explicit.
+test:
+    {{ GO }} test -race -count=1 ./...
 
 # Rewrite the table/JSON golden files
 test-update-golden:

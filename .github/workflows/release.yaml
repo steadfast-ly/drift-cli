@@ -6,8 +6,6 @@ on:
 
 permissions:
   contents: write
-  # Reading workflow runs for the CI-proof lookup below.
-  actions: read
 
 # Never cancelled: a duplicated tag-push event would otherwise race two
 # goreleaser runs against the same GitHub Release (observed live on v0.12.0).
@@ -16,7 +14,94 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  goreleaser:
+  # ---------------------------------------------------------------------------
+  # CI proof for the exact tagged commit. `just release` tags origin/main's
+  # freshly-fetched HEAD, and that commit already passed `just check` when it
+  # was pushed to main (docs-only commits pass trivially). Re-running the
+  # gates here costs ~10 minutes to re-prove a result CI already produced, so
+  # this job asks GitHub whether a successful push-to-main CI run exists for
+  # the tag's exact target SHA.
+  #
+  # The lookup is the proof contract: exact commit SHA, `push` event on main,
+  # the ci.yaml workflow only. If the lookup fails or no such run exists, the
+  # full gates below run instead -- a release is never published with no CI
+  # evidence, and a lookup failure falls back rather than burning the tag.
+  # ---------------------------------------------------------------------------
+  ci-proof:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      proven: ${{ steps.proof.outputs.proven }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Resolve the tag's target commit SHA
+        id: sha
+        run: |
+          set -euo pipefail
+          # Checkout of an annotated tag lands on the commit it points to;
+          # rev-list peels the tag object explicitly so the SHA is the commit
+          # CI ran against, never the tag object itself.
+          sha="$(git rev-list -n 1 "${GITHUB_REF_NAME}^{commit}")"
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+          echo "Resolved ${GITHUB_REF_NAME} to ${sha}"
+
+      - name: Look up a successful push-to-main CI run for the exact SHA
+        id: proof
+        env:
+          SHA: ${{ steps.sha.outputs.sha }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          url="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yaml/runs?event=push&branch=main&status=success&head_sha=${SHA}&per_page=1"
+          if ! resp="$(curl -fsS --connect-timeout 10 --max-time 30 -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" "${url}")"; then
+            # An API failure is NOT a green light: fall back to the gates.
+            echo "::warning::CI proof lookup failed (${url}); the release will run the full gates instead"
+            echo "proven=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          run_id="$(jq -r '.workflow_runs[0].id // empty' <<<"${resp}")"
+          run_sha="$(jq -r '.workflow_runs[0].head_sha // empty' <<<"${resp}")"
+          if [[ -n "${run_id}" && "${run_sha}" == "${SHA}" ]]; then
+            echo "Reusing successful push-to-main CI run ${run_id} (${SHA})"
+            echo "proven=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No successful push-to-main CI run for ${SHA}; the release will run the full gates"
+            echo "proven=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ---------------------------------------------------------------------------
+  # The repo's own gates. ci.yaml already supports `workflow_call`, so calling
+  # it here means the release gate and the PR gate run the same code. Skipped
+  # only when ci-proof found a successful push-to-main run for the exact tagged
+  # commit; in every other case (no proof, lookup failure) it runs the FULL
+  # suite, because it passes `scope: all` to force the full gate.
+  # ---------------------------------------------------------------------------
+  # The fallback must also run when the ci-proof JOB itself fails (a lookup
+  # outage is not a green light, but it must not silently skip the gates): the
+  # condition is `!cancelled() && no proof`. A cancellation or a failed
+  # prerequisite still blocks the gates -- and therefore the publish -- safely.
+  gates:
+    needs: [ci-proof]
+    if: ${{ !cancelled() && needs.ci-proof.outputs.proven != 'true' }}
+    uses: ./.github/workflows/ci.yaml
+    with:
+      scope: all
+
+  # ---------------------------------------------------------------------------
+  # Build and publish the release binaries. Publish proceeds ONLY with CI
+  # evidence for the exact tagged commit: either ci-proof found a successful
+  # push-to-main run for its SHA (gates skipped), or the fallback gates ran and
+  # succeeded. A failed gates run or a cancelled workflow stops the publish; a
+  # failed ci-proof falls back to the gates.
+  # ---------------------------------------------------------------------------
+  release:
+    needs: [ci-proof, gates]
+    if: ${{ !cancelled() && (needs.ci-proof.outputs.proven == 'true' || needs.gates.result == 'success') }}
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -26,64 +111,6 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: "1.26.5"
-
-      # Issue #10: `just release` tags origin/main's HEAD, whose push-to-main
-      # CI run went green minutes earlier. When that EXACT commit has a
-      # successful ci.yaml push run, the tag reuses it as the gate and does
-      # not re-run the suite. No proof (or a lookup failure) falls back to the
-      # full `just check` below, so an untested tag still cannot publish.
-      # `github.sha` on a tag push is the tagged commit, but resolving through
-      # the API peels annotated tags explicitly instead of trusting the event.
-      # EITHER API lookup failing (peel or runs query) must fall back to the
-      # release gate -- never abort the tag run.
-      - name: Check for a green push-to-main CI run on this exact commit
-        id: ci-proof
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if ! sha="$(gh api "repos/${{ github.repository }}/commits/${GITHUB_REF_NAME}" --jq '.sha')"; then
-            echo "warning: could not resolve tagged commit ${GITHUB_REF_NAME}; falling back to the release gate" >&2
-            echo "proof=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if ! count="$(gh api \
-            "repos/${{ github.repository }}/actions/workflows/ci.yaml/runs?event=push&branch=main&head_sha=${sha}&status=success&per_page=100" \
-            --jq '.total_count')"; then
-            echo "warning: CI proof lookup failed; falling back to the release gate" >&2
-            echo "proof=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          # The API can return unexpected JSON (e.g. an error object with no
-          # total_count, which jq renders as null): refuse to compare it as a
-          # number and fall back to the gate instead of aborting the run.
-          if [[ ! "$count" =~ ^[0-9]+$ ]]; then
-            echo "warning: unexpected CI proof response '$count'; falling back to the release gate" >&2
-            echo "proof=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [ "$count" -gt 0 ]; then
-            echo "proof=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "proof=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Install just
-        if: steps.ci-proof.outputs.proof == 'false'
-        uses: extractions/setup-just@v3
-
-      # Pinned exactly. A floating generator would make `check-generated`
-      # fail on an unrelated upstream release and turn the contract gate into
-      # noise nobody trusts.
-      - name: Install oapi-codegen
-        if: steps.ci-proof.outputs.proof == 'false'
-        run: go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0
-
-      # Fallback gate only, when there is no green main-push CI run for the
-      # tagged commit. Failing here stops the job: goreleaser must never run
-      # after a failed prerequisite.
-      - name: Release gate (no green main-push CI for this commit)
-        if: steps.ci-proof.outputs.proof == 'false'
-        run: just check
 
       - uses: goreleaser/goreleaser-action@v7
         with:
