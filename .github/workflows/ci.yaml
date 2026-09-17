@@ -5,8 +5,15 @@ on:
     branches: [main]
   pull_request:
   # Other workflows that need the full Go scope call this; a workflow_call
-  # never path-filters, the caller asked for everything.
+  # never path-filters, so the caller can either pass scope=all to force the
+  # full gate or rely on the all-zeros-before heuristic on a tag push.
   workflow_call:
+    inputs:
+      scope:
+        description: "Force a gate scope (all) instead of detecting it from changed paths."
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -20,6 +27,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -29,8 +37,15 @@ jobs:
       # this workflow file itself and renovate.json, runs the full gate.
       - name: Detect Go-relevant changes
         id: go-paths
+        env:
+          INPUT_SCOPE: ${{ inputs.scope }}
         run: |
           set -euo pipefail
+          # A caller that passed scope=all wants the full gate unconditionally.
+          if [[ -n "${INPUT_SCOPE}" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           case "$GITHUB_EVENT_NAME" in
             pull_request)
               base="${{ github.event.pull_request.base.sha }}"
