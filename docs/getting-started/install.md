@@ -54,6 +54,15 @@ drift completion zsh > "${fpath[1]}/_drift"
 drift completion fish > ~/.config/fish/completions/drift.fish
 ```
 
+## Upgrading
+
+The CLI checks for updates weekly and nudges when a new release exists.
+To update immediately:
+
+```bash
+drift self-update
+```
+
 ## Version compatibility
 
 Client and server versions are independent. Compatibility is governed by the

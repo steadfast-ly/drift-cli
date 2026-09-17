@@ -54,8 +54,22 @@ func NewRootCommand(app *App) *cobra.Command {
 		// alone fixed the 0 but landed on 1, which a script cannot tell apart
 		// from a server error — `usageArgs` carries the usage code with it.
 		Args: usageArgs(cobra.NoArgs),
-		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
-			return app.initOutput()
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			if err := app.initOutput(); err != nil {
+				return err
+			}
+			// After output is initialised so the nudge can only ever touch
+			// stderr. The background probe is best-effort and never fails the
+			// command.
+			app.maybeStartUpdateCheck(cmd)
+			return nil
+		},
+		PersistentPostRunE: func(_ *cobra.Command, _ []string) error {
+			// Cobra skips PersistentPostRunE when RunE returns an error, so
+			// this only runs after a successful command. That is deliberate:
+			// we do not want to nudge right after a command failed.
+			app.maybePrintUpdateNudge()
+			return nil
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Help()
@@ -87,6 +101,7 @@ func NewRootCommand(app *App) *cobra.Command {
 		newDoctorCommand(app),
 		newVersionCommand(app),
 		newCompletionCommand(app),
+		newSelfUpdateCommand(app),
 	)
 
 	// Every subcommand's argument validation gets the same treatment, including

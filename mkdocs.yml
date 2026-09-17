@@ -51,6 +51,7 @@ nav:
       - Promotions: guides/promotions.md
       - CI and automation: guides/automation.md
       - LLM agents: guides/agents.md
+      - Updating: guides/updating.md
   - Reference:
       - Configuration: reference/configuration.md
       - Errors and exit codes: reference/errors.md
