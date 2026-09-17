@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/steadfast-ly/drift-cli/internal/api"
 	"github.com/steadfast-ly/drift-cli/internal/auth"
 	"github.com/steadfast-ly/drift-cli/internal/client"
@@ -24,6 +25,7 @@ import (
 	"github.com/steadfast-ly/drift-cli/internal/config"
 	"github.com/steadfast-ly/drift-cli/internal/discovery"
 	"github.com/steadfast-ly/drift-cli/internal/output"
+	"github.com/steadfast-ly/drift-cli/internal/selfupdate"
 )
 
 func init() {
@@ -74,6 +76,11 @@ type App struct {
 	configDir string
 	cfg       *config.File
 	store     *auth.Store
+
+	// updateResult is the channel the nudge goroutine sends its check result
+	// on. Non-nil only when a background update check was started (see
+	// maybeStartUpdateCheck); nil means nothing to collect.
+	updateResult chan *selfupdate.CheckResult
 }
 
 // NewApp builds a runtime bound to the real process.
@@ -110,6 +117,91 @@ func (a *App) initOutput() error {
 		ErrColor:   errColor,
 	}
 	return nil
+}
+
+// maybeStartUpdateCheck decides whether to probe GitHub for a newer release in
+// the background, and starts the goroutine when a check is warranted. It never
+// blocks and never fails the command: the update nudge is best-effort by
+// design (D9).
+func (a *App) maybeStartUpdateCheck(cmd *cobra.Command) {
+	// Suppressed commands: self-update is already updating, version already
+	// shows version information, and completion scripts parse stderr.
+	if a.suppressUpdateNudge(cmd) {
+		return
+	}
+	// Explicit opt-out for machines that must never phone home from an
+	// arbitrary command.
+	if os.Getenv("DRIFT_NO_UPDATE_CHECK") == "1" || os.Getenv("CI") != "" {
+		return
+	}
+	// Dev builds are not on the release track (D5).
+	if !selfupdate.IsReleaseBuild(a.Version) {
+		return
+	}
+
+	dir, err := a.ConfigDir()
+	if err != nil {
+		return
+	}
+	cache, _ := selfupdate.ReadCache(dir)
+	if !selfupdate.IsStale(cache, a.Version, time.Now()) {
+		return
+	}
+
+	// A test harness injects an HTTP client; skip the background probe so unit
+	// tests never reach the real network.
+	if a.HTTP != nil {
+		return
+	}
+
+	ch := make(chan *selfupdate.CheckResult, 1)
+	a.updateResult = ch
+	client := &http.Client{Timeout: 2 * time.Second}
+	go func() {
+		res, _, err := selfupdate.Check(context.Background(), client, a.Version)
+		if err != nil {
+			// Refresh checked_at anyway so an offline user is not re-probed on
+			// every command (D8). nil result = no nudge.
+			_ = selfupdate.WriteCache(dir, &selfupdate.Cache{CheckedAt: time.Now(), Latest: cache.Latest, Current: a.Version})
+			ch <- nil
+			return
+		}
+		_ = selfupdate.WriteCache(dir, &selfupdate.Cache{CheckedAt: time.Now(), Latest: res.LatestVersion, Current: a.Version})
+		ch <- res
+	}()
+}
+
+// maybePrintUpdateNudge prints the one-line update nudge to stderr when a
+// background check found a newer release. The receive is bounded by a 3s
+// timer so a stuck cache write (frozen filesystem) cannot hang the process
+// after the command has already completed.
+func (a *App) maybePrintUpdateNudge() {
+	if a.updateResult == nil {
+		return
+	}
+	var res *selfupdate.CheckResult
+	select {
+	case res = <-a.updateResult:
+	case <-time.After(3 * time.Second):
+		return
+	}
+	if res == nil || !res.UpdateAvailable {
+		return
+	}
+	fmt.Fprintf(a.Stderr, "\ndrift v%s is available (you have v%s); run 'drift self-update'.\n",
+		res.LatestVersion, res.CurrentVersion)
+}
+
+// suppressUpdateNudge reports whether the command should skip the passive
+// update nudge. `drift completion bash` has cmd.Name() == "bash" with the
+// parent named "completion", so both the completion command and its children
+// are suppressed.
+func (a *App) suppressUpdateNudge(cmd *cobra.Command) bool {
+	switch cmd.Name() {
+	case "self-update", "version", "completion":
+		return true
+	}
+	return cmd.Parent() != nil && cmd.Parent().Name() == "completion"
 }
 
 // ConfigDir resolves and memoises the configuration directory.

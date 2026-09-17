@@ -73,6 +73,7 @@ drift api <method> <path>    Raw API passthrough (escape hatch)
 drift doctor                 Diagnose connectivity, auth, version skew
 drift version                Client and server versions
 drift completion <shell>     Shell completion (bash, zsh, fish)
+drift self-update             Update to the latest release (--check to query only)
 ```
 
 ## Machine-interface rules
