@@ -94,7 +94,7 @@ jobs:
 
       - name: Install just
         if: steps.go-paths.outputs.changed == 'true'
-        uses: extractions/setup-just@v3
+        uses: extractions/setup-just@v4
 
       # Pinned exactly. A floating generator would make `check-generated`
       # fail on an unrelated upstream release and turn the contract gate into
