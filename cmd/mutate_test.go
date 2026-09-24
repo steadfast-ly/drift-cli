@@ -57,6 +57,9 @@ type mutServer struct {
 	builds   []string
 	promotes []string
 	calls    []string
+	// cancelBody is the decoded body of the last cancel request, so a test can
+	// tell a reason that was sent from one that was not sent at all.
+	cancelBody map[string]any
 	// rateLimit fires a 429 on the Nth matching mutation, once.
 	rateLimitAfter int
 	retryAfter     int
@@ -72,6 +75,12 @@ type mutServer struct {
 	// without --tests-branch — and a --tests-branch refusal — work against the
 	// plain mutServer.
 	e2eTestsBranch bool
+	// noCancelFeature REMOVES `promotions.cancel` from the served discovery
+	// document, for the capability-gate test (refreshDiscoveryDoc must be called
+	// after setting it). Inverted from e2eTestsBranch because every other cancel
+	// test needs the capability present, and one of them forgetting to add it
+	// would fail for the wrong reason.
+	noCancelFeature bool
 	// discoveryDoc is the served `/.well-known/drift.json` body, rebuilt by
 	// refreshDiscoveryDoc from the capability flags above.
 	discoveryDoc []byte
@@ -121,6 +130,20 @@ func (s *mutServer) seen(what string) int {
 	return n
 }
 
+// cancelReason returns the reason the last cancel request carried, and whether
+// the field was present at all. The two are different: an omitted reason is
+// legitimate, and a reason sent as the empty string is not.
+func (s *mutServer) cancelReason() (string, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	v, ok := s.cancelBody["reason"]
+	if !ok {
+		return "", false
+	}
+	reason, _ := v.(string)
+	return reason, true
+}
+
 // refreshDiscoveryDoc rebuilds the served discovery document from the
 // server's capability flags. Capabilities like `e2e-tests-branch` are
 // profile-conditional on a real server, so a test that exercises them flips
@@ -132,6 +155,9 @@ func (s *mutServer) refreshDiscoveryDoc() {
 	features := []string{
 		"environments.read", "environments.write", "repositories.read",
 		"releases.read", "promotions.rc", "promotions.hotfix", "promotions.prd",
+	}
+	if !s.noCancelFeature {
+		features = append(features, "promotions.cancel")
 	}
 	if s.e2eTestsBranch {
 		features = append(features, "e2e-tests-branch")
@@ -384,6 +410,22 @@ func newMutServer(t *testing.T) *mutServer {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"promotionId": promID, "dispatchCount": 1})
 	})
+	// Registered on the one id the fixtures use, so a request for any other id
+	// is a genuine 404 from the mux rather than a silently accepted cancel.
+	mux.HandleFunc("/api/v1/releases/promotions/"+promID+"/cancel", func(w http.ResponseWriter, r *http.Request) {
+		if limited(w) {
+			return
+		}
+		body, _ := readJSON(r)
+		s.mu.Lock()
+		s.cancelBody = body
+		s.mu.Unlock()
+		s.record("cancel")
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"promotionId": promID, "previousStatus": "promoting", "status": "failed",
+		})
+	})
 
 	s.Server = httptest.NewServer(mux)
 	t.Cleanup(s.Close)
@@ -431,6 +473,7 @@ func TestDestructiveCommandsRefuseWithoutYesOffATerminal(t *testing.T) {
 		{"env", "remove-service", "proof-alpha", "widget"},
 		{"release", "promote", "rc", "widget"},
 		{"release", "promote", "hotfix", "widget", "--branch", "hotfix/x"},
+		{"release", "cancel", promID},
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
 			_, errOut, code := h.run(args...)
@@ -445,8 +488,11 @@ func TestDestructiveCommandsRefuseWithoutYesOffATerminal(t *testing.T) {
 			}
 		})
 	}
-	// Nothing reached the server.
-	if n := s.seen("DELETE") + s.seen("relaunch") + s.seen("promote:rc"); n != 0 {
+	// No mutation reached the server. That is the claim: a refusal must not
+	// depend on a READ, so `release cancel` skips even the promotion lookup it
+	// would make for its summary (pinned in its own test), while the env
+	// commands still resolve the environment they were about to change.
+	if n := s.seen("DELETE") + s.seen("relaunch") + s.seen("promote:rc") + s.seen("cancel"); n != 0 {
 		t.Fatalf("%d destructive calls were made despite the refusal", n)
 	}
 }
@@ -1466,6 +1512,456 @@ func TestPromotePrdFeatureGateAbsent(t *testing.T) {
 	}
 }
 
+// --- cancel -----------------------------------------------------------------
+
+// cancelProblem makes the cancel endpoint answer with a problem envelope, the
+// way the server does for a promotion it will not cancel. Everything else in
+// the mux is untouched.
+func cancelProblem(t *testing.T, s *mutServer, status int, code, msg, ptype, detail string) {
+	t.Helper()
+	base := s.Config.Handler
+	s.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/api/v1/releases/promotions/"+promID+"/cancel" {
+			s.record("cancel")
+			writeProblem(w, status, code, msg, ptype, detail)
+			return
+		}
+		base.ServeHTTP(w, r)
+	})
+}
+
+// countRequests wraps the mux with a request counter over the paths pred
+// selects, so a test can prove what did NOT reach the server — including a
+// request the command was supposed to skip rather than one it never had reason
+// to make.
+func countRequests(s *mutServer, pred func(*http.Request) bool) func() int {
+	var mu sync.Mutex
+	n := 0
+	base := s.Config.Handler
+	s.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if pred(r) {
+			mu.Lock()
+			n++
+			mu.Unlock()
+		}
+		base.ServeHTTP(w, r)
+	})
+	return func() int {
+		mu.Lock()
+		defer mu.Unlock()
+		return n
+	}
+}
+
+// anyRequest counts everything, for the checks that must precede the first
+// request of any kind.
+func anyRequest(*http.Request) bool { return true }
+
+// promotionLookups counts reads of the listing the cancel summary is built
+// from.
+func promotionLookups(r *http.Request) bool {
+	return r.URL.Path == "/api/v1/releases/promotions/active"
+}
+
+// The happy path: the reason travels in the body, and both statuses the server
+// reports — what the promotion was and what it became — reach the operator.
+func TestReleaseCancelSendsTheReasonAndReportsBothStatuses(t *testing.T) {
+	s := newMutServer(t)
+	s.promotes = []string{"promoting"}
+	h := newMutHarness(t, s)
+
+	out, errOut, code := h.run("release", "cancel", promID,
+		"--reason", "retag workflow was cancelled", "--yes")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if s.seen("cancel") != 1 {
+		t.Fatalf("expected exactly one cancel call; calls: %v", s.calls)
+	}
+	if reason, ok := s.cancelReason(); !ok || reason != "retag workflow was cancelled" {
+		t.Fatalf("reason = %q (present: %v), want %q", reason, ok, "retag workflow was cancelled")
+	}
+	if !strings.Contains(out, "promoting") || !strings.Contains(out, "failed") {
+		t.Fatalf("the previous and resulting statuses were not both reported: %s", out)
+	}
+	// --yes waives the QUESTION, not the disclosure: the summary is printed
+	// either way, and names what is about to happen.
+	want := "This cancels the rc promotion " + promID +
+		" (services: widget; status: promoting). It will be marked failed and cannot be resumed."
+	if !strings.Contains(errOut, want) {
+		t.Fatalf("the summary was not printed under --yes:\nwant: %s\ngot:  %s", want, errOut)
+	}
+}
+
+// An omitted --reason sends no field at all: the body is optional in the
+// contract, and a `reason: ""` is a different thing from an absent one.
+func TestReleaseCancelWithoutAReasonSendsNoReason(t *testing.T) {
+	s := newMutServer(t)
+	s.promotes = []string{"promoting"}
+	h := newMutHarness(t, s)
+
+	if _, errOut, code := h.run("release", "cancel", promID, "--yes"); code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if reason, ok := s.cancelReason(); ok {
+		t.Fatalf("a reason was sent without --reason: %q", reason)
+	}
+}
+
+// The summary names the state the promotion is going to land in, before the
+// operator confirms — and does not promise a transition it cannot deliver when
+// the promotion has already finished. The `completed` case also exercises the
+// lookup's second arm: a finished promotion is in `recent`, not `active`.
+func TestReleaseCancelSummaryNamesTheOutcome(t *testing.T) {
+	cases := []struct {
+		name   string
+		status string
+		want   string
+	}{
+		{"deploying fails into deploy_failed", "deploying",
+			"It will be marked deploy_failed and cannot be resumed."},
+		{"promoting fails into failed", "promoting",
+			"It will be marked failed and cannot be resumed."},
+		{"a finished promotion is not promised a transition", "completed",
+			"It is already completed, which the server will refuse to cancel."},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			s := newMutServer(t)
+			s.promotes = []string{c.status}
+			h := newMutHarness(t, s)
+
+			_, errOut, code := h.run("release", "cancel", promID, "--yes")
+			if code != cliexit.OK {
+				t.Fatalf("exit %d\n%s", code, errOut)
+			}
+			if !strings.Contains(errOut, c.want) {
+				t.Fatalf("the summary does not say %q: %s", c.want, errOut)
+			}
+		})
+	}
+}
+
+// The summary lookup is decoration, and decoration must not fail the command:
+// the server is the authority on the id, and on whether it can be cancelled.
+func TestReleaseCancelProceedsWhenTheSummaryLookupFails(t *testing.T) {
+	s := newMutServer(t)
+	h := newMutHarness(t, s)
+	base := s.Config.Handler
+	s.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/releases/promotions/active" {
+			writeProblem(w, 500, "INTERNAL_ERROR", "boom",
+				"urn:drift:problem:internal-error", "")
+			return
+		}
+		base.ServeHTTP(w, r)
+	})
+
+	_, errOut, code := h.run("release", "cancel", promID, "--yes")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d — a failed summary lookup failed the cancel\n%s", code, errOut)
+	}
+	if s.seen("cancel") != 1 {
+		t.Fatalf("the cancel was not sent; calls: %v", s.calls)
+	}
+	if !strings.Contains(errOut, "This cancels promotion "+promID) {
+		t.Fatalf("the summary did not fall back to the id: %s", errOut)
+	}
+}
+
+// An id that is in neither the in-flight nor the recent listing is still
+// cancelled: the server decides, and answers 404 if the id is not there.
+func TestReleaseCancelProceedsWhenThePromotionIsNotListed(t *testing.T) {
+	s := newMutServer(t)
+	h := newMutHarness(t, s)
+	base := s.Config.Handler
+	s.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/releases/promotions/active" {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{"active": nil, "recent": []any{}})
+			return
+		}
+		base.ServeHTTP(w, r)
+	})
+
+	_, errOut, code := h.run("release", "cancel", promID, "--yes")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d — an id outside the listing was refused client-side\n%s", code, errOut)
+	}
+	if s.seen("cancel") != 1 {
+		t.Fatalf("the cancel was not sent; calls: %v", s.calls)
+	}
+	if !strings.Contains(errOut, "This cancels promotion "+promID) {
+		t.Fatalf("the summary did not fall back to the id: %s", errOut)
+	}
+}
+
+// A cancel in a script REFUSES rather than cancelling into the void. The
+// harness's streams are buffers, which is exactly what a redirect looks like.
+func TestReleaseCancelRefusesWithoutYesOffATerminal(t *testing.T) {
+	s := newMutServer(t)
+	s.promotes = []string{"promoting"}
+	h := newMutHarness(t, s)
+	lookups := countRequests(s, promotionLookups)
+
+	_, errOut, code := h.run("release", "cancel", promID)
+	if code != cliexit.Usage {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.Usage, errOut)
+	}
+	if !strings.Contains(errOut, "--yes") {
+		t.Fatalf("the refusal does not name the remedy: %s", errOut)
+	}
+	if !strings.Contains(errOut, "not interactive") {
+		t.Fatalf("the refusal does not say why: %s", errOut)
+	}
+	if s.seen("cancel") != 0 {
+		t.Fatalf("a cancel was sent despite the refusal: %v", s.calls)
+	}
+	// The refusal is decided locally, so it must not have spent a request on a
+	// summary nobody will see — and must not turn an unreachable server into a
+	// transport failure in place of the usage error the invocation earned.
+	if n := lookups(); n != 0 {
+		t.Fatalf("%d promotion lookup(s) were made for a run that cannot confirm", n)
+	}
+}
+
+// The refusal is decided locally, so it comes BEFORE anything talks to the
+// server — including discovery. Against a server that could not cancel anyway,
+// or one that is not there at all, a missing --yes must still be the usage
+// error that names the remedy rather than a capability or connection failure
+// the operator cannot act on.
+func TestReleaseCancelRefusesBeforeConnecting(t *testing.T) {
+	cases := []struct {
+		name string
+		// noCancelFeature serves a discovery document without the capability, so
+		// a Connect that happened would fail the gate instead of the prompt.
+		noCancelFeature bool
+	}{
+		{"capable server", false},
+		{"server without the capability", true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			s := newMutServer(t)
+			s.noCancelFeature = c.noCancelFeature
+			s.refreshDiscoveryDoc()
+			h := newMutHarness(t, s)
+			requests := countRequests(s, anyRequest)
+
+			_, errOut, code := h.run("release", "cancel", promID)
+			if code != cliexit.Usage {
+				t.Fatalf("exit %d, want %d\n%s", code, cliexit.Usage, errOut)
+			}
+			if !strings.Contains(errOut, "--yes") {
+				t.Fatalf("the refusal does not name the remedy: %s", errOut)
+			}
+			if n := requests(); n != 0 {
+				t.Fatalf("%d request(s) were made before the refusal; calls: %v", n, s.calls)
+			}
+		})
+	}
+}
+
+// The server trims the reason before it bounds it (`z.string().trim().min(1)
+// .max(500)`), so the CLI must measure and send the trimmed value: padding is
+// not part of what the operator meant to record, and it must not push a reason
+// over a limit the server would not have applied to it.
+func TestReleaseCancelTrimsTheReason(t *testing.T) {
+	s := newMutServer(t)
+	s.promotes = []string{"promoting"}
+	h := newMutHarness(t, s)
+
+	untrimmed := "   " + strings.Repeat("x", 500) + "  "
+	if _, errOut, code := h.run("release", "cancel", promID,
+		"--reason", untrimmed, "--yes"); code != cliexit.OK {
+		t.Fatalf("exit %d — 500 characters wrapped in padding were refused\n%s", code, errOut)
+	}
+	if got, ok := s.cancelReason(); !ok || got != strings.Repeat("x", 500) {
+		t.Fatalf("the body carries %d characters (present %v), want the trimmed 500",
+			len(got), ok)
+	}
+
+	// Over the bound AFTER trimming is still over the bound.
+	s2 := newMutServer(t)
+	h2 := newMutHarness(t, s2)
+	requests := countRequests(s2, anyRequest)
+	_, errOut, code := h2.run("release", "cancel", promID,
+		"--reason", " "+strings.Repeat("x", 501)+" ", "--yes")
+	if code != cliexit.Usage {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.Usage, errOut)
+	}
+	if !strings.Contains(errOut, "--reason") {
+		t.Fatalf("the usage error does not name the flag: %s", errOut)
+	}
+	if n := requests(); n != 0 {
+		t.Fatalf("%d request(s) reached the server for an over-long reason", n)
+	}
+}
+
+// The server trims with JavaScript's `String.prototype.trim`, which is NOT
+// Go's `strings.TrimSpace`: NEL (U+0085) is whitespace to Go and not to
+// ECMAScript, and the BOM (U+FEFF) is the reverse. The body carries the value
+// the SERVER would compute, so each difference is observable here.
+func TestReleaseCancelTrimsLikeECMAScript(t *testing.T) {
+	cases := []struct {
+		name   string
+		reason string
+		want   string
+	}{
+		{"NEL is not padding", "\u0085cancel\u0085", "\u0085cancel\u0085"},
+		{"a NEL-only reason is not empty", "\u0085", "\u0085"},
+		{"a BOM is padding", "\uFEFFcancel\uFEFF", "cancel"},
+		{"a non-breaking space is padding", "\u00A0cancel\u00A0", "cancel"},
+		{"an ideographic space is padding", "\u3000cancel\u3000", "cancel"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			s := newMutServer(t)
+			s.promotes = []string{"promoting"}
+			h := newMutHarness(t, s)
+
+			if _, errOut, code := h.run("release", "cancel", promID,
+				"--reason", c.reason, "--yes"); code != cliexit.OK {
+				t.Fatalf("exit %d\n%s", code, errOut)
+			}
+			if got, ok := s.cancelReason(); !ok || got != c.want {
+				t.Fatalf("the body carries %q (present %v), want %q", got, ok, c.want)
+			}
+		})
+	}
+}
+
+// A promotion that has already reached a terminal state is refused by the
+// server, and its message is what the operator has to see.
+func TestReleaseCancelConflictIsExitFive(t *testing.T) {
+	s := newMutServer(t)
+	h := newMutHarness(t, s)
+	cancelProblem(t, s, 409, "CONFLICT", "Cannot cancel promotion in completed state",
+		"urn:drift:problem:invalid-transition", "the promotion is completed, which does not accept CANCEL")
+
+	_, errOut, code := h.run("release", "cancel", promID, "--yes")
+	if code != cliexit.Conflict {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.Conflict, errOut)
+	}
+	if s.seen("cancel") != 1 {
+		t.Fatalf("expected exactly one cancel call; calls: %v", s.calls)
+	}
+	if !strings.Contains(errOut, "Cannot cancel promotion") {
+		t.Fatalf("the refusal message was not surfaced: %s", errOut)
+	}
+}
+
+func TestReleaseCancelNotFoundIsExitThree(t *testing.T) {
+	s := newMutServer(t)
+	h := newMutHarness(t, s)
+	cancelProblem(t, s, 404, "NOT_FOUND", "Promotion not found",
+		"urn:drift:problem:not-found", "No promotion with that id.")
+
+	_, errOut, code := h.run("release", "cancel", promID, "--yes")
+	if code != cliexit.NotFound {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.NotFound, errOut)
+	}
+	if !strings.Contains(errOut, "Promotion not found") {
+		t.Fatalf("the server's message was not surfaced: %s", errOut)
+	}
+}
+
+// The id and the reason are both checked client-side, and both BEFORE any
+// request: the discovery fetch, the summary lookup and the cancel itself all
+// come later, so a malformed invocation costs no round trip at all.
+func TestReleaseCancelValidatesBeforeAnyRequest(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"not a uuid", []string{"release", "cancel", "not-a-uuid", "--yes"}, "not a UUID"},
+		{"reason of 501 characters", []string{"release", "cancel", promID,
+			"--reason", strings.Repeat("x", 501), "--yes"}, "--reason"},
+		// 251 astral characters are 251 runes but 502 UTF-16 code units, which is
+		// what the server's validator counts. A rune count would pass this one
+		// and eat a 400.
+		{"reason of 251 emoji", []string{"release", "cancel", promID,
+			"--reason", strings.Repeat("\U0001F600", 251), "--yes"}, "--reason"},
+		{"explicitly empty reason", []string{"release", "cancel", promID,
+			"--reason", "", "--yes"}, "--reason"},
+		// A BOM is padding to the server's trim, so a reason of only a BOM is
+		// empty to `.min(1)` — refusing it here is the same answer, without the
+		// round trip.
+		{"reason of only a BOM", []string{"release", "cancel", promID,
+			"--reason", "\uFEFF", "--yes"}, "--reason"},
+		{"whitespace-only reason", []string{"release", "cancel", promID,
+			"--reason", "   ", "--yes"}, "--reason"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			s := newMutServer(t)
+			h := newMutHarness(t, s)
+			requests := countRequests(s, anyRequest)
+
+			_, errOut, code := h.run(c.args...)
+			if code != cliexit.Usage {
+				t.Fatalf("exit %d, want %d\n%s", code, cliexit.Usage, errOut)
+			}
+			if !strings.Contains(errOut, c.want) {
+				t.Fatalf("the usage error does not mention %q: %s", c.want, errOut)
+			}
+			if n := requests(); n != 0 {
+				t.Fatalf("%d request(s) reached the server for an invalid invocation", n)
+			}
+		})
+	}
+}
+
+// Exactly at the bound must go through: the check is the server's own limit,
+// not a guess below it. Both spellings of 500 count the same, because the
+// server counts UTF-16 code units.
+func TestReleaseCancelAcceptsAReasonAtTheBound(t *testing.T) {
+	cases := []struct {
+		name   string
+		reason string
+	}{
+		{"500 ascii characters", strings.Repeat("x", 500)},
+		{"250 emoji, which are 500 code units", strings.Repeat("\U0001F600", 250)},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			s := newMutServer(t)
+			s.promotes = []string{"promoting"}
+			h := newMutHarness(t, s)
+
+			if _, errOut, code := h.run("release", "cancel", promID,
+				"--reason", c.reason, "--yes"); code != cliexit.OK {
+				t.Fatalf("exit %d\n%s", code, errOut)
+			}
+			if got, ok := s.cancelReason(); !ok || got != c.reason {
+				t.Fatalf("the reason did not survive the round trip (%d bytes, present %v)",
+					len(got), ok)
+			}
+		})
+	}
+}
+
+// A server that cannot cancel is refused the way every other gated command is,
+// and the refusal names the capability rather than the operation.
+func TestReleaseCancelIsGatedOnTheAdvertisedFeature(t *testing.T) {
+	s := newMutServer(t)
+	s.noCancelFeature = true
+	s.refreshDiscoveryDoc()
+	h := newMutHarness(t, s)
+
+	_, errOut, code := h.run("release", "cancel", promID, "--yes")
+	if code != cliexit.Error {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.Error, errOut)
+	}
+	if !strings.Contains(errOut, "promotions.cancel") {
+		t.Fatalf("the missing capability was not named: %s", errOut)
+	}
+	if s.seen("cancel") != 0 {
+		t.Fatalf("a cancel was sent to a server that does not advertise the capability: %v", s.calls)
+	}
+}
+
 func TestHotfixRequiresABranch(t *testing.T) {
 	s := newMutServer(t)
 	h := newMutHarness(t, s)
@@ -1506,25 +2002,33 @@ func TestGoldenOutput(t *testing.T) {
 	cases := []struct {
 		name string
 		args []string
-		// promotes scripts the promotion status queue, when the case needs one.
+		// statuses scripts the environment status queue, when the case needs one.
 		statuses []string
+		// promotes scripts the promotion status queue, when the case needs one.
+		promotes []string
 	}{
-		{"env_redeploy_table", []string{"env", "redeploy", "proof-alpha", "--no-wait"}, []string{"deploying"}},
-		{"env_sleep_table", []string{"env", "sleep", "proof-alpha"}, []string{"sleeping"}},
-		{"env_sleep_json", []string{"env", "sleep", "proof-alpha", "-o", "json"}, []string{"sleeping"}},
-		{"env_rm_wide", []string{"env", "rm", "proof-alpha", "--yes", "-o", "wide"}, []string{"destroying"}},
-		{"env_extend_table", []string{"env", "extend", "proof-alpha", "--hours", "12"}, []string{"running"}},
-		{"env_share_table", []string{"env", "share", "proof-alpha"}, []string{"running"}},
-		{"release_status_table", []string{"release", "status"}, nil},
-		{"release_status_json", []string{"release", "status", "-o", "json"}, nil},
-		{"release_history_table", []string{"release", "history"}, nil},
-		{"promote_rc_json", []string{"release", "promote", "rc", "widget", "--yes", "-o", "json"}, nil},
+		{"env_redeploy_table", []string{"env", "redeploy", "proof-alpha", "--no-wait"}, []string{"deploying"}, nil},
+		{"env_sleep_table", []string{"env", "sleep", "proof-alpha"}, []string{"sleeping"}, nil},
+		{"env_sleep_json", []string{"env", "sleep", "proof-alpha", "-o", "json"}, []string{"sleeping"}, nil},
+		{"env_rm_wide", []string{"env", "rm", "proof-alpha", "--yes", "-o", "wide"}, []string{"destroying"}, nil},
+		{"env_extend_table", []string{"env", "extend", "proof-alpha", "--hours", "12"}, []string{"running"}, nil},
+		{"env_share_table", []string{"env", "share", "proof-alpha"}, []string{"running"}, nil},
+		{"release_status_table", []string{"release", "status"}, nil, nil},
+		{"release_status_json", []string{"release", "status", "-o", "json"}, nil, nil},
+		{"release_history_table", []string{"release", "history"}, nil, nil},
+		{"promote_rc_json", []string{"release", "promote", "rc", "widget", "--yes", "-o", "json"}, nil, nil},
+		{"release_cancel_table", []string{"release", "cancel", promID, "--yes"}, nil, []string{"promoting"}},
+		{"release_cancel_json", []string{"release", "cancel", promID, "--yes",
+			"--reason", "retag workflow was cancelled", "-o", "json"}, nil, []string{"promoting"}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			s := newMutServer(t)
 			if c.statuses != nil {
 				s.statuses = c.statuses
+			}
+			if c.promotes != nil {
+				s.promotes = c.promotes
 			}
 			h := newMutHarness(t, s)
 			out, errOut, code := h.run(c.args...)
