@@ -115,3 +115,42 @@ without dispatching a new workflow.
 All promotions block by default (20-minute timeout). Use `--no-wait` to
 return as soon as the workflows are dispatched, then check progress with
 `drift release status` or `drift release history`.
+
+## Cancelling a stuck promotion
+
+A promotion whose retag workflow was cancelled, whose target was rolled back
+by hand, or that never received its ArgoCD notification stays in flight
+forever. While it does, the concurrency guard refuses the next promotion of
+the same services, and no `--wait` will ever finish.
+
+`drift release cancel` fails it:
+
+```bash
+drift release cancel <promotion-id> --reason "retag workflow was cancelled"
+```
+
+| In-flight state | Resulting state |
+| --------------- | --------------- |
+| `dispatched`    | `failed`        |
+| `promoting`     | `failed`        |
+| `deploying`     | `deploy_failed` |
+
+There is no separate `cancelled` state, and a cancelled promotion cannot be
+resumed -- promote the services again instead. The `--reason` is optional
+(1-500 characters after trimming, counting an emoji as two); when given it is
+recorded on the promotion and in its `promotion.canceled` audit row.
+
+The id comes from `drift release status` (the in-flight promotion) or
+`drift release history -o wide` (the `id` column is wide-only). Cancelling
+needs the **release** role, and the server must advertise the
+`promotions.cancel` capability.
+
+Cancelling is destructive, so it confirms on a terminal and takes `--yes`;
+a non-interactive session without `--yes` refuses with exit **2**, sending no
+cancel request and making no promotion lookup either -- the refusal is
+decided locally, so it cannot be turned into a connection error by an
+unreachable server. The promotion id is validated client-side first, so a
+mistyped id is also exit **2** rather than a round trip. Failures follow the
+standard codes: an unknown id is exit **3** (not found), and a promotion that
+has already finished is exit **5** (state conflict, naming the state it is
+in).

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/steadfast-ly/drift-cli/internal/api"
 	"github.com/steadfast-ly/drift-cli/internal/client"
@@ -23,8 +25,9 @@ func newReleaseCommand(app *App) *cobra.Command {
 			"`status` shows what is deployed where; `history` lists past\n" +
 			"promotions; `promote rc` retags stg images as rc, `promote hotfix`\n" +
 			"builds a branch straight to rc, bypassing stg, for emergencies,\n" +
-			"and `promote prd` promotes from rc to production (requires an\n" +
-			"elevated credential).\n\n" + cliexit.Help,
+			"`promote prd` promotes from rc to production (requires an\n" +
+			"elevated credential), and `cancel` fails a promotion that is\n" +
+			"stuck so it stops holding the concurrency guard.\n\n" + cliexit.Help,
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error { return c.Help() },
 	}
@@ -32,6 +35,7 @@ func newReleaseCommand(app *App) *cobra.Command {
 		newReleaseStatusCommand(app),
 		newReleaseHistoryCommand(app),
 		newReleasePromoteCommand(app),
+		newReleaseCancelCommand(app),
 	)
 	return cmd
 }
@@ -641,38 +645,292 @@ func runPromotion(ctx context.Context, app *App, p promotion) error {
 	return waitErr
 }
 
-// pollPromotion reads one promotion's current status.
+// findPromotion reads one promotion from the in-flight/recent listing.
 //
 // `promotions/active` carries the in-flight promotion plus recent history, and
-// the promotion being waited on moves from the first to the second when it
-// finishes — so both are searched. Reading only `active` would see the
-// promotion vanish at the moment it completed and report a timeout on a
-// promotion that succeeded.
-func pollPromotion(ctx context.Context, sess *Session, id string) (wait.PromotionObservation, error) {
+// a promotion moves from the first to the second when it finishes — so both are
+// searched. Reading only `active` would see a promotion vanish at the moment it
+// completed, which for a wait is a timeout on a promotion that succeeded, and
+// for a cancel is a summary with no services and no status.
+//
+// A nil promotion with a nil error means the id is in neither list. That is not
+// a failure here: the two callers need different answers from it — the wait
+// treats it as the promotion having left the window, and the cancel's summary
+// degrades to naming the id alone, because the server is the authority on
+// whether the id exists at all.
+func findPromotion(ctx context.Context, sess *Session, id string) (*api.Promotion, error) {
 	resp, err := sess.API.ReleasesPromotionsActiveWithResponse(ctx, &api.ReleasesPromotionsActiveParams{})
 	if err != nil {
-		return wait.PromotionObservation{}, client.Transport(err, sess.Resolved.Endpoint)
+		return nil, client.Transport(err, sess.Resolved.Endpoint)
 	}
 	if resp.JSON200 == nil {
-		return wait.PromotionObservation{}, client.Fail(resp, resp.Headers429)
+		return nil, client.Fail(resp, resp.Headers429)
 	}
-	candidates := resp.JSON200.Recent
-	if resp.JSON200.Active != nil {
-		candidates = append([]api.Promotion{*resp.JSON200.Active}, candidates...)
+	if a := resp.JSON200.Active; a != nil && a.Id.String() == id {
+		return a, nil
 	}
-	for _, c := range candidates {
-		if c.Id.String() != id {
-			continue
+	for i := range resp.JSON200.Recent {
+		if resp.JSON200.Recent[i].Id.String() == id {
+			return &resp.JSON200.Recent[i], nil
 		}
-		obs := wait.PromotionObservation{Status: c.Status}
-		if c.StatusMessage != nil {
-			obs.Message = *c.StatusMessage
+	}
+	return nil, nil
+}
+
+// pollPromotion reads one promotion's current status.
+func pollPromotion(ctx context.Context, sess *Session, id string) (wait.PromotionObservation, error) {
+	p, err := findPromotion(ctx, sess, id)
+	if err != nil {
+		return wait.PromotionObservation{}, err
+	}
+	if p == nil {
+		return wait.PromotionObservation{}, &cliexit.ExitError{
+			Code:    cliexit.NotFound,
+			Message: "the promotion is no longer listed as active or recent",
+			Hint:    "`drift release history` will still have it",
 		}
-		return obs, nil
 	}
-	return wait.PromotionObservation{}, &cliexit.ExitError{
-		Code:    cliexit.NotFound,
-		Message: "the promotion is no longer listed as active or recent",
-		Hint:    "`drift release history` will still have it",
+	obs := wait.PromotionObservation{Status: p.Status}
+	if p.StatusMessage != nil {
+		obs.Message = *p.StatusMessage
 	}
+	return obs, nil
+}
+
+// --- cancel -----------------------------------------------------------------
+
+// maxCancelReason is the contract's bound on `--reason`: the cancel operation's
+// request body declares `minLength: 1, maxLength: 500`, enforced server-side by
+// the schema validator, whose `.max` measures UTF-16 code units. Checked
+// client-side so a value the server would reject with a 400 names the flag
+// instead.
+const maxCancelReason = 500
+
+func promotionCancelColumns() []output.Column {
+	return []output.Column{
+		{Name: "action", Header: "Action"},
+		{Name: "id", Header: "Id"},
+		{Name: "previous", Header: "Previous"},
+		output.StatusColumn("status", "Status"),
+	}
+}
+
+func newReleaseCancelCommand(app *App) *cobra.Command {
+	var reason string
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "cancel <promotion-id>",
+		Short: "Fail a promotion that is stuck",
+		Long: "Cancel a promotion that is stuck.\n\n" +
+			"A promotion whose retag workflow was cancelled, whose target was\n" +
+			"rolled back by hand, or that never received its ArgoCD\n" +
+			"notification stays in flight forever, and the concurrency guard\n" +
+			"refuses the next promotion of the same services while it does.\n" +
+			"`cancel` fails it: `dispatched` and `promoting` move to `failed`,\n" +
+			"`deploying` moves to `deploy_failed`. There is no separate\n" +
+			"`cancelled` state, and a cancelled promotion cannot be resumed —\n" +
+			"promote the services again instead.\n\n" +
+			"A promotion that has already reached a terminal state is refused\n" +
+			"with a state conflict (exit 5), an unknown id with a not-found\n" +
+			"(exit 3), and a credential below the release role with a\n" +
+			"forbidden (exit 1).\n\n" +
+			"Requires the promotion id: `drift release status` prints the\n" +
+			"in-flight one, and `drift release history -o wide` lists past ids.\n\n" +
+			"Destructive: confirms on a terminal, takes --yes, and refuses\n" +
+			"without --yes when the session is not interactive.\n\n" + cliexit.Help,
+		Args: exactArgs(1, "the promotion id"),
+		RunE: func(c *cobra.Command, args []string) error {
+			normalized, err := validateCancelReason(c.Flags().Changed("reason"), reason)
+			if err != nil {
+				return err
+			}
+			return runReleaseCancel(c.Context(), app, args[0], normalized, yes)
+		},
+	}
+	cmd.Flags().StringVar(&reason, "reason", "",
+		"why the promotion is being cancelled, recorded on the promotion and in the audit log "+
+			"(1-500 characters; an emoji counts as two)")
+	cmd.Flags().BoolVar(&yes, "yes", false, "skip the confirmation prompt")
+	return cmd
+}
+
+// validateCancelReason checks a `--reason` the server would reject, and returns
+// the value to send.
+//
+// `set` is whether the flag was actually given, because the two ends of the
+// bound differ in what omission means. An OMITTED reason is legitimate — the
+// body field is optional — but an explicitly empty or whitespace-only one is
+// not: it is what `--reason "$REASON"` produces when a CI variable expanded to
+// nothing, and silently recording no reason would lose the one thing the
+// operator was asked for.
+//
+// The server's schema is `z.string().trim().min(1).max(500)`: it trims FIRST
+// and bounds the result, so the bound applies to the trimmed value and the
+// trimmed value is what gets recorded. Measuring the raw flag would refuse a
+// reason that is only over the limit because of the padding around it, and
+// sending the raw value would record padding the operator never meant.
+//
+// The trim is `trimECMAScript`, not `strings.TrimSpace`: the value sent has to
+// be the value the server computes, down to which characters count as padding.
+func validateCancelReason(set bool, reason string) (string, error) {
+	if !set {
+		return "", nil
+	}
+	trimmed := trimECMAScript(reason)
+	if trimmed == "" {
+		return "", usageErrorf("--reason must not be empty or whitespace")
+	}
+	if n := utf16Units(trimmed); n > maxCancelReason {
+		return "", usageErrorf(
+			"--reason must be at most %d characters, an emoji counting as two (got %d)",
+			maxCancelReason, n)
+	}
+	return trimmed, nil
+}
+
+// utf16Units counts a string the way the server's schema validator does.
+//
+// The validator's `.max(500)` measures a JavaScript string, i.e. UTF-16 code
+// units, in which a code point above the BMP — an emoji, a flag, some CJK
+// extensions — is TWO. A rune count would pass a 300-emoji reason the server
+// answers 400 to, which is exactly the round trip this check exists to save;
+// a byte count would reject multi-byte scripts the server accepts.
+func utf16Units(s string) int {
+	n := 0
+	for _, r := range s {
+		n++
+		if r > 0xFFFF {
+			n++
+		}
+	}
+	return n
+}
+
+// trimECMAScript trims a string the way the server's `z.string().trim()` does,
+// which is JavaScript's `String.prototype.trim`.
+//
+// `strings.TrimSpace` is NOT that function: it asks `unicode.IsSpace`, so it
+// strips U+0085 (NEL), which ECMAScript keeps, and keeps U+FEFF (BOM), which
+// ECMAScript strips. Both differences are observable in the body — a reason
+// padded with NEL would be recorded a character shorter than the server means,
+// and one padded with a BOM would be refused here as whitespace-only when the
+// server would have accepted the remainder.
+//
+// The set is ECMAScript's WhiteSpace + LineTerminator productions: the
+// LineTerminators U+000A, U+000D, U+2028 and U+2029, the WhiteSpace characters
+// U+0009, U+000B, U+000C, U+0020, U+00A0 and U+FEFF, and the Unicode `Zs`
+// category — which carries U+00A0 and U+3000 today and any space separator
+// added later, which is why it is asked as a category rather than enumerated.
+func trimECMAScript(s string) string {
+	return strings.TrimFunc(s, isECMAScriptSpace)
+}
+
+func isECMAScriptSpace(r rune) bool {
+	switch r {
+	case '\t', '\n', '\v', '\f', '\r', ' ', '\u00A0', '\u2028', '\u2029', '\uFEFF':
+		return true
+	}
+	return unicode.Is(unicode.Zs, r)
+}
+
+// cancelSummaryIDOnly is the summary for a promotion whose details were not —
+// or could not be — read. It says the one thing that is certainly true.
+func cancelSummaryIDOnly(id string) string {
+	return fmt.Sprintf("This cancels promotion %s. It cannot be resumed.", id)
+}
+
+// cancelSummary describes, in the operator's terms, the promotion about to be
+// failed.
+//
+// The lookup behind it is BEST-EFFORT and never fails the command: the id is
+// authoritative on the server, `promotions/active` is a separate operation, and
+// refusing a cancel the server would accept because a summary could not be
+// decorated would be the tail wagging the dog. A promotion the lookup does not
+// find — or one it cannot read — is named by id alone.
+func cancelSummary(ctx context.Context, sess *Session, id string) string {
+	p, err := findPromotion(ctx, sess, id)
+	if err != nil || p == nil {
+		return cancelSummaryIDOnly(id)
+	}
+
+	services := strings.Join(p.Services, ", ")
+	if services == "" {
+		services = "-"
+	}
+	// The outcome is the failure state the lifecycle machine allows from where
+	// the promotion stands, which is the one the response will report back.
+	outcome := "It will be marked failed and cannot be resumed."
+	switch p.Status {
+	case api.PromotionStatusDeploying:
+		outcome = "It will be marked deploy_failed and cannot be resumed."
+	case api.PromotionStatusDispatched, api.PromotionStatusPromoting:
+	default:
+		// Terminal already. The server refuses this with a 409 naming the
+		// state, and promising a transition here would contradict it.
+		outcome = fmt.Sprintf("It is already %s, which the server will refuse to cancel.", p.Status)
+	}
+	return fmt.Sprintf("This cancels the %s promotion %s (services: %s; status: %s). %s",
+		p.PromotionType, id, services, p.Status, outcome)
+}
+
+func runReleaseCancel(ctx context.Context, app *App, idArg, reason string, yes bool) error {
+	cols := promotionCancelColumns()
+	if err := output.ValidateFields(app.Out.JSONFields, cols); err != nil {
+		return usageErrorf("%s", err.Error())
+	}
+	// Client-side and BEFORE any request: a malformed id is the operator's
+	// typo, and making them decode a problem envelope to be told so is worse
+	// than saying it here.
+	id, err := uuid.Parse(idArg)
+	if err != nil {
+		return usageErrorf("invalid promotion id %q: not a UUID", idArg)
+	}
+
+	// The refusal for a run that cannot answer the question happens BEFORE
+	// anything talks to the server, and that ordering is the point: this
+	// invocation has already earned a usage error, and deciding it after Connect
+	// reports a connection failure against an unreachable server, or a
+	// capability refusal against an old one, for what is really a missing --yes.
+	//
+	// Confirm always refuses in this branch, so the return is unconditional —
+	// and it is Confirm, rather than a hand-built ExitError, so the message, the
+	// hint and the exit code cannot diverge from the prompt's.
+	if !yes && !app.Interactive() {
+		return app.Confirm(false, cancelSummaryIDOnly(id.String()), "cancel this promotion")
+	}
+
+	sess, err := app.Connect(ctx, FeaturePromotionsCancel)
+	if err != nil {
+		return err
+	}
+	// From here the summary WILL be shown — `--yes` prints it and returns, a
+	// terminal prints it and asks — so the lookup that decorates it is worth the
+	// request. It remains best-effort: a promotion the listing does not carry,
+	// or a listing that cannot be read, degrades to the id alone.
+	if err := app.Confirm(yes, cancelSummary(ctx, sess, id.String()), "cancel this promotion"); err != nil {
+		return err
+	}
+
+	body := api.ReleasesPromotionsCancelJSONRequestBody{}
+	if reason != "" {
+		body.Reason = &reason
+	}
+	resp, err := sess.API.ReleasesPromotionsCancelWithResponse(ctx, id, body)
+	if err != nil {
+		return client.Transport(err, sess.Resolved.Endpoint)
+	}
+	if resp.JSON200 == nil {
+		return client.Fail(resp, resp.Headers429)
+	}
+	m := *resp.JSON200
+
+	return app.Out.Write(&output.Doc{
+		Columns: cols, Single: true,
+		Rows: []output.Row{{
+			"action":   "cancel",
+			"id":       m.PromotionId.String(),
+			"previous": string(m.PreviousStatus),
+			"status":   string(m.Status),
+		}},
+	})
 }

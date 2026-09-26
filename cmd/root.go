@@ -33,6 +33,10 @@ const (
 	FeaturePromotionsRc     = "promotions.rc"
 	FeaturePromotionsHotfix = "promotions.hotfix"
 	FeaturePromotionsPrd    = "promotions.prd"
+	// FeaturePromotionsCancel gates failing a stuck promotion. Separate from
+	// the promote features because the deployments differ: a server that can
+	// start a promotion is not necessarily one that can end it.
+	FeaturePromotionsCancel = "promotions.cancel"
 	FeatureAuditLogRead     = "audit-log.read"
 )
 

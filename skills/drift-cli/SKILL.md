@@ -62,6 +62,7 @@ drift release promote rc <service>...
 drift release promote hotfix <service>... --branch <branch>
 drift release promote prd <service>...
 drift release promote prd hotfix <service>... --branch <branch>
+drift release cancel <promotion-id>   Fail a stuck promotion (--reason <text>, --yes)
 
 drift repo list              List repositories
 drift repo branches <id>     List a repository's recent branches
@@ -124,6 +125,8 @@ The following commands are destructive, irreversible, or security-sensitive:
 - `drift release promote hotfix`
 - `drift release promote prd`
 - `drift release promote prd hotfix`
+- `drift release cancel` (fails a promotion that is stuck; it cannot be
+  resumed -- the services have to be promoted again)
 - Any non-GET `drift api` call -- require the human to approve the exact
   method, path, and body before executing.
 
