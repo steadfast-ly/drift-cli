@@ -424,6 +424,93 @@
           "status"
         ]
       },
+      "E2eRun": {
+        "type": "object",
+        "properties": {
+          "e2eRunId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "environmentId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "environmentSlug": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "dispatched",
+              "running",
+              "passed",
+              "failed",
+              "error"
+            ],
+            "type": "string"
+          },
+          "forgeRunId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "forgeRunUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "testsBranch": {
+            "type": "string"
+          },
+          "requestedBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "x-native-type": "date"
+          },
+          "completedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "x-native-type": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "e2eRunId",
+          "environmentId",
+          "environmentSlug",
+          "status",
+          "forgeRunId",
+          "forgeRunUrl",
+          "requestedBy",
+          "createdAt",
+          "completedAt"
+        ]
+      },
       "DbAccessDirect": {
         "type": "object",
         "properties": {
@@ -3963,6 +4050,128 @@
         }
       }
     },
+    "/environments/{environmentId}/e2e/{runId}": {
+      "get": {
+        "operationId": "environments.getE2eRun",
+        "summary": "Get an e2e test run",
+        "description": "Returns one e2e test run for an environment. Returns 404 when the run does not exist or belongs to a different environment. Runs outlive their environment, so a run of a destroyed environment is still readable by that environment's id.",
+        "tags": [
+          "environments"
+        ],
+        "parameters": [
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/E2eRun"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/releases/state": {
       "get": {
         "operationId": "releases.state",
@@ -4429,7 +4638,7 @@
       "post": {
         "operationId": "releases.promote.rc",
         "summary": "Promote services from stg to rc",
-        "description": "Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.",
+        "description": "Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, or when the services selected from one repository sit at different stg commits, and with 404 if a service is not registered or is absent from the stg namespace.",
         "tags": [
           "releases"
         ],

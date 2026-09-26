@@ -51,6 +51,33 @@ func (e DbAccessDirectEngine) Valid() bool {
 	}
 }
 
+// Defines values for E2eRunStatus.
+const (
+	E2eRunStatusDispatched E2eRunStatus = "dispatched"
+	E2eRunStatusError      E2eRunStatus = "error"
+	E2eRunStatusFailed     E2eRunStatus = "failed"
+	E2eRunStatusPassed     E2eRunStatus = "passed"
+	E2eRunStatusRunning    E2eRunStatus = "running"
+)
+
+// Valid indicates whether the value is a known member of the E2eRunStatus enum.
+func (e E2eRunStatus) Valid() bool {
+	switch e {
+	case E2eRunStatusDispatched:
+		return true
+	case E2eRunStatusError:
+		return true
+	case E2eRunStatusFailed:
+		return true
+	case E2eRunStatusPassed:
+		return true
+	case E2eRunStatusRunning:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for EnvironmentStatus.
 const (
 	EnvironmentStatusBuildFailed  EnvironmentStatus = "build_failed"
@@ -570,6 +597,23 @@ type DbAccessDirect struct {
 
 // DbAccessDirectEngine defines model for DbAccessDirect.Engine.
 type DbAccessDirectEngine string
+
+// E2eRun defines model for E2eRun.
+type E2eRun struct {
+	CompletedAt     *time.Time          `json:"completedAt"`
+	CreatedAt       time.Time           `json:"createdAt"`
+	E2eRunId        openapi_types.UUID  `json:"e2eRunId"`
+	EnvironmentId   *openapi_types.UUID `json:"environmentId"`
+	EnvironmentSlug string              `json:"environmentSlug"`
+	ForgeRunId      *string             `json:"forgeRunId"`
+	ForgeRunUrl     *string             `json:"forgeRunUrl"`
+	RequestedBy     string              `json:"requestedBy"`
+	Status          E2eRunStatus        `json:"status"`
+	TestsBranch     *string             `json:"testsBranch,omitempty"`
+}
+
+// E2eRunStatus defines model for E2eRun.Status.
+type E2eRunStatus string
 
 // Environment defines model for Environment.
 type Environment struct {
@@ -1198,6 +1242,13 @@ type ClientInterface interface {
 	// Corresponds with POST /environments/{environmentId}/e2e (the `EnvironmentsTriggerE2e` operationId).
 	EnvironmentsTriggerE2e(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsTriggerE2eJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// EnvironmentsGetE2eRun Get an e2e test run
+	//
+	// Returns one e2e test run for an environment. Returns 404 when the run does not exist or belongs to a different environment. Runs outlive their environment, so a run of a destroyed environment is still readable by that environment's id.
+	//
+	// Corresponds with GET /environments/{environmentId}/e2e/{runId} (the `EnvironmentsGetE2eRun` operationId).
+	EnvironmentsGetE2eRun(ctx context.Context, environmentId openapi_types.UUID, runId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// EnvironmentsExtendWithBody Extend an environment's TTL
 	//
 	// Adds hours to the expiry. Bounded per request and cumulatively: a request that would carry the total past drift's ceiling is rejected with 400 and nothing is changed. NOT idempotent — two calls extend twice.
@@ -1381,7 +1432,7 @@ type ClientInterface interface {
 
 	// ReleasesPromoteRcWithBody Promote services from stg to rc
 	//
-	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, or when the services selected from one repository sit at different stg commits, and with 404 if a service is not registered or is absent from the stg namespace.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1390,7 +1441,7 @@ type ClientInterface interface {
 
 	// ReleasesPromoteRc Promote services from stg to rc
 	//
-	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, or when the services selected from one repository sit at different stg commits, and with 404 if a service is not registered or is absent from the stg namespace.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1623,6 +1674,23 @@ func (c *Client) EnvironmentsTriggerE2eWithBody(ctx context.Context, environment
 // Corresponds with POST /environments/{environmentId}/e2e (the `EnvironmentsTriggerE2e` operationId).
 func (c *Client) EnvironmentsTriggerE2e(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsTriggerE2eJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewEnvironmentsTriggerE2eRequest(c.Server, environmentId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsGetE2eRun Get an e2e test run
+//
+// Returns one e2e test run for an environment. Returns 404 when the run does not exist or belongs to a different environment. Runs outlive their environment, so a run of a destroyed environment is still readable by that environment's id.
+//
+// Corresponds with GET /environments/{environmentId}/e2e/{runId} (the `EnvironmentsGetE2eRun` operationId).
+func (c *Client) EnvironmentsGetE2eRun(ctx context.Context, environmentId openapi_types.UUID, runId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsGetE2eRunRequest(c.Server, environmentId, runId)
 	if err != nil {
 		return nil, err
 	}
@@ -2046,7 +2114,7 @@ func (c *Client) ReleasesPromotePrdHotfix(ctx context.Context, body ReleasesProm
 
 // ReleasesPromoteRcWithBody Promote services from stg to rc
 //
-// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, or when the services selected from one repository sit at different stg commits, and with 404 if a service is not registered or is absent from the stg namespace.
 //
 // Takes any type of body and a specified content type.
 //
@@ -2065,7 +2133,7 @@ func (c *Client) ReleasesPromoteRcWithBody(ctx context.Context, contentType stri
 
 // ReleasesPromoteRc Promote services from stg to rc
 //
-// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, or when the services selected from one repository sit at different stg commits, and with 404 if a service is not registered or is absent from the stg namespace.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -2681,6 +2749,47 @@ func NewEnvironmentsTriggerE2eRequestWithBody(server string, environmentId opena
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewEnvironmentsGetE2eRunRequest constructs an http.Request for the EnvironmentsGetE2eRun method
+func NewEnvironmentsGetE2eRunRequest(server string, environmentId openapi_types.UUID, runId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "runId", runId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/environments/%s/e2e/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -3839,6 +3948,15 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /environments/{environmentId}/e2e (the `EnvironmentsTriggerE2e` operationId).
 	EnvironmentsTriggerE2eWithResponse(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsTriggerE2eJSONRequestBody, reqEditors ...RequestEditorFn) (*EnvironmentsTriggerE2eResponse, error)
 
+	// EnvironmentsGetE2eRunWithResponse Get an e2e test run
+	//
+	// Returns one e2e test run for an environment. Returns 404 when the run does not exist or belongs to a different environment. Runs outlive their environment, so a run of a destroyed environment is still readable by that environment's id.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /environments/{environmentId}/e2e/{runId} (the `EnvironmentsGetE2eRun` operationId).
+	EnvironmentsGetE2eRunWithResponse(ctx context.Context, environmentId openapi_types.UUID, runId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsGetE2eRunResponse, error)
+
 	// EnvironmentsExtendWithBodyWithResponse Extend an environment's TTL
 	//
 	// Adds hours to the expiry. Bounded per request and cumulatively: a request that would carry the total past drift's ceiling is rejected with 400 and nothing is changed. NOT idempotent — two calls extend twice.
@@ -4044,7 +4162,7 @@ type ClientWithResponsesInterface interface {
 
 	// ReleasesPromoteRcWithBodyWithResponse Promote services from stg to rc
 	//
-	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, or when the services selected from one repository sit at different stg commits, and with 404 if a service is not registered or is absent from the stg namespace.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -4053,7 +4171,7 @@ type ClientWithResponsesInterface interface {
 
 	// ReleasesPromoteRcWithResponse Promote services from stg to rc
 	//
-	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+	// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, or when the services selected from one repository sit at different stg commits, and with 404 if a service is not registered or is absent from the stg namespace.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -4916,6 +5034,103 @@ func (r EnvironmentsTriggerE2eResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r EnvironmentsTriggerE2eResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// EnvironmentsGetE2eRunResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsGetE2eRun
+type EnvironmentsGetE2eRunResponse429Headers struct {
+	RetryAfter int
+}
+
+type EnvironmentsGetE2eRunResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *E2eRun
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsGetE2eRunResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnvironmentsGetE2eRunResponse) GetJSON200() *E2eRun {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EnvironmentsGetE2eRunResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnvironmentsGetE2eRunResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EnvironmentsGetE2eRunResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r EnvironmentsGetE2eRunResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsGetE2eRunResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EnvironmentsGetE2eRunResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EnvironmentsGetE2eRunResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r EnvironmentsGetE2eRunResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnvironmentsGetE2eRunResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnvironmentsGetE2eRunResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnvironmentsGetE2eRunResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -7492,6 +7707,21 @@ func (c *ClientWithResponses) EnvironmentsTriggerE2eWithResponse(ctx context.Con
 	return ParseEnvironmentsTriggerE2eResponse(rsp)
 }
 
+// EnvironmentsGetE2eRunWithResponse Get an e2e test run
+//
+// Returns one e2e test run for an environment. Returns 404 when the run does not exist or belongs to a different environment. Runs outlive their environment, so a run of a destroyed environment is still readable by that environment's id.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /environments/{environmentId}/e2e/{runId} (the `EnvironmentsGetE2eRun` operationId).
+func (c *ClientWithResponses) EnvironmentsGetE2eRunWithResponse(ctx context.Context, environmentId openapi_types.UUID, runId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsGetE2eRunResponse, error) {
+	rsp, err := c.EnvironmentsGetE2eRun(ctx, environmentId, runId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsGetE2eRunResponse(rsp)
+}
+
 // EnvironmentsExtendWithBodyWithResponse Extend an environment's TTL
 //
 // Adds hours to the expiry. Bounded per request and cumulatively: a request that would carry the total past drift's ceiling is rejected with 400 and nothing is changed. NOT idempotent — two calls extend twice.
@@ -7835,7 +8065,7 @@ func (c *ClientWithResponses) ReleasesPromotePrdHotfixWithResponse(ctx context.C
 
 // ReleasesPromoteRcWithBodyWithResponse Promote services from stg to rc
 //
-// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, or when the services selected from one repository sit at different stg commits, and with 404 if a service is not registered or is absent from the stg namespace.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -7850,7 +8080,7 @@ func (c *ClientWithResponses) ReleasesPromoteRcWithBodyWithResponse(ctx context.
 
 // ReleasesPromoteRcWithResponse Promote services from stg to rc
 //
-// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, and with 404 if a service is not registered or is absent from the stg namespace.
+// Retags each named service's current stg image as rc and dispatches the retag workflow, grouped by repository so a monorepo is dispatched once. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while an rc promotion is already in flight, or when the services selected from one repository sit at different stg commits, and with 404 if a service is not registered or is absent from the stg namespace.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -8677,6 +8907,94 @@ func ParseEnvironmentsTriggerE2eResponse(rsp *http.Response) (*EnvironmentsTrigg
 	switch {
 	case rsp.StatusCode == 429:
 		var headers EnvironmentsTriggerE2eResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnvironmentsGetE2eRunResponse parses an HTTP response from a EnvironmentsGetE2eRunWithResponse call
+func ParseEnvironmentsGetE2eRunResponse(rsp *http.Response) (*EnvironmentsGetE2eRunResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnvironmentsGetE2eRunResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest E2eRun
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsGetE2eRunResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
