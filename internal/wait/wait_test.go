@@ -250,6 +250,166 @@ func TestTimeoutIsExitSix(t *testing.T) {
 	}
 }
 
+// A poll still in flight when the deadline passes is CUT SHORT by the deadline
+// rather than allowed to answer: the deadline bounds each request, not only the
+// gap between polls. The poller blocks until its context is done — or a long
+// real timer, so a missing bound fails the assertions instead of hanging the
+// test — and reports which of the two woke it.
+func TestAPollThatOutlastsTheDeadlineIsATimeout(t *testing.T) {
+	// Real clock: this is the one path where the poll's own cancellation, not
+	// the injected clock, must do the work.
+	opts := Options{
+		Goal:     api.EnvironmentStatusRunning,
+		Timeout:  50 * time.Millisecond,
+		Interval: 3 * time.Second,
+		Ref:      "proof-alpha",
+	}
+	var sawErr error
+	poll := func(ctx context.Context) (Observation, error) {
+		select {
+		case <-ctx.Done():
+			sawErr = ctx.Err()
+			return Observation{}, ctx.Err()
+		case <-time.After(5 * time.Second):
+			sawErr = nil
+			return Observation{}, errors.New("the poll was not bounded by the wait deadline")
+		}
+	}
+
+	begin := time.Now()
+	_, err := Wait(context.Background(), opts, poll)
+	if cliexit.CodeOf(err) != cliexit.WaitTimeout {
+		t.Fatalf("exit %d, want %d (%v)", cliexit.CodeOf(err), cliexit.WaitTimeout, err)
+	}
+	if sawErr != context.DeadlineExceeded {
+		t.Fatalf("the poller's context ended with %v, want %v", sawErr, context.DeadlineExceeded)
+	}
+	// Only an upper bound, with slack: the assertion the missing bound fails is
+	// that the poll ran to its own five-second timer instead.
+	if elapsed := time.Since(begin); elapsed >= 3*time.Second {
+		t.Fatalf("the poll ran %s past a 50ms timeout", elapsed)
+	}
+}
+
+// `--timeout 0` is the boundary the per-poll bound must not swallow: there is
+// no remaining time to derive a poll context from, and an already-expired one
+// cancels the request before it leaves. The wait still makes its one poll and
+// answers from what it saw — a state already at the goal is the goal.
+func TestZeroTimeoutAtTheGoalExitsZero(t *testing.T) {
+	c := &fakeClock{t: time.Unix(0, 0)}
+	opts := newOpts(api.EnvironmentStatusRunning, c)
+	opts.Timeout = 0
+	calls := 0
+	poll := func(ctx context.Context) (Observation, error) {
+		calls++
+		if err := ctx.Err(); err != nil {
+			// What a real request does with a context cancelled before it
+			// starts: it never reaches the server.
+			return Observation{}, err
+		}
+		return running(), nil
+	}
+	got, err := Wait(context.Background(), opts, poll)
+	if err != nil {
+		t.Fatalf("a state already at the goal did not end the wait: %v", err)
+	}
+	if got != api.EnvironmentStatusRunning {
+		t.Fatalf("final state %s, want running", got)
+	}
+	if calls != 1 {
+		t.Fatalf("polled %d times, want the single poll a zero timeout allows", calls)
+	}
+}
+
+// ...and the other half of that boundary: a zero timeout with the goal NOT
+// reached is exit 6, carrying the state the one poll read. Reporting the
+// timeout without it would leave the operator with no idea what was seen.
+func TestZeroTimeoutWithoutTheGoalNamesTheLastState(t *testing.T) {
+	c := &fakeClock{t: time.Unix(0, 0)}
+	opts := newOpts(api.EnvironmentStatusRunning, c)
+	opts.Timeout = 0
+	poll := func(ctx context.Context) (Observation, error) {
+		if err := ctx.Err(); err != nil {
+			return Observation{}, err
+		}
+		return building(), nil
+	}
+	_, err := Wait(context.Background(), opts, poll)
+	if cliexit.CodeOf(err) != cliexit.WaitTimeout {
+		t.Fatalf("exit %d, want %d (%v)", cliexit.CodeOf(err), cliexit.WaitTimeout, err)
+	}
+	var ee *cliexit.ExitError
+	if !errors.As(err, &ee) || !strings.Contains(ee.Detail, "building") {
+		t.Fatalf("the timeout does not report the last state seen: %v", err)
+	}
+}
+
+// The other side of that boundary: a POSITIVE timeout that has already run out
+// when a poll starts. The check before a sleep only knows the interval it asked
+// for, so a sleep that overshoots — a late timer, a stalled scheduler — can
+// leave the next poll with no time left at all. That poll must not then run on
+// the unbounded parent context: its answer would be reported as the verdict on
+// a wait that was already over, which is the bug #31 fixes. The poller here
+// answers the GOAL whenever its context is alive, so falling through to the
+// parent reports `running` and exits 0 instead of the exit-6 timeout.
+func TestAPollStartedAfterAPositiveTimeoutIsATimeout(t *testing.T) {
+	c := &fakeClock{t: time.Unix(0, 0)}
+	opts := newOpts(api.EnvironmentStatusRunning, c)
+	opts.Timeout = 10 * time.Second
+	opts.Interval = 3 * time.Second
+	// The overshoot: the wait asks for one interval and the clock delivers it
+	// late, past the deadline. Sleep overshoot is one way a positive timeout
+	// leaves a poll starting with nothing left; a scheduling pause before the
+	// first poll or between the deadline check and poll setup is another.
+	opts.sleep = func(_ context.Context, d time.Duration) error {
+		c.t = c.t.Add(d + 10*time.Second)
+		return nil
+	}
+	calls := 0
+	poll := func(ctx context.Context) (Observation, error) {
+		calls++
+		if err := ctx.Err(); err != nil {
+			return Observation{}, err
+		}
+		if calls == 1 {
+			return building(), nil
+		}
+		return running(), nil // the goal, if the poll is allowed to answer
+	}
+	_, err := Wait(context.Background(), opts, poll)
+	if cliexit.CodeOf(err) != cliexit.WaitTimeout {
+		t.Fatalf("exit %d, want %d (%v)", cliexit.CodeOf(err), cliexit.WaitTimeout, err)
+	}
+}
+
+// A deadline on the PARENT context is not the wait's own clock: the operator
+// set it, and the poller's error propagates exactly as it did before each poll
+// was bounded. Relabelling it exit 6 would claim the wait ran out of its own
+// time when in fact it was cut off from outside.
+func TestAParentDeadlineIsNotTheWaitsTimeout(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	// Real clock and a wait deadline far beyond the parent's, so the parent is
+	// unambiguously the earlier of the two.
+	opts := Options{
+		Goal:     api.EnvironmentStatusRunning,
+		Timeout:  5 * time.Second,
+		Interval: 3 * time.Second,
+		Ref:      "proof-alpha",
+	}
+	poll := func(ctx context.Context) (Observation, error) {
+		<-ctx.Done()
+		return Observation{}, ctx.Err()
+	}
+	_, err := Wait(ctx, opts, poll)
+	if cliexit.CodeOf(err) == cliexit.WaitTimeout {
+		t.Fatalf("the parent's deadline was reported as the wait's timeout: %v", err)
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("the poller's error did not propagate: %v", err)
+	}
+}
+
 // A 429 during a wait is the server asking for time, not a failure of the
 // environment. It backs off by the server's own number.
 func TestRateLimitBacksOffByRetryAfterAndContinues(t *testing.T) {

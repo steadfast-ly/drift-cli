@@ -241,8 +241,27 @@ func waitForE2e(
 			SortDir:       &sortDir,
 		}
 
-		resp, pollErr := sess.API.AuditListWithResponse(ctx, params)
+		// Bound this poll by the wait deadline: the command's context carries no
+		// deadline of its own, so without this a slow response could run past
+		// --wait-timeout by up to the per-request --timeout, and a terminal
+		// answer arriving after the deadline would be reported as the verdict.
+		pctx, cancel := context.WithDeadline(ctx, deadline)
+		resp, pollErr := sess.API.AuditListWithResponse(pctx, params)
+		// Captured before cancel(), so a deadline that fired while the poll was
+		// in flight is still visible afterwards.
+		pollExpired := pctx.Err() == context.DeadlineExceeded
+		// Released before the next iteration rather than deferred: a defer
+		// inside the loop would hold every poll's timer until the wait ended.
+		cancel()
 		if pollErr != nil {
+			// The wait deadline cut the poll short, so the request failed only
+			// because it was cancelled at the deadline. That is the same "not
+			// known yet" outcome as the between-polls check below, and takes the
+			// same exit 6 — rather than a transport failure. A cancelled parent
+			// context is excluded: that is the operator interrupting.
+			if pollExpired && ctx.Err() == nil {
+				return "", "", "", e2eTimeoutError(e.Slug, runID, time.Since(start), e2eAuditTimeoutHint)
+			}
 			return "", "", "", client.Transport(pollErr, sess.Resolved.Endpoint)
 		}
 		if resp.JSON200 == nil {
@@ -350,8 +369,26 @@ func waitForE2eRun(
 	deadline := start.Add(timeout)
 
 	for {
-		resp, pollErr := sess.API.EnvironmentsGetE2eRunWithResponse(ctx, e.ID, runID)
+		// Bound this poll by the wait deadline, exactly as the audit loop does:
+		// the command's context carries no deadline of its own, so without this
+		// a slow response could run past --wait-timeout by up to the
+		// per-request --timeout.
+		pctx, cancel := context.WithDeadline(ctx, deadline)
+		resp, pollErr := sess.API.EnvironmentsGetE2eRunWithResponse(pctx, e.ID, runID)
+		// Captured before cancel(), so a deadline that fired while the poll was
+		// in flight is still visible afterwards.
+		pollExpired := pctx.Err() == context.DeadlineExceeded
+		// Released before the next iteration rather than deferred: a defer
+		// inside the loop would hold every poll's timer until the wait ended.
+		cancel()
 		if pollErr != nil {
+			// The wait deadline cut the poll short — the same "not known yet"
+			// outcome as the between-polls check below, and the same exit 6,
+			// rather than a transport failure. A cancelled parent context is
+			// excluded: that is the operator interrupting.
+			if pollExpired && ctx.Err() == nil {
+				return "", "", "", e2eTimeoutError(e.Slug, runID, time.Since(start), e2eRunTimeoutHint)
+			}
 			return "", "", "", client.Transport(pollErr, sess.Resolved.Endpoint)
 		}
 		if resp.JSON200 == nil {

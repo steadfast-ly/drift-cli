@@ -35,6 +35,15 @@ type e2eServer struct {
 	// lastBody is the decoded request body of the most recent e2e trigger,
 	// so a test can assert exactly which fields the CLI sent.
 	lastBody map[string]any
+	// pollDelay holds each wait poll (audit-log or run read) for this long
+	// before answering, so a test can prove the CLI bounds a poll by
+	// --wait-timeout rather than by the server's response time.
+	pollDelay time.Duration
+	// pollBreak makes each wait poll fail at the transport layer: the handler
+	// declares a Content-Length it never writes, so the client sees a read
+	// error instead of a response. It pins that a poll failure which is NOT the
+	// deadline keeps its existing transport-error mapping.
+	pollBreak bool
 }
 
 // e2eRunRow is the JSON body of GET .../e2e/{runId}, mirroring the server's
@@ -113,6 +122,9 @@ func newE2eServer(t *testing.T) *e2eServer {
 		// rather than being silently served a row.
 		if r.Method == http.MethodGet && strings.Contains(rest, "/e2e/") {
 			s.mutServer.record("e2e-run")
+			if s.holdPoll(w, r) {
+				return
+			}
 			if r.URL.Path != "/api/v1/environments/"+envID+"/e2e/"+e2eRunID {
 				writeProblem(w, 404, "NOT_FOUND", "E2e run not found",
 					"urn:drift:problem:not-found",
@@ -140,6 +152,9 @@ func newE2eServer(t *testing.T) *e2eServer {
 		// GET /api/v1/audit-log
 		if r.URL.Path == "/api/v1/audit-log" && r.Method == http.MethodGet {
 			s.mutServer.record("audit-list")
+			if s.holdPoll(w, r) {
+				return
+			}
 			s.mu.Lock()
 			idx := s.auditCalls
 			s.auditCalls++
@@ -188,6 +203,49 @@ func (s *e2eServer) runRequestTimes() []time.Time {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return append([]time.Time(nil), s.runTimes...)
+}
+
+// delayPolls makes both wait sources hold each poll for d before answering.
+func (s *e2eServer) delayPolls(d time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.pollDelay = d
+}
+
+// breakPolls makes both wait sources fail each poll at the transport layer.
+func (s *e2eServer) breakPolls() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.pollBreak = true
+}
+
+// holdPoll applies the scripted poll delay and failure to one wait poll,
+// returning true when the poll was answered or abandoned here and the handler
+// must not continue.
+func (s *e2eServer) holdPoll(w http.ResponseWriter, r *http.Request) bool {
+	s.mu.Lock()
+	delay, broken := s.pollDelay, s.pollBreak
+	s.mu.Unlock()
+
+	if delay > 0 {
+		// Select on the request context so a CLI that abandons the poll at its
+		// deadline releases the handler instead of holding the server open for
+		// the whole delay (which would stall Close at test end).
+		select {
+		case <-time.After(delay):
+		case <-r.Context().Done():
+			return true
+		}
+	}
+	if broken {
+		// A body far shorter than the declared Content-Length: the client gets
+		// a read error, not a response.
+		w.Header().Set("Content-Length", "1024")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("{}"))
+		return true
+	}
+	return false
 }
 
 func auditEntry(runID, outcome, reason string) map[string]any {
@@ -1048,5 +1106,89 @@ func TestE2eWaitFallsBackToEchoWhenAuditOmitsBranch(t *testing.T) {
 	}
 	if !strings.Contains(out, "feat/tests-a") {
 		t.Fatalf("testsBranch not filled in from the trigger echo:\n%s", out)
+	}
+}
+
+// --- --wait bounds each poll by the deadline ---------------------------------
+
+// The audit-log path: a poll still in flight when --wait-timeout expires must
+// be cut short BY the deadline. The handler answers a TERMINAL `passed` after
+// five seconds, so with a 300ms --wait-timeout code that bounds the poll only
+// by the per-request --timeout reports that verdict (exit 0) five seconds in —
+// failing both assertions below.
+func TestE2eWaitAuditPollIsBoundedByTheDeadline(t *testing.T) {
+	s := newE2eServer(t)
+	s.delayPolls(5 * time.Second)
+	s.auditScript = [][]map[string]any{{auditEntry(e2eRunID, "passed", "")}}
+	h := newMutHarness(t, s.mutServer)
+
+	begin := time.Now()
+	_, errOut, code := h.run("env", "e2e", "proof-alpha", "--wait", "--wait-timeout", "300ms")
+	elapsed := time.Since(begin)
+	if code != cliexit.WaitTimeout {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.WaitTimeout, errOut)
+	}
+	if !strings.Contains(errOut, e2eAuditTimeoutHint) {
+		t.Fatalf("the audit path's timeout hint was not printed: %s", errOut)
+	}
+	if elapsed >= 3*time.Second {
+		t.Fatalf("the poll ran %s past a 300ms --wait-timeout", elapsed)
+	}
+}
+
+// The run-read path: the same claim, with the same terminal verdict — a
+// `passed` run row — waiting behind the slow response.
+func TestE2eWaitRunPollIsBoundedByTheDeadline(t *testing.T) {
+	s := newE2eServer(t)
+	advertiseE2eRead(s)
+	s.delayPolls(5 * time.Second)
+	s.runScript = []map[string]any{e2eRunRow("passed", "")}
+	h := newMutHarness(t, s.mutServer)
+
+	begin := time.Now()
+	_, errOut, code := h.run("env", "e2e", "proof-alpha", "--wait", "--wait-timeout", "300ms")
+	elapsed := time.Since(begin)
+	if code != cliexit.WaitTimeout {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.WaitTimeout, errOut)
+	}
+	if !strings.Contains(errOut, e2eRunTimeoutHint) {
+		t.Fatalf("the read path's timeout hint was not printed: %s", errOut)
+	}
+	if elapsed >= 3*time.Second {
+		t.Fatalf("the poll ran %s past a 300ms --wait-timeout", elapsed)
+	}
+}
+
+// A poll that fails for a reason OTHER than the deadline keeps its existing
+// mapping: the transport error, not exit 6. Both sources are covered because
+// each has its own error branch.
+func TestE2eWaitPollFailureThatIsNotTheDeadlineStaysATransportError(t *testing.T) {
+	cases := []struct {
+		name string
+		read bool
+	}{
+		{"audit-log", false},
+		{"run-read", true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			s := newE2eServer(t)
+			if c.read {
+				advertiseE2eRead(s)
+			}
+			s.breakPolls()
+			h := newMutHarness(t, s.mutServer)
+
+			_, errOut, code := h.run("env", "e2e", "proof-alpha", "--wait", "--wait-timeout", "5s")
+			if code != cliexit.Error {
+				t.Fatalf("exit %d, want %d\n%s", code, cliexit.Error, errOut)
+			}
+			if !strings.Contains(errOut, "cannot reach") {
+				t.Fatalf("the poll failure was not surfaced as a transport error: %s", errOut)
+			}
+			if strings.Contains(errOut, "timed out") {
+				t.Fatalf("a non-deadline poll failure was reported as a wait timeout: %s", errOut)
+			}
+		})
 	}
 }

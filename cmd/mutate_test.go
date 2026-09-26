@@ -582,7 +582,11 @@ func TestWaitTimeoutIsExitSix(t *testing.T) {
 	s.statuses = []string{"building"}
 	h := newMutHarness(t, s)
 
-	_, errOut, code := h.run("env", "wait", "proof-alpha", "--for", "running", "--timeout", "20ms")
+	// The first poll is bounded by this deadline in REAL time, so it has to be
+	// wide enough that the poll completes even on a loaded or -race box: cut
+	// short, the wait has no state to report and the assertion below fails for
+	// a reason that has nothing to do with the timeout contract.
+	_, errOut, code := h.run("env", "wait", "proof-alpha", "--for", "running", "--timeout", "250ms")
 	if code != cliexit.WaitTimeout {
 		t.Fatalf("exit %d, want %d\n%s", code, cliexit.WaitTimeout, errOut)
 	}
