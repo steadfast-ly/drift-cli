@@ -130,7 +130,7 @@ return immediately. `--wait` and `--no-wait` override.
 | `rm` | returns | `destroyed` | 20m |
 | `sleep` | returns | `sleeping` | 10m |
 | `cancel` | returns | `canceled` | 5m |
-| `e2e` | returns | audit entry | 125m |
+| `e2e` | returns | run status | 125m |
 
 `drift env wait <slug-or-id> --for <state>` follows any of them afterwards:
 
@@ -268,8 +268,12 @@ drift env e2e my-env --tests-branch feature/e2e-updates
 ```
 
 Without `--wait`, the command returns immediately (exit 0) after the server
-accepts the trigger. With `--wait`, it polls the audit log until the run
-completes: exit 0 on pass, non-zero on failure.
+accepts the trigger. With `--wait`, it follows the run until it completes:
+exit 0 on pass, non-zero on failure. The wait reads the run resource
+(`GET /environments/{id}/e2e/{runId}`) when the server advertises the
+`environments.e2e-read` capability, and otherwise falls back to polling the
+audit log for the run's completion entry — so an older server keeps working
+unchanged.
 
 `--tests-branch <branch>` selects which version of the **test code** the run
 checks out; the workflow definition still runs from the profile's `e2e.ref`.
@@ -286,7 +290,8 @@ dispatches that value to the org's adapter but cannot verify the adapter
 honoured it; the adapter contract requires adapters to fail the run
 rather than silently check out the default test code. The trigger
 response echoes the recorded branch on a non-default run; with `--wait`,
-the branch is surfaced from the run's completed audit entry.
+the branch is surfaced from the run resource (or from the run's completed
+audit entry on the fallback path).
 
 ## Destroy
 

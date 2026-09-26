@@ -27,7 +27,13 @@ const (
 	// --tests-branch requires it; an omitted one does not, so an old or
 	// e2e-less server keeps triggering default runs rather than being dragged
 	// up by the flag's existence.
-	FeatureE2eTestsBranch   = "e2e-tests-branch"
+	FeatureE2eTestsBranch = "e2e-tests-branch"
+	// FeatureE2eRead is profile-conditional too: the server advertises it only
+	// for Installs whose profile has an e2e block, alongside
+	// `e2e-tests-branch`. `env e2e --wait` reads the run through it when
+	// present; absent, the wait falls back to the audit log unchanged, so an
+	// older server keeps working rather than being refused.
+	FeatureE2eRead          = "environments.e2e-read"
 	FeatureRepositoriesRead = "repositories.read"
 	FeatureReleasesRead     = "releases.read"
 	FeaturePromotionsRc     = "promotions.rc"

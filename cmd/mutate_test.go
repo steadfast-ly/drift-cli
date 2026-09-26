@@ -75,6 +75,11 @@ type mutServer struct {
 	// without --tests-branch — and a --tests-branch refusal — work against the
 	// plain mutServer.
 	e2eTestsBranch bool
+	// e2eRead adds the profile-conditional `environments.e2e-read` capability
+	// to the served discovery document when true (refreshDiscoveryDoc must be
+	// called after setting it). Off by default, so the --wait tests exercise
+	// the audit-log fallback unless they opt in.
+	e2eRead bool
 	// noCancelFeature REMOVES `promotions.cancel` from the served discovery
 	// document, for the capability-gate test (refreshDiscoveryDoc must be called
 	// after setting it). Inverted from e2eTestsBranch because every other cancel
@@ -161,6 +166,9 @@ func (s *mutServer) refreshDiscoveryDoc() {
 	}
 	if s.e2eTestsBranch {
 		features = append(features, "e2e-tests-branch")
+	}
+	if s.e2eRead {
+		features = append(features, "environments.e2e-read")
 	}
 	doc, _ := json.Marshal(map[string]any{
 		"org": "acme", "version": "1.0.0", "auth": "sso",
