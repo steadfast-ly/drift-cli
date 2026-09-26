@@ -246,6 +246,45 @@ func (e PromotionStatus) Valid() bool {
 	}
 }
 
+// Defines values for PromotionCancelMutationPreviousStatus.
+const (
+	PromotionCancelMutationPreviousStatusDeploying  PromotionCancelMutationPreviousStatus = "deploying"
+	PromotionCancelMutationPreviousStatusDispatched PromotionCancelMutationPreviousStatus = "dispatched"
+	PromotionCancelMutationPreviousStatusPromoting  PromotionCancelMutationPreviousStatus = "promoting"
+)
+
+// Valid indicates whether the value is a known member of the PromotionCancelMutationPreviousStatus enum.
+func (e PromotionCancelMutationPreviousStatus) Valid() bool {
+	switch e {
+	case PromotionCancelMutationPreviousStatusDeploying:
+		return true
+	case PromotionCancelMutationPreviousStatusDispatched:
+		return true
+	case PromotionCancelMutationPreviousStatusPromoting:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PromotionCancelMutationStatus.
+const (
+	PromotionCancelMutationStatusDeployFailed PromotionCancelMutationStatus = "deploy_failed"
+	PromotionCancelMutationStatusFailed       PromotionCancelMutationStatus = "failed"
+)
+
+// Valid indicates whether the value is a known member of the PromotionCancelMutationStatus enum.
+func (e PromotionCancelMutationStatus) Valid() bool {
+	switch e {
+	case PromotionCancelMutationStatusDeployFailed:
+		return true
+	case PromotionCancelMutationStatusFailed:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ServiceHealthStatus.
 const (
 	ServiceHealthStatusDegraded    ServiceHealthStatus = "degraded"
@@ -650,6 +689,19 @@ type PromotionServiceHealthStatuses string
 // PromotionStatus defines model for Promotion.Status.
 type PromotionStatus string
 
+// PromotionCancelMutation defines model for PromotionCancelMutation.
+type PromotionCancelMutation struct {
+	PreviousStatus PromotionCancelMutationPreviousStatus `json:"previousStatus"`
+	PromotionId    openapi_types.UUID                    `json:"promotionId"`
+	Status         PromotionCancelMutationStatus         `json:"status"`
+}
+
+// PromotionCancelMutationPreviousStatus defines model for PromotionCancelMutation.PreviousStatus.
+type PromotionCancelMutationPreviousStatus string
+
+// PromotionCancelMutationStatus defines model for PromotionCancelMutation.Status.
+type PromotionCancelMutationStatus string
+
 // PromotionMutation defines model for PromotionMutation.
 type PromotionMutation struct {
 	DispatchCount int                `json:"dispatchCount"`
@@ -881,6 +933,11 @@ type ReleasesPromoteRcHotfixJSONBody struct {
 	HelmChartKeys []string `json:"helmChartKeys"`
 }
 
+// ReleasesPromotionsCancelJSONBody defines parameters for ReleasesPromotionsCancel.
+type ReleasesPromotionsCancelJSONBody struct {
+	Reason *string `json:"reason,omitempty"`
+}
+
 // RepositoriesListParams defines parameters for RepositoriesList.
 type RepositoriesListParams struct {
 	Limit  *int `form:"limit,omitempty" json:"limit,omitempty"`
@@ -923,6 +980,9 @@ type ReleasesPromoteRcJSONRequestBody ReleasesPromoteRcJSONBody
 
 // ReleasesPromoteRcHotfixJSONRequestBody defines body for ReleasesPromoteRcHotfix for application/json ContentType.
 type ReleasesPromoteRcHotfixJSONRequestBody ReleasesPromoteRcHotfixJSONBody
+
+// ReleasesPromotionsCancelJSONRequestBody defines body for ReleasesPromotionsCancel for application/json ContentType.
+type ReleasesPromotionsCancelJSONRequestBody ReleasesPromotionsCancelJSONBody
 
 // AsEnvironmentsDbAccess200JSONResponseBody0 returns the union data inside the EnvironmentsDbAccess200JSONResponseBody as a EnvironmentsDbAccess200JSONResponseBody0
 func (t EnvironmentsDbAccess200JSONResponseBody) AsEnvironmentsDbAccess200JSONResponseBody0() (EnvironmentsDbAccess200JSONResponseBody0, error) {
@@ -1285,7 +1345,7 @@ type ClientInterface interface {
 
 	// ReleasesPromotePrdWithBody Promote services from rc to production
 	//
-	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, or when the services selected from one repository sit at different rc commits, and with 404 if a service is not registered or is absent from the rc namespace.
 	//
 	// Takes any type of body and a specified content type.
 	//
@@ -1294,7 +1354,7 @@ type ClientInterface interface {
 
 	// ReleasesPromotePrd Promote services from rc to production
 	//
-	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, or when the services selected from one repository sit at different rc commits, and with 404 if a service is not registered or is absent from the rc namespace.
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -1354,6 +1414,24 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /releases/promotions/rc/hotfix (the `ReleasesPromoteRcHotfix` operationId).
 	ReleasesPromoteRcHotfix(ctx context.Context, body ReleasesPromoteRcHotfixJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReleasesPromotionsCancelWithBody Cancel an in-flight promotion
+	//
+	// Fails a promotion that is stuck — the retag workflow was cancelled, the target was rolled back by hand, no ArgoCD notification ever arrived. Only valid while the promotion is `dispatched`, `promoting` or `deploying`; one that has already reached a terminal state is refused with 409 naming that state. The promotion moves to the failure state the lifecycle machine allows from where it stood (`deploy_failed` from `deploying`, `failed` from the two earlier states) — there is no separate `cancelled` state, and the response names both statuses so a caller does not have to derive the target. The operator's `reason`, when given, is recorded on the promotion and in its `promotion.canceled` audit row.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /releases/promotions/{id}/cancel (the `ReleasesPromotionsCancel` operationId).
+	ReleasesPromotionsCancelWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReleasesPromotionsCancel Cancel an in-flight promotion
+	//
+	// Fails a promotion that is stuck — the retag workflow was cancelled, the target was rolled back by hand, no ArgoCD notification ever arrived. Only valid while the promotion is `dispatched`, `promoting` or `deploying`; one that has already reached a terminal state is refused with 409 naming that state. The promotion moves to the failure state the lifecycle machine allows from where it stood (`deploy_failed` from `deploying`, `failed` from the two earlier states) — there is no separate `cancelled` state, and the response names both statuses so a caller does not have to derive the target. The operator's `reason`, when given, is recorded on the promotion and in its `promotion.canceled` audit row.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /releases/promotions/{id}/cancel (the `ReleasesPromotionsCancel` operationId).
+	ReleasesPromotionsCancel(ctx context.Context, id openapi_types.UUID, body ReleasesPromotionsCancelJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ReleasesState Get stg and rc release state
 	//
@@ -1892,7 +1970,7 @@ func (c *Client) ReleasesPromotionsHistory(ctx context.Context, params *Releases
 
 // ReleasesPromotePrdWithBody Promote services from rc to production
 //
-// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, or when the services selected from one repository sit at different rc commits, and with 404 if a service is not registered or is absent from the rc namespace.
 //
 // Takes any type of body and a specified content type.
 //
@@ -1911,7 +1989,7 @@ func (c *Client) ReleasesPromotePrdWithBody(ctx context.Context, contentType str
 
 // ReleasesPromotePrd Promote services from rc to production
 //
-// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, or when the services selected from one repository sit at different rc commits, and with 404 if a service is not registered or is absent from the rc namespace.
 //
 // Takes a body of the `application/json` content type.
 //
@@ -2032,6 +2110,44 @@ func (c *Client) ReleasesPromoteRcHotfixWithBody(ctx context.Context, contentTyp
 // Corresponds with POST /releases/promotions/rc/hotfix (the `ReleasesPromoteRcHotfix` operationId).
 func (c *Client) ReleasesPromoteRcHotfix(ctx context.Context, body ReleasesPromoteRcHotfixJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewReleasesPromoteRcHotfixRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReleasesPromotionsCancelWithBody Cancel an in-flight promotion
+//
+// Fails a promotion that is stuck — the retag workflow was cancelled, the target was rolled back by hand, no ArgoCD notification ever arrived. Only valid while the promotion is `dispatched`, `promoting` or `deploying`; one that has already reached a terminal state is refused with 409 naming that state. The promotion moves to the failure state the lifecycle machine allows from where it stood (`deploy_failed` from `deploying`, `failed` from the two earlier states) — there is no separate `cancelled` state, and the response names both statuses so a caller does not have to derive the target. The operator's `reason`, when given, is recorded on the promotion and in its `promotion.canceled` audit row.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /releases/promotions/{id}/cancel (the `ReleasesPromotionsCancel` operationId).
+func (c *Client) ReleasesPromotionsCancelWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReleasesPromotionsCancelRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReleasesPromotionsCancel Cancel an in-flight promotion
+//
+// Fails a promotion that is stuck — the retag workflow was cancelled, the target was rolled back by hand, no ArgoCD notification ever arrived. Only valid while the promotion is `dispatched`, `promoting` or `deploying`; one that has already reached a terminal state is refused with 409 naming that state. The promotion moves to the failure state the lifecycle machine allows from where it stood (`deploy_failed` from `deploying`, `failed` from the two earlier states) — there is no separate `cancelled` state, and the response names both statuses so a caller does not have to derive the target. The operator's `reason`, when given, is recorded on the promotion and in its `promotion.canceled` audit row.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /releases/promotions/{id}/cancel (the `ReleasesPromotionsCancel` operationId).
+func (c *Client) ReleasesPromotionsCancel(ctx context.Context, id openapi_types.UUID, body ReleasesPromotionsCancelJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReleasesPromotionsCancelRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3364,6 +3480,53 @@ func NewReleasesPromoteRcHotfixRequestWithBody(server string, contentType string
 	return req, nil
 }
 
+// NewReleasesPromotionsCancelRequest calls the generic ReleasesPromotionsCancel builder with application/json body
+func NewReleasesPromotionsCancelRequest(server string, id openapi_types.UUID, body ReleasesPromotionsCancelJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewReleasesPromotionsCancelRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewReleasesPromotionsCancelRequestWithBody constructs an http.Request for the ReleasesPromotionsCancel method, with any body, and a specified content type
+func NewReleasesPromotionsCancelRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/releases/promotions/%s/cancel", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewReleasesStateRequest constructs an http.Request for the ReleasesState method
 func NewReleasesStateRequest(server string) (*http.Request, error) {
 	var err error
@@ -3845,7 +4008,7 @@ type ClientWithResponsesInterface interface {
 
 	// ReleasesPromotePrdWithBodyWithResponse Promote services from rc to production
 	//
-	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, or when the services selected from one repository sit at different rc commits, and with 404 if a service is not registered or is absent from the rc namespace.
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -3854,7 +4017,7 @@ type ClientWithResponsesInterface interface {
 
 	// ReleasesPromotePrdWithResponse Promote services from rc to production
 	//
-	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+	// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, or when the services selected from one repository sit at different rc commits, and with 404 if a service is not registered or is absent from the rc namespace.
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -3914,6 +4077,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /releases/promotions/rc/hotfix (the `ReleasesPromoteRcHotfix` operationId).
 	ReleasesPromoteRcHotfixWithResponse(ctx context.Context, body ReleasesPromoteRcHotfixJSONRequestBody, reqEditors ...RequestEditorFn) (*ReleasesPromoteRcHotfixResponse, error)
+
+	// ReleasesPromotionsCancelWithBodyWithResponse Cancel an in-flight promotion
+	//
+	// Fails a promotion that is stuck — the retag workflow was cancelled, the target was rolled back by hand, no ArgoCD notification ever arrived. Only valid while the promotion is `dispatched`, `promoting` or `deploying`; one that has already reached a terminal state is refused with 409 naming that state. The promotion moves to the failure state the lifecycle machine allows from where it stood (`deploy_failed` from `deploying`, `failed` from the two earlier states) — there is no separate `cancelled` state, and the response names both statuses so a caller does not have to derive the target. The operator's `reason`, when given, is recorded on the promotion and in its `promotion.canceled` audit row.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /releases/promotions/{id}/cancel (the `ReleasesPromotionsCancel` operationId).
+	ReleasesPromotionsCancelWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReleasesPromotionsCancelResponse, error)
+
+	// ReleasesPromotionsCancelWithResponse Cancel an in-flight promotion
+	//
+	// Fails a promotion that is stuck — the retag workflow was cancelled, the target was rolled back by hand, no ArgoCD notification ever arrived. Only valid while the promotion is `dispatched`, `promoting` or `deploying`; one that has already reached a terminal state is refused with 409 naming that state. The promotion moves to the failure state the lifecycle machine allows from where it stood (`deploy_failed` from `deploying`, `failed` from the two earlier states) — there is no separate `cancelled` state, and the response names both statuses so a caller does not have to derive the target. The operator's `reason`, when given, is recorded on the promotion and in its `promotion.canceled` audit row.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /releases/promotions/{id}/cancel (the `ReleasesPromotionsCancel` operationId).
+	ReleasesPromotionsCancelWithResponse(ctx context.Context, id openapi_types.UUID, body ReleasesPromotionsCancelJSONRequestBody, reqEditors ...RequestEditorFn) (*ReleasesPromotionsCancelResponse, error)
 
 	// ReleasesStateWithResponse Get stg and rc release state
 	//
@@ -6766,6 +6947,117 @@ func (r ReleasesPromoteRcHotfixResponse) ContentType() string {
 	return ""
 }
 
+// ReleasesPromotionsCancelResponse429Headers the declared response headers of an HTTP 429 response for ReleasesPromotionsCancel
+type ReleasesPromotionsCancelResponse429Headers struct {
+	RetryAfter int
+}
+
+type ReleasesPromotionsCancelResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PromotionCancelMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *ReleasesPromotionsCancelResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ReleasesPromotionsCancelResponse) GetJSON200() *PromotionCancelMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ReleasesPromotionsCancelResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ReleasesPromotionsCancelResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ReleasesPromotionsCancelResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ReleasesPromotionsCancelResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r ReleasesPromotionsCancelResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r ReleasesPromotionsCancelResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ReleasesPromotionsCancelResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r ReleasesPromotionsCancelResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r ReleasesPromotionsCancelResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r ReleasesPromotionsCancelResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ReleasesPromotionsCancelResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReleasesPromotionsCancelResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReleasesPromotionsCancelResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ReleasesStateResponse429Headers the declared response headers of an HTTP 429 response for ReleasesState
 type ReleasesStateResponse429Headers struct {
 	RetryAfter int
@@ -7483,7 +7775,7 @@ func (c *ClientWithResponses) ReleasesPromotionsHistoryWithResponse(ctx context.
 
 // ReleasesPromotePrdWithBodyWithResponse Promote services from rc to production
 //
-// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, or when the services selected from one repository sit at different rc commits, and with 404 if a service is not registered or is absent from the rc namespace.
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -7498,7 +7790,7 @@ func (c *ClientWithResponses) ReleasesPromotePrdWithBodyWithResponse(ctx context
 
 // ReleasesPromotePrdWithResponse Promote services from rc to production
 //
-// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.
+// Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, or when the services selected from one repository sit at different rc commits, and with 404 if a service is not registered or is absent from the rc namespace.
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -7599,6 +7891,36 @@ func (c *ClientWithResponses) ReleasesPromoteRcHotfixWithResponse(ctx context.Co
 		return nil, err
 	}
 	return ParseReleasesPromoteRcHotfixResponse(rsp)
+}
+
+// ReleasesPromotionsCancelWithBodyWithResponse Cancel an in-flight promotion
+//
+// Fails a promotion that is stuck — the retag workflow was cancelled, the target was rolled back by hand, no ArgoCD notification ever arrived. Only valid while the promotion is `dispatched`, `promoting` or `deploying`; one that has already reached a terminal state is refused with 409 naming that state. The promotion moves to the failure state the lifecycle machine allows from where it stood (`deploy_failed` from `deploying`, `failed` from the two earlier states) — there is no separate `cancelled` state, and the response names both statuses so a caller does not have to derive the target. The operator's `reason`, when given, is recorded on the promotion and in its `promotion.canceled` audit row.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /releases/promotions/{id}/cancel (the `ReleasesPromotionsCancel` operationId).
+func (c *ClientWithResponses) ReleasesPromotionsCancelWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReleasesPromotionsCancelResponse, error) {
+	rsp, err := c.ReleasesPromotionsCancelWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReleasesPromotionsCancelResponse(rsp)
+}
+
+// ReleasesPromotionsCancelWithResponse Cancel an in-flight promotion
+//
+// Fails a promotion that is stuck — the retag workflow was cancelled, the target was rolled back by hand, no ArgoCD notification ever arrived. Only valid while the promotion is `dispatched`, `promoting` or `deploying`; one that has already reached a terminal state is refused with 409 naming that state. The promotion moves to the failure state the lifecycle machine allows from where it stood (`deploy_failed` from `deploying`, `failed` from the two earlier states) — there is no separate `cancelled` state, and the response names both statuses so a caller does not have to derive the target. The operator's `reason`, when given, is recorded on the promotion and in its `promotion.canceled` audit row.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /releases/promotions/{id}/cancel (the `ReleasesPromotionsCancel` operationId).
+func (c *ClientWithResponses) ReleasesPromotionsCancelWithResponse(ctx context.Context, id openapi_types.UUID, body ReleasesPromotionsCancelJSONRequestBody, reqEditors ...RequestEditorFn) (*ReleasesPromotionsCancelResponse, error) {
+	rsp, err := c.ReleasesPromotionsCancel(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReleasesPromotionsCancelResponse(rsp)
 }
 
 // ReleasesStateWithResponse Get stg and rc release state
@@ -10215,6 +10537,108 @@ func ParseReleasesPromoteRcHotfixResponse(rsp *http.Response) (*ReleasesPromoteR
 	switch {
 	case rsp.StatusCode == 429:
 		var headers ReleasesPromoteRcHotfixResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseReleasesPromotionsCancelResponse parses an HTTP response from a ReleasesPromotionsCancelWithResponse call
+func ParseReleasesPromotionsCancelResponse(rsp *http.Response) (*ReleasesPromotionsCancelResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReleasesPromotionsCancelResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PromotionCancelMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers ReleasesPromotionsCancelResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {

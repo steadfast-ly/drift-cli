@@ -1137,6 +1137,35 @@
           "dispatchCount"
         ]
       },
+      "PromotionCancelMutation": {
+        "type": "object",
+        "properties": {
+          "promotionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "previousStatus": {
+            "enum": [
+              "dispatched",
+              "promoting",
+              "deploying"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "failed",
+              "deploy_failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "promotionId",
+          "previousStatus",
+          "status"
+        ]
+      },
       "AuditLogEntry": {
         "type": "object",
         "properties": {
@@ -4246,6 +4275,156 @@
         }
       }
     },
+    "/releases/promotions/{id}/cancel": {
+      "post": {
+        "operationId": "releases.promotions.cancel",
+        "summary": "Cancel an in-flight promotion",
+        "description": "Fails a promotion that is stuck — the retag workflow was cancelled, the target was rolled back by hand, no ArgoCD notification ever arrived. Only valid while the promotion is `dispatched`, `promoting` or `deploying`; one that has already reached a terminal state is refused with 409 naming that state. The promotion moves to the failure state the lifecycle machine allows from where it stood (`deploy_failed` from `deploying`, `failed` from the two earlier states) — there is no separate `cancelled` state, and the response names both statuses so a caller does not have to derive the target. The operator's `reason`, when given, is recorded on the promotion and in its `promotion.canceled` audit row.",
+        "tags": [
+          "releases"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionCancelMutation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "502",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/releases/promotions/rc": {
       "post": {
         "operationId": "releases.promote.rc",
@@ -4547,7 +4726,7 @@
       "post": {
         "operationId": "releases.promote.prd",
         "summary": "Promote services from rc to production",
-        "description": "Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, and with 404 if a service is not registered or is absent from the rc namespace.",
+        "description": "Retags each named service's current rc image as prd and dispatches the production workflow, grouped by repository so a monorepo is dispatched once. REQUIRES AN ELEVATED CREDENTIAL: a `release` credential alone is refused with 403 `urn:drift:problem:elevation-required`; mint a 15-minute elevated credential scoped to `promote:prd` on your Drift Install's /credentials page (an interactive browser sign-in is required), then run the promotion once with `DRIFT_TOKEN` set to it (e.g. `DRIFT_TOKEN=drift_... drift release promote prd ...`) — this leaves your stored credential untouched. Returns immediately with the promotion's id; poll `GET /releases/promotions/active` for progress. Rejected with 409 while a production promotion is already in flight, or when the services selected from one repository sit at different rc commits, and with 404 if a service is not registered or is absent from the rc namespace.",
         "tags": [
           "releases"
         ],
