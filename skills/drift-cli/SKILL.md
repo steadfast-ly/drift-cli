@@ -240,6 +240,11 @@ refused before the POST (exit 1, feature-unsupported) rather than
 silently running default tests. Omit the flag when the suite should run
 from the profile's `e2e.ref`.
 
+`--wait` reads the run resource when the server advertises
+`environments.e2e-read`, and otherwise falls back to polling the audit
+log for the run's completion entry; either way exit 0 on pass, non-zero
+on failure.
+
 ### Audit who did something
 
 ```bash

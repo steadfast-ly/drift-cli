@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/steadfast-ly/drift-cli/internal/cliexit"
 )
@@ -22,9 +23,43 @@ type e2eServer struct {
 	auditCalls  int
 	auditScript [][]map[string]any // one per poll; last entry repeats
 	triggerCode int                // 0 means 200
+	// runScript scripts the GET .../e2e/{runId} body, one entry per poll; the
+	// last entry repeats. Empty means "running" forever.
+	runScript []map[string]any
+	runCalls  int
+	// runTimes is the arrival time of each GET .../e2e/{runId}, so a test can
+	// assert the poll cadence.
+	runTimes []time.Time
+	// runCode forces a non-200 on the run-read endpoint (0 means 200).
+	runCode int
 	// lastBody is the decoded request body of the most recent e2e trigger,
 	// so a test can assert exactly which fields the CLI sent.
 	lastBody map[string]any
+}
+
+// e2eRunRow is the JSON body of GET .../e2e/{runId}, mirroring the server's
+// E2eRun model: forge fields and completedAt are null until the run finishes,
+// and testsBranch is omitted when the run used the profile default.
+func e2eRunRow(status, testsBranch string) map[string]any {
+	row := map[string]any{
+		"e2eRunId":        e2eRunID,
+		"environmentId":   envID,
+		"environmentSlug": "proof-alpha",
+		"status":          status,
+		"forgeRunId":      nil,
+		"forgeRunUrl":     nil,
+		"requestedBy":     "alice@example.com",
+		"createdAt":       "2026-09-11T12:00:00Z",
+		"completedAt":     nil,
+	}
+	if testsBranch != "" {
+		row["testsBranch"] = testsBranch
+	}
+	switch status {
+	case "passed", "failed", "error":
+		row["completedAt"] = "2026-09-11T12:05:00Z"
+	}
+	return row
 }
 
 func newE2eServer(t *testing.T) *e2eServer {
@@ -71,6 +106,37 @@ func newE2eServer(t *testing.T) *e2eServer {
 			return
 		}
 
+		// GET /api/v1/environments/{id}/e2e/{runId}. Only the exact pair the
+		// harness hands out is a real read; any other pair gets the same typed
+		// 404 the server answers for a run that is unknown or belongs to
+		// another environment, so a CLI that sent the wrong ids fails here
+		// rather than being silently served a row.
+		if r.Method == http.MethodGet && strings.Contains(rest, "/e2e/") {
+			s.mutServer.record("e2e-run")
+			if r.URL.Path != "/api/v1/environments/"+envID+"/e2e/"+e2eRunID {
+				writeProblem(w, 404, "NOT_FOUND", "E2e run not found",
+					"urn:drift:problem:not-found",
+					"no e2e run "+e2eRunID+" on this environment")
+				return
+			}
+			s.mu.Lock()
+			s.runTimes = append(s.runTimes, time.Now())
+			idx := s.runCalls
+			s.runCalls++
+			code := s.runCode
+			body := s.nextRunBody(idx)
+			s.mu.Unlock()
+			if code == 404 {
+				writeProblem(w, 404, "NOT_FOUND", "E2e run not found",
+					"urn:drift:problem:not-found",
+					"no e2e run "+e2eRunID+" on this environment")
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(body)
+			return
+		}
+
 		// GET /api/v1/audit-log
 		if r.URL.Path == "/api/v1/audit-log" && r.Method == http.MethodGet {
 			s.mutServer.record("audit-list")
@@ -103,6 +169,25 @@ func (s *e2eServer) nextAuditItems(idx int) []map[string]any {
 		return s.auditScript[len(s.auditScript)-1]
 	}
 	return s.auditScript[idx]
+}
+
+// nextRunBody returns the body for the Nth run-read poll. Called with lock held.
+func (s *e2eServer) nextRunBody(idx int) map[string]any {
+	if len(s.runScript) == 0 {
+		return e2eRunRow("running", "")
+	}
+	if idx >= len(s.runScript) {
+		return s.runScript[len(s.runScript)-1]
+	}
+	return s.runScript[idx]
+}
+
+// runRequestTimes returns the arrival time of each GET .../e2e/{runId}, in
+// order, so a test can assert the poll cadence the CLI actually used.
+func (s *e2eServer) runRequestTimes() []time.Time {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]time.Time(nil), s.runTimes...)
 }
 
 func auditEntry(runID, outcome, reason string) map[string]any {
@@ -241,6 +326,12 @@ func TestE2eWaitPassedExitsZero(t *testing.T) {
 	if !strings.Contains(out, e2eRunID) {
 		t.Fatalf("run id not in output: %s", out)
 	}
+	// The first poll was in flight, so the audit path reports the same
+	// "waiting (…)" progress line the read path does — the parity the
+	// read-path test claims.
+	if !strings.Contains(errOut, "waiting (") {
+		t.Fatalf("the in-flight progress line was not reported: %s", errOut)
+	}
 }
 
 // The edge case: the run completed between trigger and the first poll, so the
@@ -364,6 +455,345 @@ func TestE2eWaitIgnoresUnrelatedAuditEntries(t *testing.T) {
 	if s.mutServer.seen("audit-list") != 2 {
 		t.Fatalf("expected 2 audit polls, got %d; calls: %v",
 			s.mutServer.seen("audit-list"), s.mutServer.calls)
+	}
+}
+
+// --- --wait run-read path (server advertises environments.e2e-read) ----------
+
+// advertiseE2eRead flips the read capability on and refreshes the served
+// discovery document, exactly as a server whose profile has an e2e block does.
+func advertiseE2eRead(s *e2eServer) {
+	s.mutServer.e2eRead = true
+	s.mutServer.refreshDiscoveryDoc()
+}
+
+// Advertised: the wait reads the run resource and never touches the audit log.
+func TestE2eWaitReadsRunWhenAdvertised(t *testing.T) {
+	s := newE2eServer(t)
+	advertiseE2eRead(s)
+	s.runScript = []map[string]any{
+		e2eRunRow("running", ""),
+		e2eRunRow("passed", ""),
+	}
+	h := newMutHarness(t, s.mutServer)
+
+	out, errOut, code := h.run("env", "e2e", "proof-alpha", "--wait", "--wait-timeout", "5s")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if !strings.Contains(out, "passed") {
+		t.Fatalf("outcome not in output: %s", out)
+	}
+	if n := s.mutServer.seen("e2e-run"); n != 2 {
+		t.Fatalf("expected 2 run reads (running, then passed), got %d; calls: %v", n, s.mutServer.calls)
+	}
+	if n := s.mutServer.seen("audit-list"); n != 0 {
+		t.Fatalf("the audit log was polled despite the advertised read capability: %d calls; calls: %v",
+			n, s.mutServer.calls)
+	}
+	// Progress parity with the audit path: an in-flight poll reports the
+	// "waiting (…)" progress line on stderr, so a CI log reads the same
+	// whichever source is followed. The full line prefix is asserted — a bare
+	// "waiting" also appears in the timeout message, which would make this
+	// pass without any progress line being printed at all.
+	if !strings.Contains(errOut, "waiting (") {
+		t.Fatalf("the in-flight progress line was not reported: %s", errOut)
+	}
+}
+
+// Not advertised: the audit fallback runs, and the run resource is never read.
+func TestE2eWaitFallsBackToAuditWhenReadNotAdvertised(t *testing.T) {
+	s := newE2eServer(t)
+	s.auditScript = [][]map[string]any{
+		{auditEntry(e2eRunID, "passed", "")},
+	}
+	h := newMutHarness(t, s.mutServer)
+
+	out, errOut, code := h.run("env", "e2e", "proof-alpha", "--wait", "--wait-timeout", "5s")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if !strings.Contains(out, "passed") {
+		t.Fatalf("outcome not in output: %s", out)
+	}
+	if n := s.mutServer.seen("audit-list"); n != 1 {
+		t.Fatalf("expected 1 audit poll, got %d; calls: %v", n, s.mutServer.calls)
+	}
+	if n := s.mutServer.seen("e2e-run"); n != 0 {
+		t.Fatalf("the run was read although the server does not advertise the capability: %d calls; calls: %v",
+			n, s.mutServer.calls)
+	}
+}
+
+// A failed run maps to the same Conflict exit as the audit path. The run row
+// carries no reason, so the forge run URL is the Detail when the server has one.
+func TestE2eWaitRunFailedExitsConflict(t *testing.T) {
+	s := newE2eServer(t)
+	advertiseE2eRead(s)
+	row := e2eRunRow("failed", "")
+	row["forgeRunUrl"] = "https://forge.example.com/acme/widget/actions/runs/42"
+	s.runScript = []map[string]any{row}
+	h := newMutHarness(t, s.mutServer)
+
+	out, errOut, code := h.run("env", "e2e", "proof-alpha", "--wait", "--wait-timeout", "5s")
+	if code != cliexit.Conflict {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.Conflict, errOut)
+	}
+	if !strings.Contains(out, "failed") {
+		t.Fatalf("outcome not in output: %s", out)
+	}
+	if !strings.Contains(errOut, "e2e run "+e2eRunID+" failed") {
+		t.Fatalf("the failure message was not surfaced: %s", errOut)
+	}
+	if !strings.Contains(errOut, "forge run: https://forge.example.com/acme/widget/actions/runs/42") {
+		t.Fatalf("the forge run URL was not surfaced as detail: %s", errOut)
+	}
+}
+
+// An errored run maps to the Error exit with the audit path's exact wording.
+func TestE2eWaitRunErrorExitsError(t *testing.T) {
+	s := newE2eServer(t)
+	advertiseE2eRead(s)
+	s.runScript = []map[string]any{e2eRunRow("error", "")}
+	h := newMutHarness(t, s.mutServer)
+
+	out, errOut, code := h.run("env", "e2e", "proof-alpha", "--wait", "--wait-timeout", "5s")
+	if code != cliexit.Error {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.Error, errOut)
+	}
+	if !strings.Contains(out, "error") {
+		t.Fatalf("outcome not in output: %s", out)
+	}
+	if !strings.Contains(errOut, `finished with outcome "error"`) {
+		t.Fatalf("the error outcome was not surfaced in the audit path's wording: %s", errOut)
+	}
+}
+
+// dispatched is in flight just like running: the wait keeps polling through it.
+func TestE2eWaitRunDispatchedThenPassed(t *testing.T) {
+	s := newE2eServer(t)
+	advertiseE2eRead(s)
+	s.runScript = []map[string]any{
+		e2eRunRow("dispatched", ""),
+		e2eRunRow("passed", ""),
+	}
+	h := newMutHarness(t, s.mutServer)
+
+	_, errOut, code := h.run("env", "e2e", "proof-alpha", "--wait", "--wait-timeout", "5s")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if n := s.mutServer.seen("e2e-run"); n != 2 {
+		t.Fatalf("expected 2 run reads, got %d; calls: %v", n, s.mutServer.calls)
+	}
+}
+
+// The read path times out exactly like the audit path -- exit 6, the same
+// "timed out" line -- but with a Hint that points at the RUN. Sending a
+// read-path operator to the audit log would send them after `audit-log.read`,
+// the very dependency this path exists to avoid.
+func TestE2eWaitRunTimeoutExits6(t *testing.T) {
+	s := newE2eServer(t)
+	advertiseE2eRead(s)
+	// The run never leaves "running".
+	s.runScript = []map[string]any{e2eRunRow("running", "")}
+	h := newMutHarness(t, s.mutServer)
+
+	const timeout = 300 * time.Millisecond
+	start := time.Now()
+	_, errOut, code := h.run("env", "e2e", "proof-alpha", "--wait", "--wait-timeout", timeout.String())
+	if code != cliexit.WaitTimeout {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.WaitTimeout, errOut)
+	}
+	if !strings.Contains(errOut, "timed out") {
+		t.Fatalf("timeout message not in output: %s", errOut)
+	}
+	if !strings.Contains(errOut, "drift api GET /environments/{id}/e2e/{runId}") {
+		t.Fatalf("the read path's hint (re-read the run resource with a runnable command) was not reported: %s", errOut)
+	}
+	if strings.Contains(errOut, "drift audit list") {
+		t.Fatalf("the audit-log hint was used on the read path: %s", errOut)
+	}
+	// The deadline is the one the operator asked for, not a multiple of it: an
+	// implementation that doubled it would still exit 6 with the right hint and
+	// satisfy every assertion above. The 250ms of slack over the requested
+	// timeout absorbs scheduling jitter on a loaded shared CI runner while a
+	// doubled deadline (~600ms) still fails.
+	if elapsed := time.Since(start); elapsed >= 550*time.Millisecond {
+		t.Fatalf("the wait took %s for a %s timeout; the deadline is not the requested one", elapsed, timeout)
+	}
+}
+
+// The read path polls at the cadence it was configured with, not one of its
+// own: it never polls tighter than the interval asked for. Only the LOWER
+// bound is asserted. The upper bound is deliberately not asserted: timing
+// slack on a loaded shared CI runner would make it flaky, so a doubled
+// interval is not caught by this test — the lower bound is what pins that the
+// read path honours the configured interval rather than polling tighter.
+func TestE2eWaitRunPollsAtConfiguredInterval(t *testing.T) {
+	const interval = 50 * time.Millisecond
+
+	s := newE2eServer(t)
+	advertiseE2eRead(s)
+	s.runScript = []map[string]any{
+		e2eRunRow("running", ""),
+		e2eRunRow("running", ""),
+		e2eRunRow("passed", ""),
+	}
+	h := newMutHarness(t, s.mutServer)
+	h.app.waitInterval = interval
+
+	_, errOut, code := h.run("env", "e2e", "proof-alpha", "--wait", "--wait-timeout", "5s")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	times := s.runRequestTimes()
+	if len(times) != 3 {
+		t.Fatalf("expected 3 run reads (running, running, passed), got %d; calls: %v",
+			len(times), s.mutServer.calls)
+	}
+	for i := 1; i < len(times); i++ {
+		gap := times[i].Sub(times[i-1])
+		if gap < interval {
+			t.Fatalf("reads %d and %d were %s apart, tighter than the %s interval", i-1, i, gap, interval)
+		}
+	}
+}
+
+// A 429 on the run read is the server asking for time, not a failed wait: the
+// poll honours Retry-After and carries on, exactly as the audit loop does.
+func TestE2eWaitRunReadRateLimitBacksOff(t *testing.T) {
+	s := newE2eServer(t)
+	advertiseE2eRead(s)
+	s.runScript = []map[string]any{e2eRunRow("passed", "")}
+
+	reads := 0
+	base := s.Config.Handler
+	s.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/e2e/") {
+			reads++
+			if reads == 1 {
+				w.Header().Set("Retry-After", "1")
+				writeProblem(w, 429, "TOO_MANY_REQUESTS", "Rate limit exceeded",
+					"urn:drift:problem:rate-limited", "Retry in 1s.")
+				return
+			}
+		}
+		base.ServeHTTP(w, r)
+	})
+
+	h := newMutHarness(t, s.mutServer)
+	start := time.Now()
+	_, errOut, code := h.run("env", "e2e", "proof-alpha", "--wait", "--wait-timeout", "30s")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d, want 0 — a 429 aborted the run read\n%s", code, errOut)
+	}
+	// It honoured the server's number rather than its own: a full second, not
+	// the millisecond poll interval this harness uses.
+	if elapsed := time.Since(start); elapsed < time.Second {
+		t.Fatalf("backed off for %s, want at least the 1s the server asked for", elapsed)
+	}
+	if !strings.Contains(errOut, "rate limited") {
+		t.Fatalf("the backoff was not reported: %s", errOut)
+	}
+	// The throttled attempt is not a read: only the successful poll reached
+	// the run endpoint.
+	if n := s.mutServer.seen("e2e-run"); n != 1 {
+		t.Fatalf("expected 1 successful run read, got %d; calls: %v", n, s.mutServer.calls)
+	}
+}
+
+// A 404 mid-wait is the typed not-found failure, not a silent retry: the run
+// is gone (or belongs to another environment) and retrying would spin until
+// the deadline.
+func TestE2eWaitRunNotFoundIsTypedFailure(t *testing.T) {
+	s := newE2eServer(t)
+	advertiseE2eRead(s)
+	s.runCode = 404
+	h := newMutHarness(t, s.mutServer)
+
+	_, errOut, code := h.run("env", "e2e", "proof-alpha", "--wait", "--wait-timeout", "5s")
+	if code != cliexit.NotFound {
+		t.Fatalf("exit %d, want %d (not found)\n%s", code, cliexit.NotFound, errOut)
+	}
+	if !strings.Contains(errOut, "not found") {
+		t.Fatalf("the typed not-found message was not surfaced: %s", errOut)
+	}
+	if n := s.mutServer.seen("e2e-run"); n != 1 {
+		t.Fatalf("a 404 was retried: %d reads; calls: %v", n, s.mutServer.calls)
+	}
+	if n := s.mutServer.seen("audit-list"); n != 0 {
+		t.Fatalf("the audit fallback ran despite the advertised read capability; calls: %v", s.mutServer.calls)
+	}
+}
+
+// The run row is the branch authority on the read path: it wins over the
+// trigger echo, exactly as the completed audit entry does on the fallback.
+func TestE2eWaitRunSurfacesTestsBranchOverEcho(t *testing.T) {
+	s := newE2eServer(t)
+	advertiseE2eRead(s)
+	s.mutServer.e2eTestsBranch = true
+	s.mutServer.refreshDiscoveryDoc()
+	s.runScript = []map[string]any{e2eRunRow("passed", "feat/tests-b")}
+	h := newMutHarness(t, s.mutServer)
+
+	out, errOut, code := h.run("env", "e2e", "proof-alpha", "--tests-branch", "feat/tests-a",
+		"--wait", "--wait-timeout", "5s")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if !strings.Contains(out, "feat/tests-b") {
+		t.Fatalf("the run's testsBranch was not surfaced over the trigger echo:\n%s", out)
+	}
+	if strings.Contains(out, "feat/tests-a") {
+		t.Fatalf("the trigger echo won over the run row:\n%s", out)
+	}
+}
+
+// Off-spec server: the run row omits testsBranch. The trigger echo fills in, so
+// the output still carries the requested branch.
+func TestE2eWaitRunFallsBackToEchoWhenRowOmitsBranch(t *testing.T) {
+	s := newE2eServer(t)
+	advertiseE2eRead(s)
+	s.mutServer.e2eTestsBranch = true
+	s.mutServer.refreshDiscoveryDoc()
+	s.runScript = []map[string]any{e2eRunRow("passed", "")}
+	h := newMutHarness(t, s.mutServer)
+
+	out, errOut, code := h.run("env", "e2e", "proof-alpha", "--tests-branch", "feat/tests-a",
+		"--wait", "--wait-timeout", "5s")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if !strings.Contains(out, "feat/tests-a") {
+		t.Fatalf("testsBranch not filled in from the trigger echo:\n%s", out)
+	}
+}
+
+// The read path renders the SAME output as the audit path for the same
+// outcome — same columns, same values, no new field. Reusing the audit path's
+// golden is the assertion, so a divergence in either rendering fails here.
+func TestE2eWaitRunPassedGoldenMatchesAuditPath(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+	}{
+		{"env_e2e_wait_passed_table.golden", []string{"env", "e2e", "proof-alpha", "--wait", "--wait-timeout", "5s"}},
+		{"env_e2e_wait_passed_json.golden", []string{"env", "e2e", "proof-alpha", "--wait", "--wait-timeout", "5s", "-o", "json"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			s := newE2eServer(t)
+			advertiseE2eRead(s)
+			s.runScript = []map[string]any{e2eRunRow("passed", "")}
+			h := newMutHarness(t, s.mutServer)
+
+			out, errOut, code := h.run(c.args...)
+			if code != cliexit.OK {
+				t.Fatalf("exit %d\n%s", code, errOut)
+			}
+			checkGolden(t, c.name, out)
+		})
 	}
 }
 

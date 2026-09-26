@@ -161,15 +161,31 @@ environment. The server dispatches the configured test workflow and
 returns a run id.
 
 Without `--wait`, the command prints the run id and returns immediately
-(exit 0). With `--wait`, it polls the audit log until the run's outcome
-appears:
+(exit 0). With `--wait`, it follows the run until it reaches a terminal
+status. Which source it follows depends on what the server advertises:
+
+- When the server advertises `environments.e2e-read` (exposed only when the
+  profile has an e2e block, alongside `e2e-tests-branch`), the CLI polls
+  `GET /environments/{environmentId}/e2e/{runId}` -- the run resource
+  itself, the authoritative record.
+- Otherwise it falls back to polling the audit log for the run's
+  `environment.e2e_completed` entry, which additionally requires the server
+  to grant `audit-log.read`.
+
+The outcome maps the same way on both paths:
 
 - **passed** -- exit 0.
-- **failed** -- non-zero exit, with the failure reason when the server
-  provides one.
-- **error** (e.g. `dispatch_failed`) -- non-zero exit, with the reason.
+- **failed** -- exit 5 (conflict). The audit path adds the server's failure
+  reason when it recorded one; the run row carries no reason (the audit
+  entry's `reason` has no equivalent on the row), so the read path surfaces
+  the forge run URL as the detail instead when the server has one.
+- **error** (e.g. `dispatch_failed`) -- exit 1, with the reason when the
+  audit path has one.
 - **timeout** -- exit 6. The default `--wait-timeout` is 125 minutes,
   sized five minutes past the server's own 120-minute tracking ceiling.
+
+On the read path a 404 mid-wait (the run is unknown, or belongs to another
+environment) is surfaced immediately as exit 3 rather than retried.
 
 ### Choosing the tests branch
 
@@ -204,8 +220,8 @@ but cannot verify the adapter honoured it; the adapter contract requires
 adapters to fail the run rather than silently check out the default test
 code, so a mismatch surfaces as a failed run, not a silent wrong-answer
 pass. The trigger response echoes the recorded branch on a non-default
-run; with `--wait`, the branch is surfaced from the run's completed
-audit entry instead.
+run; with `--wait`, the branch is surfaced from the run resource (or from
+the run's completed audit entry on the fallback path).
 
 ### Exit codes
 
@@ -218,7 +234,7 @@ audit entry instead.
 | `--tests-branch` against a server without the `e2e-tests-branch` capability | 1 (feature-unsupported) |
 | Invalid tests branch (rejected by the server) | 2 (usage) |
 | 409 (run already active) | 5 |
-| 404 (env not found) | 3 |
+| 404 (environment, or the run mid-wait, not found) | 3 |
 | Wait timed out | 6 |
 
 ## Visibility

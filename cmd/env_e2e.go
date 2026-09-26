@@ -25,7 +25,9 @@ func newEnvE2eCommand(app *App) *cobra.Command {
 	flags := &waitFlags{}
 	// The e2e verb's wait policy differs from lifecycle mutations: the default is
 	// NO wait (fire-and-observe), and the "goal" is not an environment status but
-	// an audit-log entry, so the policy struct's Goal field is unused.
+	// a terminal e2e run -- the run resource when the server advertises
+	// environments.e2e-read, otherwise the run's completion audit entry -- so the
+	// policy struct's Goal field is unused.
 	policy := waitPolicy{Timeout: e2eDefaultTimeout, Blocks: false}
 	testsBranch := ""
 
@@ -34,9 +36,10 @@ func newEnvE2eCommand(app *App) *cobra.Command {
 		Short: "Trigger an end-to-end test run",
 		Long: "Trigger an end-to-end test run against an environment.\n\n" +
 			"Without --wait, prints the accepted run (slug + e2eRunId) and\n" +
-			"returns immediately. With --wait, polls the audit log until the\n" +
-			"run's outcome appears, then exits 0 on pass and non-zero on\n" +
-			"failure.\n\n" +
+			"returns immediately. With --wait, follows the run to completion --\n" +
+			"reading the run resource when the server advertises the\n" +
+			"environments.e2e-read capability, otherwise polling the audit log --\n" +
+			"then exits 0 on pass and non-zero on failure.\n\n" +
 			"--tests-branch selects the branch of the profile's e2e repository\n" +
 			"whose test code this run checks out; the workflow definition still\n" +
 			"runs from the profile ref. The server is the only authority on\n" +
@@ -66,7 +69,7 @@ func newEnvE2eCommand(app *App) *cobra.Command {
 		},
 	}
 	// Manual flag registration: the e2e verb's wait is not "wait for a state"
-	// but "wait for the run's audit entry", so the generic description from
+	// but "wait for the run to finish", so the generic description from
 	// waitFlags.register does not apply.
 	flags.cmd = cmd
 	cmd.Flags().BoolVar(&flags.wait, "wait", false, "wait for the e2e run to complete")
@@ -147,21 +150,29 @@ func runEnvE2e(ctx context.Context, app *App, ref string, policy waitPolicy, fla
 		return writeE2eResult(app, cols, e.Slug, runID, e.ID, "", "", echo)
 	}
 
-	// --wait: poll the audit log for the run's completion entry.
-	outcome, reason, auditBranch, waitErr := waitForE2e(ctx, app, sess, e, runID, flags.deadline(policy))
-	// The wait path surfaces the branch from the run's completed audit entry,
-	// the value the server recorded for the run. The echo below is
-	// a defensive fallback only: on a conformant server the audit details and
-	// the trigger echo agree, because the server's single normalization point
-	// nulls an explicit branch equal to the profile default in BOTH the
-	// response and the audit record. The echo stands in only for the off-spec
-	// case where the audit record omits the field.
-	if auditBranch == "" {
-		auditBranch = echo
+	// --wait: read the run resource when the server advertises the capability,
+	// otherwise fall back to the audit log. The run row is the authoritative
+	// resource; the audit fallback keeps an older server working unchanged.
+	var outcome, reason, waitBranch string
+	var waitErr error
+	if sess.Discovery.Document.HasFeature(FeatureE2eRead) {
+		outcome, reason, waitBranch, waitErr = waitForE2eRun(ctx, app, sess, e, runID, flags.deadline(policy))
+	} else {
+		outcome, reason, waitBranch, waitErr = waitForE2e(ctx, app, sess, e, runID, flags.deadline(policy))
+	}
+	// The wait path surfaces the branch the server recorded for the run — from
+	// the run row on the read path, from the completed audit entry on the
+	// fallback. The echo below is a defensive fallback only: on a conformant
+	// server the recorded value and the trigger echo agree, because the
+	// server's single normalization point nulls an explicit branch equal to the
+	// profile default in BOTH the response and the record. The echo stands in
+	// only for the off-spec case where the wait's source omits the field.
+	if waitBranch == "" {
+		waitBranch = echo
 	}
 	// Print the result even on failure — the operator needs to know which run
 	// and what happened, and a bare error line does not say.
-	if werr := writeE2eResult(app, cols, e.Slug, runID, e.ID, outcome, reason, auditBranch); werr != nil && waitErr == nil {
+	if werr := writeE2eResult(app, cols, e.Slug, runID, e.ID, outcome, reason, waitBranch); werr != nil && waitErr == nil {
 		return werr
 	}
 	return waitErr
@@ -245,7 +256,7 @@ func waitForE2e(
 				}
 				progress.Throttled(backoff)
 				if time.Now().Add(backoff).After(deadline) {
-					return "", "", "", e2eTimeoutError(e.Slug, runID, time.Since(start))
+					return "", "", "", e2eTimeoutError(e.Slug, runID, time.Since(start), e2eAuditTimeoutHint)
 				}
 				if err := sleepCtx(ctx, backoff); err != nil {
 					return "", "", "", &cliexit.ExitError{Code: cliexit.Error, Message: "the wait was interrupted", Err: err}
@@ -299,7 +310,7 @@ func waitForE2e(
 
 		now := time.Now()
 		if !now.Add(interval).Before(deadline) {
-			return "", "", "", e2eTimeoutError(e.Slug, runID, now.Sub(start))
+			return "", "", "", e2eTimeoutError(e.Slug, runID, now.Sub(start), e2eAuditTimeoutHint)
 		}
 		if err := sleepCtx(ctx, interval); err != nil {
 			return "", "", "", &cliexit.ExitError{Code: cliexit.Error, Message: "the wait was interrupted", Err: err}
@@ -314,12 +325,126 @@ func reasonDetail(reason string) string {
 	return "reason: " + reason
 }
 
-func e2eTimeoutError(slug string, runID uuid.UUID, elapsed time.Duration) error {
+// waitForE2eRun polls the run resource until it reaches a terminal status.
+//
+// This is the read path used when the server advertises
+// `environments.e2e-read`; the audit-log fallback (waitForE2e) stays for older
+// servers. The two share their poll cadence, deadline and terminal mapping --
+// only the thing being read differs. The run row carries NO failure reason (the
+// audit entry's `reason` has no equivalent there), so the second return is
+// always empty rather than an invented one; the third is the branch the server
+// recorded for the run (empty when the run used the profile default).
+func waitForE2eRun(
+	ctx context.Context, app *App, sess *Session, e *envRef,
+	runID uuid.UUID, timeout time.Duration,
+) (outcome string, reason string, testsBranch string, err error) {
+	progress := wait.NewProgress(app.Stderr, output.IsTerminal(app.Stderr) && app.Out.ErrColor)
+	defer progress.Stop()
+
+	interval := app.waitInterval
+	if interval == 0 {
+		interval = wait.DefaultInterval
+	}
+
+	start := time.Now()
+	deadline := start.Add(timeout)
+
+	for {
+		resp, pollErr := sess.API.EnvironmentsGetE2eRunWithResponse(ctx, e.ID, runID)
+		if pollErr != nil {
+			return "", "", "", client.Transport(pollErr, sess.Resolved.Endpoint)
+		}
+		if resp.JSON200 == nil {
+			// A 429 during a poll is not fatal -- back off and continue,
+			// exactly as the audit loop does. A typed 404 is: the run is gone
+			// or belongs to another environment, and retrying would only spin
+			// until the deadline.
+			fail := client.Fail(resp, resp.Headers429)
+			if fail.Code == cliexit.RateLimited {
+				backoff := fail.RetryAfter
+				if backoff < interval {
+					backoff = interval
+				}
+				progress.Throttled(backoff)
+				if time.Now().Add(backoff).After(deadline) {
+					return "", "", "", e2eTimeoutError(e.Slug, runID, time.Since(start), e2eRunTimeoutHint)
+				}
+				if err := sleepCtx(ctx, backoff); err != nil {
+					return "", "", "", &cliexit.ExitError{Code: cliexit.Error, Message: "the wait was interrupted", Err: err}
+				}
+				continue
+			}
+			return "", "", "", fail
+		}
+
+		run := resp.JSON200
+		tests := ""
+		if run.TestsBranch != nil {
+			tests = *run.TestsBranch
+		}
+		switch run.Status {
+		case api.E2eRunStatusPassed:
+			return "passed", "", tests, nil
+		case api.E2eRunStatusFailed:
+			return "failed", "", tests, &cliexit.ExitError{
+				Code:    cliexit.Conflict,
+				Message: fmt.Sprintf("e2e run %s failed", runID),
+				Detail:  forgeRunDetail(run.ForgeRunUrl),
+			}
+		case api.E2eRunStatusDispatched, api.E2eRunStatusRunning:
+			// Still in flight; keep polling.
+		default:
+			// "error" or any status a future server adds.
+			return string(run.Status), "", tests, &cliexit.ExitError{
+				Code:    cliexit.Error,
+				Message: fmt.Sprintf("e2e run %s finished with outcome %q", runID, run.Status),
+				Detail:  forgeRunDetail(run.ForgeRunUrl),
+			}
+		}
+
+		progress.Observed(api.EnvironmentStatus("waiting"), time.Since(start))
+
+		now := time.Now()
+		if !now.Add(interval).Before(deadline) {
+			return "", "", "", e2eTimeoutError(e.Slug, runID, now.Sub(start), e2eRunTimeoutHint)
+		}
+		if err := sleepCtx(ctx, interval); err != nil {
+			return "", "", "", &cliexit.ExitError{Code: cliexit.Error, Message: "the wait was interrupted", Err: err}
+		}
+	}
+}
+
+// forgeRunDetail is the Detail for a failed/error exit on the run-read path.
+// The run row has no failure reason, so the forge run URL -- when the server
+// recorded one -- is the only actionable detail. It is the server's own value,
+// not a reason the CLI invented, and it is labelled so a bare URL is not
+// mistaken for one.
+func forgeRunDetail(url *string) string {
+	if url == nil || *url == "" {
+		return ""
+	}
+	return "forge run: " + *url
+}
+
+// e2eTimeoutHints are the source-specific Hints for an e2e wait timeout. They
+// differ because the two sources need different capabilities: following the
+// audit log needs `audit-log.read`, while the run read needs only
+// `environments.e2e-read`. Pointing a read-path operator at the audit log would
+// send them after a dependency that path deliberately does not have.
+const (
+	e2eAuditTimeoutHint = "the run may still be in progress; check the audit log with `drift audit list --action environment.e2e_completed`"
+	e2eRunTimeoutHint   = "the run may still be in progress; the run resource is authoritative — re-read it with `drift api GET /environments/{id}/e2e/{runId}`, or check the forge run once it records one"
+)
+
+// e2eTimeoutError builds the exit-6 failure for an e2e wait. The caller passes
+// the Hint for the source it was following: the message is the same either way,
+// but the advice is not.
+func e2eTimeoutError(slug string, runID uuid.UUID, elapsed time.Duration, hint string) error {
 	return &cliexit.ExitError{
 		Code: cliexit.WaitTimeout,
 		Message: fmt.Sprintf("timed out after %s waiting for e2e run %s on %s",
 			elapsed.Round(time.Second), runID, slug),
-		Hint: "the run may still be in progress; check the audit log with `drift audit list --action environment.e2e_completed`",
+		Hint: hint,
 	}
 }
 
