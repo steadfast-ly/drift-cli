@@ -3614,7 +3614,7 @@
       "post": {
         "operationId": "environments.retryBuild",
         "summary": "Retry a failed build",
-        "description": "Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every sibling service sharing the repository is retried together.",
+        "description": "Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every failed or canceled sibling service on the same branch is retried together; siblings on other branches are not.",
         "tags": [
           "environments"
         ],

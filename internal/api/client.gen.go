@@ -1326,7 +1326,7 @@ type ClientInterface interface {
 
 	// EnvironmentsRetryBuild Retry a failed build
 	//
-	// Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every sibling service sharing the repository is retried together.
+	// Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every failed or canceled sibling service on the same branch is retried together; siblings on other branches are not.
 	//
 	// Corresponds with POST /environments/{environmentId}/services/{environmentRepoId}/retry-build (the `EnvironmentsRetryBuild` operationId).
 	EnvironmentsRetryBuild(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1868,7 +1868,7 @@ func (c *Client) EnvironmentsSwapBranch(ctx context.Context, environmentId opena
 
 // EnvironmentsRetryBuild Retry a failed build
 //
-// Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every sibling service sharing the repository is retried together.
+// Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every failed or canceled sibling service on the same branch is retried together; siblings on other branches are not.
 //
 // Corresponds with POST /environments/{environmentId}/services/{environmentRepoId}/retry-build (the `EnvironmentsRetryBuild` operationId).
 func (c *Client) EnvironmentsRetryBuild(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -4040,7 +4040,7 @@ type ClientWithResponsesInterface interface {
 
 	// EnvironmentsRetryBuildWithResponse Retry a failed build
 	//
-	// Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every sibling service sharing the repository is retried together.
+	// Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every failed or canceled sibling service on the same branch is retried together; siblings on other branches are not.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -7859,7 +7859,7 @@ func (c *ClientWithResponses) EnvironmentsSwapBranchWithResponse(ctx context.Con
 
 // EnvironmentsRetryBuildWithResponse Retry a failed build
 //
-// Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every sibling service sharing the repository is retried together.
+// Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every failed or canceled sibling service on the same branch is retried together; siblings on other branches are not.
 //
 // Returns a wrapper object for the known response body format(s).
 //
