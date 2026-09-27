@@ -210,6 +210,10 @@ func DefaultTimeoutFor(goal api.EnvironmentStatus) time.Duration {
 // Wait polls until the goal is reached, a failure is confirmed, the goal
 // becomes unreachable, or the timeout expires.
 //
+// Timeout bounds each poll as well as the wait as a whole: a poll still in
+// flight when the deadline passes is cancelled, and the wait ends as the same
+// exit 6 rather than reporting whatever the slow response eventually says.
+//
 // The four outcomes are deliberately distinct exit codes: reaching the goal is
 // 0, a confirmed failure or an unreachable goal is 5 (the operation failed),
 // and running out of time is 6 (nothing is known — the thing may still be on
@@ -236,7 +240,41 @@ func Wait(ctx context.Context, opts Options, poll Poller) (api.EnvironmentStatus
 	var last api.EnvironmentStatus
 
 	for {
-		obs, err := poll(ctx)
+		// Each poll is bounded by what is LEFT of the deadline, so a slow or
+		// stalled response cannot run past it and have its answer reported as
+		// the verdict. The remaining time comes off the INJECTED clock: a test's
+		// fake clock advances only when the wait sleeps, so a real-time
+		// `context.WithDeadline(ctx, deadline)` would fire at a moment the test
+		// never reaches — or not at all.
+		//
+		// Derived whenever the wait has a POSITIVE timeout, even when no time is
+		// left to derive from: a sleep that overshoots the deadline leaves a
+		// poll starting with nothing left, and the already-expired context
+		// cancels it so the `pollExpired` branch below answers exit 6 — the
+		// correct outcome for a positive timeout that has run out. Keying on the
+		// configured timeout rather than on the remaining time is what keeps
+		// that case off the parent context, where the poll would run unbounded
+		// and its late answer be reported as the verdict.
+		//
+		// The one exception is an explicitly non-positive `--timeout`: there is
+		// no deadline to derive from at all, so the poll runs on the parent
+		// context and the pre-#31 outcome is kept — the wait still makes its
+		// single poll and reports what it saw, a state already at the goal
+		// exiting 0 and anything else exiting 6 naming the state it read. The
+		// per-request `--timeout` (an `http.Client.Timeout`, not a context
+		// deadline) still bounds that one poll.
+		pctx := ctx
+		cancel := func() {}
+		if opts.Timeout > 0 {
+			pctx, cancel = context.WithTimeout(ctx, deadline.Sub(now()))
+		}
+		obs, err := poll(pctx)
+		// Captured before cancel(), so a deadline that fired while the poll was
+		// in flight is still visible afterwards. On the parent context this is
+		// the parent's own deadline, which the `ctx.Err() == nil` guard below
+		// excludes from the timeout mapping as it always has.
+		pollExpired := pctx.Err() == context.DeadlineExceeded
+		cancel()
 		if err != nil {
 			var ee *cliexit.ExitError
 			// A rate limit is not a failure of the thing being waited on, and
@@ -254,6 +292,15 @@ func Wait(ctx context.Context, opts Options, poll Poller) (api.EnvironmentStatus
 					return last, canceled(serr)
 				}
 				continue
+			}
+			// The wait deadline cut this poll short: the request failed only
+			// because it was cancelled at the deadline, which is the same "not
+			// known yet" outcome as the between-polls check below and takes the
+			// same exit 6. A cancelled PARENT context is deliberately excluded —
+			// that is the operator interrupting, and `canceled` reports it as
+			// such rather than as a timeout.
+			if pollExpired && ctx.Err() == nil {
+				return last, timeoutError(opts, last, now().Sub(start))
 			}
 			return last, err
 		}
