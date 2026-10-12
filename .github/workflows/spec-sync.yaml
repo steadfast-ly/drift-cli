@@ -64,7 +64,7 @@ jobs:
       # The `just generate` recipe below is the only sanctioned way to
       # regenerate the client.
       - name: Install just
-        uses: extractions/setup-just@v3
+        uses: extractions/setup-just@v4
 
       # Pinned exactly. A floating generator would make `check-generated`
       # fail on an unrelated upstream release and turn the contract gate into
