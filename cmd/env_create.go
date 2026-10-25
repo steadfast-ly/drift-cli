@@ -231,7 +231,7 @@ func runEnvCreate(ctx context.Context, app *App, f *createFlags) error {
 // again. Restating it here would be a second copy of a generated shape that
 // nothing checks — exactly the drift `just check-generated` exists to prevent.
 func (p *plan) body() api.EnvironmentsCreateJSONRequestBody {
-	body := api.EnvironmentsCreateJSONRequestBody{Slug: p.Slug}
+	body := api.EnvironmentsCreateJSONRequestBody{Slug: new(p.Slug)}
 	if p.Ticket != "" {
 		ticket := p.Ticket
 		body.TicketId = &ticket

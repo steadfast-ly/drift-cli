@@ -3,8 +3,10 @@ name: drift-cli
 description: >
   Drive the drift CLI for managing preview environments and promoting releases.
   Use when: creating or managing preview environments, promoting to rc or prd,
-  extending an environment, checking release status, "create a preview env",
-  "promote to rc", "promote to prd", "extend an environment", drift CLI usage.
+  extending an environment, checking release status, working the QA queue,
+  "create a preview env", "promote to rc", "promote to prd", "extend an
+  environment", "approve the QA session", "what is ready for QA", drift CLI
+  usage.
 ---
 
 # drift CLI -- agent skill
@@ -67,6 +69,23 @@ drift release cancel <promotion-id>   Fail a stuck promotion (--reason <text>, -
 drift repo list              List repositories
 drift repo branches <id>     List a repository's recent branches
 
+drift qa list                List the QA queue (ready, testing, recheck, upcoming)
+drift qa show <key>          Show a ticket: linked PRs, sessions, verdicts
+drift qa health              QA sync, outbox and tracker health (operators)
+drift qa start <key>         Start a session (--prs repo#n,... | --env <slug>)
+drift qa approve <session>   Approve (--revision N, --retested | --no-retest REASON, --note, --file)
+drift qa reject <session>    Reject (--revision N, --comment TEXT, --file)
+drift qa exempt (--pr repo#n | --ticket KEY) --reason TEXT
+drift qa unexempt <exemption-id>
+drift qa revoke (--approval <id> | --exemption <id>)
+drift qa link <key> <repo#n>
+drift qa unlink <key> <repo#n>
+drift qa send <key>          Move the ticket back to the queue
+drift qa comment <key> --body TEXT [--file ...]
+drift qa ack <session>       Acknowledge a redeploy
+drift qa end <session>       Close the session (API: close)
+drift qa carryover <key>     Carry pre-rollout PRs over at their heads
+
 drift audit list             Query the audit log
 drift audit actors           List distinct audit-log actors
 
@@ -127,6 +146,11 @@ The following commands are destructive, irreversible, or security-sensitive:
 - `drift release promote prd hotfix`
 - `drift release cancel` (fails a promotion that is stuck; it cannot be
   resumed -- the services have to be promoted again)
+- `drift qa approve`, `drift qa reject` (record a verdict, write it to the
+  tracker and post the `drift/qa` commit status)
+- `drift qa start` (can rebuild a developer's environment under them)
+- `drift qa exempt`, `drift qa unexempt`, `drift qa revoke` (change what the
+  gate accepts), `drift qa unlink`, `drift qa send`, `drift qa carryover`
 - Any non-GET `drift api` call -- require the human to approve the exact
   method, path, and body before executing.
 
@@ -244,6 +268,28 @@ from the profile's `e2e.ref`.
 `environments.e2e-read`, and otherwise falls back to polling the audit
 log for the run's completion entry; either way exit 0 on pass, non-zero
 on failure.
+
+### Work the QA queue
+
+```bash
+# What is ready, in machine form.
+drift qa list --json section,key,status,prs
+
+# Read the session revision before deciding.
+drift qa show DT-123 -o json | jq '.sessions[] | {id, state, current_generation}'
+
+# A verdict binds that revision; evidence rides along as base64 JSON.
+drift qa approve <session> --revision 3 --retested --file shot.png --yes
+drift qa reject  <session> --revision 3 --comment "crashes on save" --yes
+```
+
+`drift qa` is gated on the server advertising `qa`; approve, reject, unlink
+and carryover additionally need `qa.approve`, which requires the `qa` role.
+A 409 carrying `data.revision` means the environment redeployed: re-read with
+`drift qa show` and decide against the new revision instead of retrying. A
+502 on an approver action is the server failing to confirm the role -- print
+it as-is and tell the human, do not loop. Attachments are capped at 10 files
+and 7 MiB in total, checked client-side before anything is sent.
 
 ### Audit who did something
 

@@ -8,7 +8,9 @@ codes and their meaning, wait semantics, and common recipes.
 
 - **Guardrails** -- destructive and irreversible commands require human
   confirmation before the agent runs them. Production promotion is never
-  handled by the agent autonomously.
+  handled by the agent autonomously. QA verdicts (`drift qa approve`,
+  `drift qa reject`), exemptions, revocations and link removal are in the
+  same class: the agent asks before recording one.
 - **Exit codes** -- how each exit code should be interpreted by the agent
   (e.g. exit 4 means ask the human to re-authenticate, exit 6 means the
   operation may still complete server-side).

@@ -36,6 +36,7 @@ surface:
 drift env list --json slug,status,expires
 drift env get my-env --json slug,status,id
 drift release status --json service,stg_tag,rc_tag
+drift qa list --json section,key,status,prs
 ```
 
 ### Non-interactive confirmations
