@@ -82,6 +82,8 @@ func newQaListCommand(app *App) *cobra.Command {
 		Long: "List the QA queue: ready for QA (oldest entry first), in testing,\n" +
 			"re-check and upcoming, with the linked PR count and any active\n" +
 			"session per Ticket.\n\n" +
+			"A section the server capped says how many it held back: a `+N more`\n" +
+			"row in the table, `truncated` in the machine formats.\n\n" +
 			"The carry-over list (pre-rollout Tickets an approver has to decide)\n" +
 			"and the recently decided verdicts travel under `carry_over` and\n" +
 			"`recently_decided` in the machine formats.\n\n" +
@@ -110,18 +112,30 @@ func runQaList(ctx context.Context, app *App) error {
 	queue := *resp.JSON200
 
 	sections := []struct {
-		name  string
-		cards []api.QaTicketCard
+		name    string
+		cards   []api.QaTicketCard
+		omitted int
 	}{
-		{"ready", queue.ReadyForQa},
-		{"testing", queue.InTesting},
-		{"recheck", queue.Recheck},
-		{"upcoming", queue.Upcoming},
+		{"ready", queue.ReadyForQa, queue.Truncated.ReadyForQa},
+		{"testing", queue.InTesting, queue.Truncated.InTesting},
+		{"recheck", queue.Recheck, queue.Truncated.Recheck},
+		{"upcoming", queue.Upcoming, queue.Truncated.Upcoming},
 	}
+	format := app.Out.EffectiveFormat()
 	rows := make([]output.Row, 0, len(queue.ReadyForQa)+len(queue.InTesting)+len(queue.Recheck)+len(queue.Upcoming))
 	for _, s := range sections {
 		for _, c := range s.cards {
 			rows = append(rows, qaTicketRow(s.name, c))
+		}
+		// The server caps each section, so what it held back has to be said
+		// where the section is: a row under its own entries. The machine
+		// formats carry `truncated` instead, so the pseudo-row never reaches
+		// them.
+		if (format == output.FormatTable || format == output.FormatWide) && s.omitted > 0 {
+			rows = append(rows, output.Row{
+				"section": s.name,
+				"key":     fmt.Sprintf("+%d more", s.omitted),
+			})
 		}
 	}
 
@@ -147,6 +161,12 @@ func runQaList(ctx context.Context, app *App) error {
 		Rows:         rows,
 		EmptyMessage: "The QA queue is empty.",
 		Extra: map[string]any{
+			"truncated": map[string]any{
+				"ready":    queue.Truncated.ReadyForQa,
+				"testing":  queue.Truncated.InTesting,
+				"recheck":  queue.Truncated.Recheck,
+				"upcoming": queue.Truncated.Upcoming,
+			},
 			"carry_over": carryRows,
 			"recently_decided": map[string]any{
 				"approvals":  approvals,
@@ -158,7 +178,6 @@ func runQaList(ctx context.Context, app *App) error {
 		return err
 	}
 
-	format := app.Out.EffectiveFormat()
 	if (format != output.FormatTable && format != output.FormatWide) || len(carryOver) == 0 {
 		return nil
 	}
@@ -245,7 +264,7 @@ func qaShowColumns() []output.Column {
 		output.StatusColumn("status", "Status"),
 		{Name: "category", Header: "Category"},
 		{Name: "prs", Header: "PRs"},
-		{Name: "sessions", Header: "Sessions"},
+		{Name: "session_count", Header: "Sessions"},
 		{Name: "entered", Header: "Entered"},
 		{Name: "project", Header: "Project", Wide: true},
 		{Name: "completion", Header: "Completion", Wide: true},
@@ -260,7 +279,8 @@ func newQaShowCommand(app *App) *cobra.Command {
 		Aliases: []string{"get"},
 		Short:   "Show one QA ticket, its linked PRs, sessions and verdicts",
 		Long: "Show one QA ticket by tracker key, with its Linked PRs, Test Sessions,\n" +
-			"approvals, exemptions, rejections and tracker writes.\n\n" +
+			"approvals, exemptions, rejections and tracker writes. Each session\n" +
+			"carries `verified` (its generation is verified) and `saw_change`.\n\n" +
 			"A sub-task's key resolves to no Ticket; use the parent key.\n\n" +
 			cliexit.Help,
 		Args: exactArgs(1, "the ticket key, e.g. DT-123"),
@@ -340,7 +360,7 @@ func runQaShow(ctx context.Context, app *App, key string) error {
 	}
 
 	row := qaTicketRow("", c)
-	row["sessions"] = len(d.Sessions)
+	row["session_count"] = len(d.Sessions)
 	doc := &output.Doc{
 		Columns: cols,
 		Single:  true,
@@ -373,6 +393,12 @@ func runQaShow(ctx context.Context, app *App, key string) error {
 	if len(d.Sessions) > 0 {
 		fmt.Fprintln(app.Stdout, "\nSESSIONS")
 		if err := app.Out.Write(&output.Doc{Columns: qaSessionColumns(), Rows: qaSessionRows(d.Sessions)}); err != nil {
+			return err
+		}
+	}
+	if changes := qaChangeRows(d.Sessions); len(changes) > 0 {
+		fmt.Fprintln(app.Stdout, "\nCHANGES (unacknowledged)")
+		if err := app.Out.Write(&output.Doc{Columns: qaChangeColumns(), Rows: changes}); err != nil {
 			return err
 		}
 	}
@@ -475,6 +501,8 @@ func qaSessionColumns() []output.Column {
 		{Name: "owner", Header: "Owner"},
 		{Name: "environment", Header: "Environment"},
 		{Name: "generation", Header: "Generation"},
+		{Name: "verified", Header: "Verified"},
+		{Name: "saw_change", Header: "Saw change"},
 		{Name: "started", Header: "Started"},
 		{Name: "ended", Header: "Ended", Wide: true},
 		{Name: "end_reason", Header: "End reason", Wide: true},
@@ -495,6 +523,8 @@ func qaSessionRows(in []api.QaSessionDetail) []output.Row {
 			"owner":       s.Owner,
 			"environment": s.EnvironmentSlug,
 			"generation":  s.CurrentGeneration,
+			"verified":    s.CurrentGenerationVerified,
+			"saw_change":  s.SawChange,
 			"started":     s.StartedAt,
 			"ended":       s.EndedAt,
 			"end_reason":  endReason,
@@ -509,6 +539,10 @@ func qaSessionPayload(s api.QaSessionDetail) map[string]any {
 	for _, id := range s.PullRequestIds {
 		ids = append(ids, id.String())
 	}
+	timeline := make([]map[string]any, 0, len(s.Events))
+	for _, e := range s.Events {
+		timeline = append(timeline, qaEventPayload(e))
+	}
 	m := map[string]any{
 		"id":                    s.Id.String(),
 		"key":                   s.TicketKey,
@@ -518,13 +552,138 @@ func qaSessionPayload(s api.QaSessionDetail) map[string]any {
 		"environment_id":        s.EnvironmentId,
 		"start_generation":      s.StartGeneration,
 		"current_generation":    s.CurrentGeneration,
+		"verified":              s.CurrentGenerationVerified,
+		"saw_change":            s.SawChange,
 		"started_at":            s.StartedAt,
 		"ended_at":              s.EndedAt,
 		"end_reason":            s.EndReason,
 		"unacknowledged_change": s.UnacknowledgedChange,
 		"pull_request_ids":      ids,
+		"events":                timeline,
 	}
 	return m
+}
+
+func qaEventPayload(e api.QaSessionEvent) map[string]any {
+	return map[string]any{
+		"id":         e.Id.String(),
+		"at":         e.At,
+		"generation": e.Generation,
+		"kind":       string(e.Kind),
+		"before":     qaServicesPayload(e.Before),
+		"after":      qaServicesPayload(e.After),
+	}
+}
+
+// qaServicesPayload mirrors the wire's null-versus-list distinction: a
+// migration-source or redeploy event the server could not resolve carries no
+// service list at all.
+func qaServicesPayload(in *[]api.QaDeploymentService) any {
+	if in == nil {
+		return nil
+	}
+	out := make([]map[string]any, 0, len(*in))
+	for _, s := range *in {
+		out = append(out, map[string]any{
+			"repository_id": s.RepositoryId.String(),
+			"branch":        s.Branch,
+			"commit_sha":    s.CommitSha,
+			"image_tag":     s.ImageTag,
+		})
+	}
+	return out
+}
+
+// qaChangeColumns is the timeline's human view: what changed since the last
+// acknowledgement, one row per event.
+func qaChangeColumns() []output.Column {
+	return []output.Column{
+		{Name: "session", Header: "Session"},
+		{Name: "kind", Header: "Change"},
+		{Name: "generation", Header: "Generation"},
+		{Name: "detail", Header: "Detail", Wide: true},
+	}
+}
+
+// qaChangeRows is what still needs a look: the events after a session's last
+// acknowledgement, and only for a session the server flags and that is still
+// open. An ended session's timeline is history — there is no revision left to
+// decide against — so it never raises the banner.
+func qaChangeRows(in []api.QaSessionDetail) []output.Row {
+	out := make([]output.Row, 0)
+	for _, s := range in {
+		if !s.UnacknowledgedChange || s.State != api.QaSessionDetailStateOpen {
+			continue
+		}
+		events := qaUnacknowledgedEvents(s.Events)
+		if len(events) == 0 {
+			// The flag is the server's and the timeline can lag it, so a flagged
+			// session with nothing after the last ack still needs a look.
+			out = append(out, output.Row{
+				"session":    s.Id.String(),
+				"kind":       "unacknowledged",
+				"generation": s.CurrentGeneration,
+				"detail":     "no event after the last ack; re-read the environment",
+			})
+			continue
+		}
+		for _, e := range events {
+			out = append(out, output.Row{
+				"session":    s.Id.String(),
+				"kind":       string(e.Kind),
+				"generation": e.Generation,
+				"detail":     nilIfEmpty(qaEventDetail(e)),
+			})
+		}
+	}
+	return out
+}
+
+// qaUnacknowledgedEvents is the session's timeline after its last
+// acknowledgement: `ack` appends an `acknowledged` event and clears the flag,
+// so everything after that marker is what the operator still has to look at.
+func qaUnacknowledgedEvents(in []api.QaSessionEvent) []api.QaSessionEvent {
+	last := -1
+	for i, e := range in {
+		if e.Kind == api.QaSessionEventKindAcknowledged {
+			last = i
+		}
+	}
+	return in[last+1:]
+}
+
+// qaEventDetail renders a change for the table: a redeploy shows the
+// deployment it moved from and to, since that is what a verdict binds.
+func qaEventDetail(e api.QaSessionEvent) string {
+	switch e.Kind {
+	case api.QaSessionEventKindRedeploy:
+		return qaServicesLabel(e.Before) + " -> " + qaServicesLabel(e.After)
+	case api.QaSessionEventKindMigrationSourceChanged:
+		return "migration source moved"
+	case api.QaSessionEventKindUnverified:
+		return "deployment not verified"
+	default:
+		return ""
+	}
+}
+
+// qaServicesLabel is one side of a redeploy, as `branch@sha` per service.
+func qaServicesLabel(in *[]api.QaDeploymentService) string {
+	if in == nil || len(*in) == 0 {
+		return "-"
+	}
+	labels := make([]string, 0, len(*in))
+	for _, s := range *in {
+		label := s.Branch
+		if sha := derefString(s.CommitSha); sha != "" {
+			label += "@" + shortSHAString(sha)
+		}
+		if s.ImageTag != "" {
+			label += " (" + s.ImageTag + ")"
+		}
+		labels = append(labels, label)
+	}
+	return strings.Join(labels, ", ")
 }
 
 func qaApprovalColumns() []output.Column {

@@ -1664,6 +1664,12 @@
               }
             ]
           },
+          "currentGenerationVerified": {
+            "type": "boolean"
+          },
+          "sawChange": {
+            "type": "boolean"
+          },
           "unacknowledgedChange": {
             "type": "boolean"
           },
@@ -1687,8 +1693,41 @@
           "endReason",
           "startGeneration",
           "currentGeneration",
+          "currentGenerationVerified",
+          "sawChange",
           "unacknowledgedChange",
           "pullRequestIds"
+        ]
+      },
+      "QaDeploymentService": {
+        "type": "object",
+        "properties": {
+          "repositoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "branch": {
+            "type": "string"
+          },
+          "commitSha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "imageTag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repositoryId",
+          "branch",
+          "commitSha",
+          "imageTag"
         ]
       },
       "QaSessionEvent": {
@@ -1722,35 +1761,7 @@
               {
                 "type": "array",
                 "items": {
-                  "type": "object",
-                  "properties": {
-                    "repositoryId": {
-                      "type": "string",
-                      "format": "uuid"
-                    },
-                    "branch": {
-                      "type": "string"
-                    },
-                    "commitSha": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "imageTag": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "repositoryId",
-                    "branch",
-                    "commitSha",
-                    "imageTag"
-                  ]
+                  "$ref": "#/components/schemas/QaDeploymentService"
                 }
               },
               {
@@ -1763,35 +1774,7 @@
               {
                 "type": "array",
                 "items": {
-                  "type": "object",
-                  "properties": {
-                    "repositoryId": {
-                      "type": "string",
-                      "format": "uuid"
-                    },
-                    "branch": {
-                      "type": "string"
-                    },
-                    "commitSha": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "imageTag": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "repositoryId",
-                    "branch",
-                    "commitSha",
-                    "imageTag"
-                  ]
+                  "$ref": "#/components/schemas/QaDeploymentService"
                 }
               },
               {
@@ -1916,6 +1899,12 @@
               }
             ]
           },
+          "currentGenerationVerified": {
+            "type": "boolean"
+          },
+          "sawChange": {
+            "type": "boolean"
+          },
           "unacknowledgedChange": {
             "type": "boolean"
           },
@@ -1945,6 +1934,8 @@
           "endReason",
           "startGeneration",
           "currentGeneration",
+          "currentGenerationVerified",
+          "sawChange",
           "unacknowledgedChange",
           "pullRequestIds",
           "events"
@@ -2102,7 +2093,290 @@
           "activeSessions": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/QaSessionCard"
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "ticketKey": {
+                  "type": "string"
+                },
+                "state": {
+                  "enum": [
+                    "preparing",
+                    "open",
+                    "ended"
+                  ],
+                  "type": "string"
+                },
+                "environmentId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "environmentSlug": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "owner": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "startedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "x-native-type": "date"
+                },
+                "endedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "x-native-type": "date"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "endReason": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "approved",
+                        "rejected",
+                        "slept",
+                        "destroyed",
+                        "closed"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "startGeneration": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "currentGeneration": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "currentGenerationVerified": {
+                  "type": "boolean"
+                },
+                "sawChange": {
+                  "type": "boolean"
+                },
+                "unacknowledgedChange": {
+                  "type": "boolean"
+                },
+                "pullRequestIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "banners": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "x-native-type": "date"
+                      },
+                      "generation": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "kind": {
+                        "enum": [
+                          "redeploy",
+                          "migration-source-changed",
+                          "acknowledged",
+                          "unverified"
+                        ],
+                        "type": "string"
+                      },
+                      "services": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "repositoryId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "forgeRepo": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "branch": {
+                              "type": "string"
+                            },
+                            "beforeSha": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "afterSha": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "compareUrl": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "repositoryId",
+                            "forgeRepo",
+                            "branch",
+                            "beforeSha",
+                            "afterSha",
+                            "compareUrl"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "at",
+                      "generation",
+                      "kind",
+                      "services"
+                    ]
+                  }
+                },
+                "changeCount": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "id",
+                "ticketKey",
+                "state",
+                "environmentId",
+                "environmentSlug",
+                "owner",
+                "startedAt",
+                "endedAt",
+                "endReason",
+                "startGeneration",
+                "currentGeneration",
+                "currentGenerationVerified",
+                "sawChange",
+                "unacknowledgedChange",
+                "pullRequestIds",
+                "banners",
+                "changeCount"
+              ]
+            }
+          },
+          "environments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "requested",
+                    "building",
+                    "build_failed",
+                    "deploying",
+                    "running",
+                    "sleeping",
+                    "waking",
+                    "deploy_failed",
+                    "destroying",
+                    "destroyed",
+                    "canceled"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "slug",
+                "status"
+              ]
             }
           },
           "partitions": {
@@ -2163,6 +2437,7 @@
           "enteredQueueAt",
           "pullRequests",
           "activeSessions",
+          "environments",
           "partitions",
           "completion",
           "failedWrites"
@@ -2740,6 +3015,37 @@
               "$ref": "#/components/schemas/QaTicketCard"
             }
           },
+          "truncated": {
+            "type": "object",
+            "properties": {
+              "readyForQa": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "inTesting": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "recheck": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "upcoming": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "readyForQa",
+              "inTesting",
+              "recheck",
+              "upcoming"
+            ]
+          },
           "recentlyDecided": {
             "type": "object",
             "properties": {
@@ -2773,6 +3079,7 @@
           "inTesting",
           "recheck",
           "upcoming",
+          "truncated",
           "recentlyDecided"
         ]
       },

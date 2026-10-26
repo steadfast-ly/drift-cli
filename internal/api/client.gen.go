@@ -669,6 +669,78 @@ func (e QaSessionViewSessionState) Valid() bool {
 	}
 }
 
+// Defines values for QaTicketCardActiveSessionsBannersKind.
+const (
+	QaTicketCardActiveSessionsBannersKindAcknowledged           QaTicketCardActiveSessionsBannersKind = "acknowledged"
+	QaTicketCardActiveSessionsBannersKindMigrationSourceChanged QaTicketCardActiveSessionsBannersKind = "migration-source-changed"
+	QaTicketCardActiveSessionsBannersKindRedeploy               QaTicketCardActiveSessionsBannersKind = "redeploy"
+	QaTicketCardActiveSessionsBannersKindUnverified             QaTicketCardActiveSessionsBannersKind = "unverified"
+)
+
+// Valid indicates whether the value is a known member of the QaTicketCardActiveSessionsBannersKind enum.
+func (e QaTicketCardActiveSessionsBannersKind) Valid() bool {
+	switch e {
+	case QaTicketCardActiveSessionsBannersKindAcknowledged:
+		return true
+	case QaTicketCardActiveSessionsBannersKindMigrationSourceChanged:
+		return true
+	case QaTicketCardActiveSessionsBannersKindRedeploy:
+		return true
+	case QaTicketCardActiveSessionsBannersKindUnverified:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaTicketCardActiveSessionsEndReason.
+const (
+	QaTicketCardActiveSessionsEndReasonApproved  QaTicketCardActiveSessionsEndReason = "approved"
+	QaTicketCardActiveSessionsEndReasonClosed    QaTicketCardActiveSessionsEndReason = "closed"
+	QaTicketCardActiveSessionsEndReasonDestroyed QaTicketCardActiveSessionsEndReason = "destroyed"
+	QaTicketCardActiveSessionsEndReasonRejected  QaTicketCardActiveSessionsEndReason = "rejected"
+	QaTicketCardActiveSessionsEndReasonSlept     QaTicketCardActiveSessionsEndReason = "slept"
+)
+
+// Valid indicates whether the value is a known member of the QaTicketCardActiveSessionsEndReason enum.
+func (e QaTicketCardActiveSessionsEndReason) Valid() bool {
+	switch e {
+	case QaTicketCardActiveSessionsEndReasonApproved:
+		return true
+	case QaTicketCardActiveSessionsEndReasonClosed:
+		return true
+	case QaTicketCardActiveSessionsEndReasonDestroyed:
+		return true
+	case QaTicketCardActiveSessionsEndReasonRejected:
+		return true
+	case QaTicketCardActiveSessionsEndReasonSlept:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaTicketCardActiveSessionsState.
+const (
+	QaTicketCardActiveSessionsStateEnded     QaTicketCardActiveSessionsState = "ended"
+	QaTicketCardActiveSessionsStateOpen      QaTicketCardActiveSessionsState = "open"
+	QaTicketCardActiveSessionsStatePreparing QaTicketCardActiveSessionsState = "preparing"
+)
+
+// Valid indicates whether the value is a known member of the QaTicketCardActiveSessionsState enum.
+func (e QaTicketCardActiveSessionsState) Valid() bool {
+	switch e {
+	case QaTicketCardActiveSessionsStateEnded:
+		return true
+	case QaTicketCardActiveSessionsStateOpen:
+		return true
+	case QaTicketCardActiveSessionsStatePreparing:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for QaTicketCardCompletionState.
 const (
 	QaTicketCardCompletionStateDone    QaTicketCardCompletionState = "done"
@@ -681,6 +753,51 @@ func (e QaTicketCardCompletionState) Valid() bool {
 	case QaTicketCardCompletionStateDone:
 		return true
 	case QaTicketCardCompletionStatePending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaTicketCardEnvironmentsStatus.
+const (
+	QaTicketCardEnvironmentsStatusBuildFailed  QaTicketCardEnvironmentsStatus = "build_failed"
+	QaTicketCardEnvironmentsStatusBuilding     QaTicketCardEnvironmentsStatus = "building"
+	QaTicketCardEnvironmentsStatusCanceled     QaTicketCardEnvironmentsStatus = "canceled"
+	QaTicketCardEnvironmentsStatusDeployFailed QaTicketCardEnvironmentsStatus = "deploy_failed"
+	QaTicketCardEnvironmentsStatusDeploying    QaTicketCardEnvironmentsStatus = "deploying"
+	QaTicketCardEnvironmentsStatusDestroyed    QaTicketCardEnvironmentsStatus = "destroyed"
+	QaTicketCardEnvironmentsStatusDestroying   QaTicketCardEnvironmentsStatus = "destroying"
+	QaTicketCardEnvironmentsStatusRequested    QaTicketCardEnvironmentsStatus = "requested"
+	QaTicketCardEnvironmentsStatusRunning      QaTicketCardEnvironmentsStatus = "running"
+	QaTicketCardEnvironmentsStatusSleeping     QaTicketCardEnvironmentsStatus = "sleeping"
+	QaTicketCardEnvironmentsStatusWaking       QaTicketCardEnvironmentsStatus = "waking"
+)
+
+// Valid indicates whether the value is a known member of the QaTicketCardEnvironmentsStatus enum.
+func (e QaTicketCardEnvironmentsStatus) Valid() bool {
+	switch e {
+	case QaTicketCardEnvironmentsStatusBuildFailed:
+		return true
+	case QaTicketCardEnvironmentsStatusBuilding:
+		return true
+	case QaTicketCardEnvironmentsStatusCanceled:
+		return true
+	case QaTicketCardEnvironmentsStatusDeployFailed:
+		return true
+	case QaTicketCardEnvironmentsStatusDeploying:
+		return true
+	case QaTicketCardEnvironmentsStatusDestroyed:
+		return true
+	case QaTicketCardEnvironmentsStatusDestroying:
+		return true
+	case QaTicketCardEnvironmentsStatusRequested:
+		return true
+	case QaTicketCardEnvironmentsStatusRunning:
+		return true
+	case QaTicketCardEnvironmentsStatusSleeping:
+		return true
+	case QaTicketCardEnvironmentsStatusWaking:
 		return true
 	default:
 		return false
@@ -1327,6 +1444,14 @@ type QaCompletionEvaluation struct {
 	TicketKey   string        `json:"ticketKey"`
 }
 
+// QaDeploymentService defines model for QaDeploymentService.
+type QaDeploymentService struct {
+	Branch       string             `json:"branch"`
+	CommitSha    *string            `json:"commitSha"`
+	ImageTag     string             `json:"imageTag"`
+	RepositoryId openapi_types.UUID `json:"repositoryId"`
+}
+
 // QaExemptionDetail defines model for QaExemptionDetail.
 type QaExemptionDetail struct {
 	At            time.Time              `json:"at"`
@@ -1462,7 +1587,13 @@ type QaQueue struct {
 		Approvals  []QaApprovalDetail  `json:"approvals"`
 		Exemptions []QaExemptionDetail `json:"exemptions"`
 	} `json:"recentlyDecided"`
-	Recheck  []QaTicketCard `json:"recheck"`
+	Recheck   []QaTicketCard `json:"recheck"`
+	Truncated struct {
+		InTesting  int `json:"inTesting"`
+		ReadyForQa int `json:"readyForQa"`
+		Recheck    int `json:"recheck"`
+		Upcoming   int `json:"upcoming"`
+	} `json:"truncated"`
 	Upcoming []QaTicketCard `json:"upcoming"`
 }
 
@@ -1519,19 +1650,21 @@ type QaSendOutcome struct {
 
 // QaSessionCard defines model for QaSessionCard.
 type QaSessionCard struct {
-	CurrentGeneration    *int                    `json:"currentGeneration"`
-	EndReason            *QaSessionCardEndReason `json:"endReason"`
-	EndedAt              *time.Time              `json:"endedAt"`
-	EnvironmentId        *openapi_types.UUID     `json:"environmentId"`
-	EnvironmentSlug      *string                 `json:"environmentSlug"`
-	Id                   openapi_types.UUID      `json:"id"`
-	Owner                *string                 `json:"owner"`
-	PullRequestIds       []openapi_types.UUID    `json:"pullRequestIds"`
-	StartGeneration      *int                    `json:"startGeneration"`
-	StartedAt            time.Time               `json:"startedAt"`
-	State                QaSessionCardState      `json:"state"`
-	TicketKey            string                  `json:"ticketKey"`
-	UnacknowledgedChange bool                    `json:"unacknowledgedChange"`
+	CurrentGeneration         *int                    `json:"currentGeneration"`
+	CurrentGenerationVerified bool                    `json:"currentGenerationVerified"`
+	EndReason                 *QaSessionCardEndReason `json:"endReason"`
+	EndedAt                   *time.Time              `json:"endedAt"`
+	EnvironmentId             *openapi_types.UUID     `json:"environmentId"`
+	EnvironmentSlug           *string                 `json:"environmentSlug"`
+	Id                        openapi_types.UUID      `json:"id"`
+	Owner                     *string                 `json:"owner"`
+	PullRequestIds            []openapi_types.UUID    `json:"pullRequestIds"`
+	SawChange                 bool                    `json:"sawChange"`
+	StartGeneration           *int                    `json:"startGeneration"`
+	StartedAt                 time.Time               `json:"startedAt"`
+	State                     QaSessionCardState      `json:"state"`
+	TicketKey                 string                  `json:"ticketKey"`
+	UnacknowledgedChange      bool                    `json:"unacknowledgedChange"`
 }
 
 // QaSessionCardEndReason defines model for QaSessionCard.EndReason.
@@ -1542,20 +1675,22 @@ type QaSessionCardState string
 
 // QaSessionDetail defines model for QaSessionDetail.
 type QaSessionDetail struct {
-	CurrentGeneration    *int                      `json:"currentGeneration"`
-	EndReason            *QaSessionDetailEndReason `json:"endReason"`
-	EndedAt              *time.Time                `json:"endedAt"`
-	EnvironmentId        *openapi_types.UUID       `json:"environmentId"`
-	EnvironmentSlug      *string                   `json:"environmentSlug"`
-	Events               []QaSessionEvent          `json:"events"`
-	Id                   openapi_types.UUID        `json:"id"`
-	Owner                *string                   `json:"owner"`
-	PullRequestIds       []openapi_types.UUID      `json:"pullRequestIds"`
-	StartGeneration      *int                      `json:"startGeneration"`
-	StartedAt            time.Time                 `json:"startedAt"`
-	State                QaSessionDetailState      `json:"state"`
-	TicketKey            string                    `json:"ticketKey"`
-	UnacknowledgedChange bool                      `json:"unacknowledgedChange"`
+	CurrentGeneration         *int                      `json:"currentGeneration"`
+	CurrentGenerationVerified bool                      `json:"currentGenerationVerified"`
+	EndReason                 *QaSessionDetailEndReason `json:"endReason"`
+	EndedAt                   *time.Time                `json:"endedAt"`
+	EnvironmentId             *openapi_types.UUID       `json:"environmentId"`
+	EnvironmentSlug           *string                   `json:"environmentSlug"`
+	Events                    []QaSessionEvent          `json:"events"`
+	Id                        openapi_types.UUID        `json:"id"`
+	Owner                     *string                   `json:"owner"`
+	PullRequestIds            []openapi_types.UUID      `json:"pullRequestIds"`
+	SawChange                 bool                      `json:"sawChange"`
+	StartGeneration           *int                      `json:"startGeneration"`
+	StartedAt                 time.Time                 `json:"startedAt"`
+	State                     QaSessionDetailState      `json:"state"`
+	TicketKey                 string                    `json:"ticketKey"`
+	UnacknowledgedChange      bool                      `json:"unacknowledgedChange"`
 }
 
 // QaSessionDetailEndReason defines model for QaSessionDetail.EndReason.
@@ -1566,22 +1701,12 @@ type QaSessionDetailState string
 
 // QaSessionEvent defines model for QaSessionEvent.
 type QaSessionEvent struct {
-	After *struct {
-		Branch       string             `json:"branch"`
-		CommitSha    *string            `json:"commitSha"`
-		ImageTag     string             `json:"imageTag"`
-		RepositoryId openapi_types.UUID `json:"repositoryId"`
-	} `json:"after"`
-	At     time.Time `json:"at"`
-	Before *struct {
-		Branch       string             `json:"branch"`
-		CommitSha    *string            `json:"commitSha"`
-		ImageTag     string             `json:"imageTag"`
-		RepositoryId openapi_types.UUID `json:"repositoryId"`
-	} `json:"before"`
-	Generation int                `json:"generation"`
-	Id         openapi_types.UUID `json:"id"`
-	Kind       QaSessionEventKind `json:"kind"`
+	After      *[]QaDeploymentService `json:"after"`
+	At         time.Time              `json:"at"`
+	Before     *[]QaDeploymentService `json:"before"`
+	Generation int                    `json:"generation"`
+	Id         openapi_types.UUID     `json:"id"`
+	Kind       QaSessionEventKind     `json:"kind"`
 }
 
 // QaSessionEventKind defines model for QaSessionEvent.Kind.
@@ -1615,13 +1740,49 @@ type QaSessionViewSessionState string
 
 // QaTicketCard defines model for QaTicketCard.
 type QaTicketCard struct {
-	ActiveSessions []QaSessionCard `json:"activeSessions"`
-	Completion     *struct {
+	ActiveSessions []struct {
+		Banners []struct {
+			At         time.Time                             `json:"at"`
+			Generation int                                   `json:"generation"`
+			Id         openapi_types.UUID                    `json:"id"`
+			Kind       QaTicketCardActiveSessionsBannersKind `json:"kind"`
+			Services   []struct {
+				AfterSha     *string            `json:"afterSha"`
+				BeforeSha    *string            `json:"beforeSha"`
+				Branch       string             `json:"branch"`
+				CompareUrl   *string            `json:"compareUrl"`
+				ForgeRepo    *string            `json:"forgeRepo"`
+				RepositoryId openapi_types.UUID `json:"repositoryId"`
+			} `json:"services"`
+		} `json:"banners"`
+		ChangeCount               int                                  `json:"changeCount"`
+		CurrentGeneration         *int                                 `json:"currentGeneration"`
+		CurrentGenerationVerified bool                                 `json:"currentGenerationVerified"`
+		EndReason                 *QaTicketCardActiveSessionsEndReason `json:"endReason"`
+		EndedAt                   *time.Time                           `json:"endedAt"`
+		EnvironmentId             *openapi_types.UUID                  `json:"environmentId"`
+		EnvironmentSlug           *string                              `json:"environmentSlug"`
+		Id                        openapi_types.UUID                   `json:"id"`
+		Owner                     *string                              `json:"owner"`
+		PullRequestIds            []openapi_types.UUID                 `json:"pullRequestIds"`
+		SawChange                 bool                                 `json:"sawChange"`
+		StartGeneration           *int                                 `json:"startGeneration"`
+		StartedAt                 time.Time                            `json:"startedAt"`
+		State                     QaTicketCardActiveSessionsState      `json:"state"`
+		TicketKey                 string                               `json:"ticketKey"`
+		UnacknowledgedChange      bool                                 `json:"unacknowledgedChange"`
+	} `json:"activeSessions"`
+	Completion *struct {
 		Current bool                        `json:"current"`
 		Epoch   int                         `json:"epoch"`
 		State   QaTicketCardCompletionState `json:"state"`
 	} `json:"completion"`
-	EnteredQueueAt               *time.Time                 `json:"enteredQueueAt"`
+	EnteredQueueAt *time.Time `json:"enteredQueueAt"`
+	Environments   []struct {
+		Id     openapi_types.UUID             `json:"id"`
+		Slug   string                         `json:"slug"`
+		Status QaTicketCardEnvironmentsStatus `json:"status"`
+	} `json:"environments"`
 	FailedWrites                 []QaFailedTrackerWrite     `json:"failedWrites"`
 	InTrackerApprovedUnconfirmed bool                       `json:"inTrackerApprovedUnconfirmed"`
 	Key                          string                     `json:"key"`
@@ -1636,8 +1797,20 @@ type QaTicketCard struct {
 	VerdictEpoch                 int                        `json:"verdictEpoch"`
 }
 
+// QaTicketCardActiveSessionsBannersKind defines model for QaTicketCard.ActiveSessions.Banners.Kind.
+type QaTicketCardActiveSessionsBannersKind string
+
+// QaTicketCardActiveSessionsEndReason defines model for QaTicketCard.ActiveSessions.EndReason.
+type QaTicketCardActiveSessionsEndReason string
+
+// QaTicketCardActiveSessionsState defines model for QaTicketCard.ActiveSessions.State.
+type QaTicketCardActiveSessionsState string
+
 // QaTicketCardCompletionState defines model for QaTicketCard.Completion.State.
 type QaTicketCardCompletionState string
+
+// QaTicketCardEnvironmentsStatus defines model for QaTicketCard.Environments.Status.
+type QaTicketCardEnvironmentsStatus string
 
 // QaTicketCardStatusCategory defines model for QaTicketCard.StatusCategory.
 type QaTicketCardStatusCategory string
