@@ -3,8 +3,10 @@ name: drift-cli
 description: >
   Drive the drift CLI for managing preview environments and promoting releases.
   Use when: creating or managing preview environments, promoting to rc or prd,
-  extending an environment, checking release status, "create a preview env",
-  "promote to rc", "promote to prd", "extend an environment", drift CLI usage.
+  extending an environment, checking release status, working the QA queue,
+  "create a preview env", "promote to rc", "promote to prd", "extend an
+  environment", "approve the QA session", "what is ready for QA", drift CLI
+  usage.
 ---
 
 # drift CLI -- agent skill
@@ -67,6 +69,23 @@ drift release cancel <promotion-id>   Fail a stuck promotion (--reason <text>, -
 drift repo list              List repositories
 drift repo branches <id>     List a repository's recent branches
 
+drift qa list                List the QA queue (ready, testing, recheck, upcoming)
+drift qa show <key>          Show a ticket: linked PRs, sessions, verdicts
+drift qa health              QA sync, outbox and tracker health (operators)
+drift qa start <key>         Start a session (--prs repo#n,... | --env <slug>)
+drift qa approve <session>   Approve (--revision N, --retested | --no-retest REASON, --note, --file)
+drift qa reject <session>    Reject (--revision N, --comment TEXT, --file)
+drift qa exempt (--pr repo#n | --ticket KEY) --reason TEXT
+drift qa unexempt <exemption-id>
+drift qa revoke (--approval <id> | --exemption <id>)
+drift qa link <key> <repo#n>
+drift qa unlink <key> <repo#n>
+drift qa send <key>          Move the ticket back to the queue
+drift qa comment <key> --body TEXT [--file ...]
+drift qa ack <session>       Acknowledge a redeploy
+drift qa end <session>       Close the session (API: close; --yes)
+drift qa carryover <key>     Carry pre-rollout PRs over at their heads
+
 drift audit list             Query the audit log
 drift audit actors           List distinct audit-log actors
 
@@ -127,6 +146,13 @@ The following commands are destructive, irreversible, or security-sensitive:
 - `drift release promote prd hotfix`
 - `drift release cancel` (fails a promotion that is stuck; it cannot be
   resumed -- the services have to be promoted again)
+- `drift qa approve`, `drift qa reject` (record a verdict, write it to the
+  tracker and post the `drift/qa` commit status)
+- `drift qa start` (can rebuild a developer's environment under them)
+- `drift qa exempt`, `drift qa unexempt`, `drift qa revoke` (change what the
+  gate accepts), `drift qa unlink`, `drift qa send`, `drift qa carryover`
+- `drift qa end` (closes a Test Session without a verdict; it cannot be
+  reopened, only started again)
 - Any non-GET `drift api` call -- require the human to approve the exact
   method, path, and body before executing.
 
@@ -244,6 +270,67 @@ from the profile's `e2e.ref`.
 `environments.e2e-read`, and otherwise falls back to polling the audit
 log for the run's completion entry; either way exit 0 on pass, non-zero
 on failure.
+
+### Work the QA queue
+
+```bash
+# What is ready, in machine form. A capped section's omitted count is under
+# `truncated` (`ready`, `testing`, `recheck`, `upcoming`); the table prints
+# the same as a `+N more` row under that section.
+drift qa list --json section,key,status,prs
+drift qa list -o json | jq .truncated
+
+# Read the session revision before deciding: `verified` is whether the
+# generation it runs is verified, `saw_change` whether it ever saw a change
+# (it outlives the acknowledgement).
+drift qa show DT-123 -o json \
+  | jq '.sessions[] | {id, state, current_generation, verified, saw_change}'
+
+# What moved under the session since the last ack (redeploy, migration
+# source, unverified): only an open session the server still flags, then the
+# timeline after the last `acknowledged` event. A flagged session with nothing
+# after the ack still needs a look, so it reports the `unacknowledged` sentinel
+# the table prints.
+drift qa show DT-123 -o json \
+  | jq '.sessions[] | select(.state == "open" and .unacknowledged_change)
+        | . as $s
+        | ($s.events | map(.kind == "acknowledged") | rindex(true)) as $i
+        | ($s.events[($i // -1) + 1:]) as $unacked
+        | if ($unacked | length) == 0
+          then {kind: "unacknowledged", generation: $s.current_generation}
+          else $unacked[] | {kind, generation}
+          end'
+
+# A verdict binds that revision; evidence rides along as base64 JSON.
+drift qa approve <session> --revision 3 --retested --file shot.png --yes
+drift qa reject  <session> --revision 3 --comment "crashes on save" --yes
+```
+
+`drift qa` is gated on the server advertising `qa`; approve, reject, unlink
+and carryover additionally need `qa.approve`, which requires the `qa` role.
+Approve needs `--retested` or `--no-retest <reason>`; without either it
+refuses, and says so when the session saw a change (a reason is then
+required).
+A 409 carrying `data.revision` means the environment redeployed: re-read with
+`drift qa show` and decide against the new revision instead of retrying. A
+502 on an approver action is the server failing to confirm the role -- print
+it as-is and tell the human, do not loop. Attachments are capped at 10 files
+and 7 MiB in total, checked client-side before anything is sent.
+
+A monorepo PR is several repository rows: `repo#n` names the forge PR, so
+`link`, `unlink` and `exempt --pr` act on every one of its rows. A UUID names
+exactly one row -- the precise address, and the retry target for a single row.
+Every row is attempted even when an earlier one fails; the exit code is the
+first failure's, and `-o json` carries every row under `rows` with its
+`outcome` (`ok`, `refused`, `unknown`, `not_attempted`), the row's result or
+the failure's `exit_code`/`message`/`hint`. `partial` is true when at least
+one row is `ok` and at least one is not; it does not say whether an `unknown`
+row committed. A `refused` row did not change; an `unknown` row may have --
+check it with `drift qa show <key>`. Interrupting a run stops it: the row in
+flight stays `unknown` and the rows never sent are `not_attempted`, so nothing
+changed for them. Retry the failed rows by UUID, not by re-running `repo#n`,
+which repeats the rows that already succeeded. The exemption ids to revoke are
+under `exemption_ids`.
 
 ### Audit who did something
 

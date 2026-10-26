@@ -49,6 +49,7 @@ nav:
   - Guides:
       - Preview environments: guides/preview-envs.md
       - Promotions: guides/promotions.md
+      - QA queue: guides/qa.md
       - CI and automation: guides/automation.md
       - LLM agents: guides/agents.md
       - Updating: guides/updating.md

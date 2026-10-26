@@ -53,6 +53,25 @@ each URN to the appropriate exit code and hint.
 | `urn:drift:problem:service-unavailable` | 503 | 1 | The server is temporarily unavailable. Retry after a short wait. |
 | `urn:drift:problem:internal-error` | 500 | 1 | An unexpected server error. Report it if it persists. |
 
+## QA verdicts
+
+`drift qa approve` and `drift qa reject` bind the session revision they were
+shown. Three responses are specific to that surface:
+
+- **409 with `data.revision`** -- the environment redeployed since the
+  revision was read. The CLI prints the new revision and tells you to
+  re-check with `drift qa show`; do not retry the old number.
+- **413** -- the request body exceeded the mount's 10 MB limit. The CLI
+  already enforces the server's attachment caps (at most 10 files, 7 MiB of
+  decoded bytes in total), so a 413 means something outside `--file` grew the
+  body. Reduce the attachments and retry.
+- **502** -- the server could not confirm the caller's `qa` role with
+  gatehouse. The message and detail are printed verbatim; the approval was
+  not recorded, and retrying immediately usually fails the same way.
+
+A `403` on an approver action means the credential's role is below `qa`
+(`admin` also satisfies it). Re-authenticating will not help.
+
 ## Rate limiting
 
 The API limits per credential with two buckets (defaults: 120 reads + 20

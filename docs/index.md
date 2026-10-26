@@ -7,7 +7,7 @@ release-management service. One binary talks to every deployment: a named
 
 ## What drift does
 
-drift manages two things:
+drift manages three things:
 
 - **Preview environments** -- ephemeral, branch-scoped deployments for testing
   and review. Create them from a branch, extend their lifetime, swap branches,
@@ -15,6 +15,9 @@ drift manages two things:
 - **Release promotions** -- moving service images through the `stg`, `rc` and
   `prd` channels, with concurrency guards, elevation requirements and
   audit logging.
+- **QA queue** -- on deployments that enable the module, the Tickets the
+  tracker sends to QA, their Linked PRs and the verdicts that post
+  `drift/qa` on the covered commits.
 
 ## 5-minute tour
 
@@ -45,6 +48,7 @@ drift release status
 | Understand contexts and credentials | [Contexts and authentication](concepts/contexts-auth.md) |
 | Create and manage preview environments | [Preview environments](guides/preview-envs.md) |
 | Promote services through stg/rc/prd | [Promotions](guides/promotions.md) |
+| Work the QA queue | [QA queue](guides/qa.md) |
 | Use drift in CI or with an LLM agent | [CI and automation](guides/automation.md) |
 | Look up a command | [Command reference](reference/commands/index.md) |
 | Diagnose a problem | [Troubleshooting](troubleshooting.md) |

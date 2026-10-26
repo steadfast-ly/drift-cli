@@ -64,6 +64,11 @@
               },
               "event": {
                 "type": "string"
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
               }
             },
             "required": [
@@ -600,6 +605,7 @@
               "read-only",
               "preview",
               "release",
+              "qa",
               "admin"
             ],
             "type": "string"
@@ -1403,6 +1409,2474 @@
         "required": [
           "actors"
         ]
+      },
+      "QaPullRequestCard": {
+        "type": "object",
+        "properties": {
+          "pullRequestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "repositoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "forgeRepo": {
+            "type": "string"
+          },
+          "number": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "url": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "headBranch": {
+            "type": "string"
+          },
+          "headSha": {
+            "type": "string"
+          },
+          "isOpen": {
+            "type": "boolean"
+          },
+          "mergedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "x-native-type": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mergeHeadSha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewState": {
+            "enum": [
+              "pending",
+              "approved",
+              "changes_requested"
+            ],
+            "type": "string"
+          },
+          "gate": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "enum": [
+                      "pending",
+                      "success",
+                      "failure",
+                      "error"
+                    ],
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "targetUrl": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "state",
+                  "description",
+                  "targetUrl"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "approvedAtHead": {
+            "type": "boolean"
+          },
+          "approvedAtOtherHead": {
+            "type": "boolean"
+          },
+          "exemptReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "carriedAtHead": {
+            "type": "boolean"
+          },
+          "mergedBeforeQa": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "pullRequestId",
+          "repositoryId",
+          "forgeRepo",
+          "number",
+          "url",
+          "title",
+          "headBranch",
+          "headSha",
+          "isOpen",
+          "mergedAt",
+          "mergeHeadSha",
+          "reviewState",
+          "gate",
+          "approvedAtHead",
+          "approvedAtOtherHead",
+          "exemptReason",
+          "carriedAtHead",
+          "mergedBeforeQa"
+        ]
+      },
+      "QaSessionCard": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ticketKey": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "preparing",
+              "open",
+              "ended"
+            ],
+            "type": "string"
+          },
+          "environmentId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "environmentSlug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "x-native-type": "date"
+          },
+          "endedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "x-native-type": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "endReason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "approved",
+                  "rejected",
+                  "slept",
+                  "destroyed",
+                  "closed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "startGeneration": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currentGeneration": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currentGenerationVerified": {
+            "type": "boolean"
+          },
+          "sawChange": {
+            "type": "boolean"
+          },
+          "unacknowledgedChange": {
+            "type": "boolean"
+          },
+          "pullRequestIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "ticketKey",
+          "state",
+          "environmentId",
+          "environmentSlug",
+          "owner",
+          "startedAt",
+          "endedAt",
+          "endReason",
+          "startGeneration",
+          "currentGeneration",
+          "currentGenerationVerified",
+          "sawChange",
+          "unacknowledgedChange",
+          "pullRequestIds"
+        ]
+      },
+      "QaDeploymentService": {
+        "type": "object",
+        "properties": {
+          "repositoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "branch": {
+            "type": "string"
+          },
+          "commitSha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "imageTag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repositoryId",
+          "branch",
+          "commitSha",
+          "imageTag"
+        ]
+      },
+      "QaSessionEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "x-native-type": "date"
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "kind": {
+            "enum": [
+              "redeploy",
+              "migration-source-changed",
+              "acknowledged",
+              "unverified"
+            ],
+            "type": "string"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/QaDeploymentService"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "after": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/QaDeploymentService"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "at",
+          "generation",
+          "kind",
+          "before",
+          "after"
+        ]
+      },
+      "QaSessionDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ticketKey": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "preparing",
+              "open",
+              "ended"
+            ],
+            "type": "string"
+          },
+          "environmentId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "environmentSlug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "x-native-type": "date"
+          },
+          "endedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "x-native-type": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "endReason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "approved",
+                  "rejected",
+                  "slept",
+                  "destroyed",
+                  "closed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "startGeneration": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currentGeneration": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currentGenerationVerified": {
+            "type": "boolean"
+          },
+          "sawChange": {
+            "type": "boolean"
+          },
+          "unacknowledgedChange": {
+            "type": "boolean"
+          },
+          "pullRequestIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaSessionEvent"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "ticketKey",
+          "state",
+          "environmentId",
+          "environmentSlug",
+          "owner",
+          "startedAt",
+          "endedAt",
+          "endReason",
+          "startGeneration",
+          "currentGeneration",
+          "currentGenerationVerified",
+          "sawChange",
+          "unacknowledgedChange",
+          "pullRequestIds",
+          "events"
+        ]
+      },
+      "QaFailedTrackerWrite": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "enum": [
+              "attach",
+              "comment",
+              "move"
+            ],
+            "type": "string"
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "lastOutcome": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ambiguous",
+                  "definite"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lastError": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "attempts",
+          "lastOutcome",
+          "lastError"
+        ]
+      },
+      "QaPartition": {
+        "type": "object",
+        "properties": {
+          "pullRequestIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "sessionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "pullRequestIds",
+          "sessionId"
+        ]
+      },
+      "QaTicketCard": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "projectKey": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "statusId": {
+            "type": "string"
+          },
+          "statusName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "statusCategory": {
+            "enum": [
+              "todo",
+              "in-progress",
+              "done"
+            ],
+            "type": "string"
+          },
+          "inTrackerApprovedUnconfirmed": {
+            "type": "boolean"
+          },
+          "verdictEpoch": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "enteredQueueAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "x-native-type": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pullRequests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaPullRequestCard"
+            }
+          },
+          "activeSessions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "ticketKey": {
+                  "type": "string"
+                },
+                "state": {
+                  "enum": [
+                    "preparing",
+                    "open",
+                    "ended"
+                  ],
+                  "type": "string"
+                },
+                "environmentId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "environmentSlug": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "owner": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "startedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "x-native-type": "date"
+                },
+                "endedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "x-native-type": "date"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "endReason": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "approved",
+                        "rejected",
+                        "slept",
+                        "destroyed",
+                        "closed"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "startGeneration": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "currentGeneration": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "currentGenerationVerified": {
+                  "type": "boolean"
+                },
+                "sawChange": {
+                  "type": "boolean"
+                },
+                "unacknowledgedChange": {
+                  "type": "boolean"
+                },
+                "pullRequestIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "banners": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "x-native-type": "date"
+                      },
+                      "generation": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "kind": {
+                        "enum": [
+                          "redeploy",
+                          "migration-source-changed",
+                          "acknowledged",
+                          "unverified"
+                        ],
+                        "type": "string"
+                      },
+                      "services": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "repositoryId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "forgeRepo": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "branch": {
+                              "type": "string"
+                            },
+                            "beforeSha": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "afterSha": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "compareUrl": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "repositoryId",
+                            "forgeRepo",
+                            "branch",
+                            "beforeSha",
+                            "afterSha",
+                            "compareUrl"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "at",
+                      "generation",
+                      "kind",
+                      "services"
+                    ]
+                  }
+                },
+                "changeCount": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "id",
+                "ticketKey",
+                "state",
+                "environmentId",
+                "environmentSlug",
+                "owner",
+                "startedAt",
+                "endedAt",
+                "endReason",
+                "startGeneration",
+                "currentGeneration",
+                "currentGenerationVerified",
+                "sawChange",
+                "unacknowledgedChange",
+                "pullRequestIds",
+                "banners",
+                "changeCount"
+              ]
+            }
+          },
+          "environments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "requested",
+                    "building",
+                    "build_failed",
+                    "deploying",
+                    "running",
+                    "sleeping",
+                    "waking",
+                    "deploy_failed",
+                    "destroying",
+                    "destroyed",
+                    "canceled"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "slug",
+                "status"
+              ]
+            }
+          },
+          "partitions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaPartition"
+            }
+          },
+          "completion": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "enum": [
+                      "pending",
+                      "done"
+                    ],
+                    "type": "string"
+                  },
+                  "epoch": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "current": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "state",
+                  "epoch",
+                  "current"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "failedWrites": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaFailedTrackerWrite"
+            }
+          }
+        },
+        "required": [
+          "key",
+          "projectKey",
+          "summary",
+          "url",
+          "statusId",
+          "statusName",
+          "statusCategory",
+          "inTrackerApprovedUnconfirmed",
+          "verdictEpoch",
+          "enteredQueueAt",
+          "pullRequests",
+          "activeSessions",
+          "environments",
+          "partitions",
+          "completion",
+          "failedWrites"
+        ]
+      },
+      "QaApprovalDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ticketKey": {
+            "type": "string"
+          },
+          "approver": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "retested": {
+            "type": "boolean"
+          },
+          "noRetestReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "x-native-type": "date"
+          },
+          "revokedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "x-native-type": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revokedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revokeReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pullRequests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pullRequestId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "forgeRepo": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "sha": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "pullRequestId",
+                "forgeRepo",
+                "number",
+                "sha"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "ticketKey",
+          "approver",
+          "generation",
+          "retested",
+          "noRetestReason",
+          "note",
+          "at",
+          "revokedAt",
+          "revokedBy",
+          "revokeReason",
+          "pullRequests"
+        ]
+      },
+      "QaRejectionDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rejectedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comment": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "x-native-type": "date"
+          },
+          "pullRequests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pullRequestId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "forgeRepo": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "sha": {
+                  "type": "string"
+                },
+                "retiredAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "x-native-type": "date"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "retiredReason": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "new-head",
+                        "exempted",
+                        "approved"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "pullRequestId",
+                "forgeRepo",
+                "number",
+                "sha",
+                "retiredAt",
+                "retiredReason"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "rejectedBy",
+          "comment",
+          "at",
+          "pullRequests"
+        ]
+      },
+      "QaExemptionDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scope": {
+            "enum": [
+              "pr",
+              "ticket"
+            ],
+            "type": "string"
+          },
+          "ticketKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pullRequestId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "forgeRepo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "grantedBy": {
+            "type": "string"
+          },
+          "grantedAuto": {
+            "type": "boolean"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "x-native-type": "date"
+          },
+          "revokedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "x-native-type": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revokedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "scope",
+          "ticketKey",
+          "pullRequestId",
+          "forgeRepo",
+          "number",
+          "reason",
+          "grantedBy",
+          "grantedAuto",
+          "at",
+          "revokedAt",
+          "revokedBy"
+        ]
+      },
+      "QaTrackerWriteDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "epoch": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "kind": {
+            "enum": [
+              "attach",
+              "comment",
+              "move"
+            ],
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "pending",
+              "claimed",
+              "done",
+              "failed",
+              "cancelled"
+            ],
+            "type": "string"
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "lastOutcome": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ambiguous",
+                  "definite"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lastError": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sentAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "x-native-type": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "completedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "x-native-type": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nextAttemptAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "x-native-type": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "seq",
+          "epoch",
+          "kind",
+          "state",
+          "attempts",
+          "lastOutcome",
+          "lastError",
+          "sentAt",
+          "completedAt",
+          "nextAttemptAt"
+        ]
+      },
+      "QaTicketDetail": {
+        "type": "object",
+        "properties": {
+          "card": {
+            "$ref": "#/components/schemas/QaTicketCard"
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaSessionDetail"
+            }
+          },
+          "approvals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaApprovalDetail"
+            }
+          },
+          "rejections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaRejectionDetail"
+            }
+          },
+          "exemptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaExemptionDetail"
+            }
+          },
+          "trackerWrites": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaTrackerWriteDetail"
+            }
+          }
+        },
+        "required": [
+          "card",
+          "sessions",
+          "approvals",
+          "rejections",
+          "exemptions",
+          "trackerWrites"
+        ]
+      },
+      "QaCarryOverCandidate": {
+        "type": "object",
+        "properties": {
+          "ticketKey": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "statusId": {
+            "type": "string"
+          },
+          "pullRequests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pullRequestId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "forgeRepo": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "headSha": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "pullRequestId",
+                "forgeRepo",
+                "number",
+                "headSha",
+                "title"
+              ]
+            }
+          }
+        },
+        "required": [
+          "ticketKey",
+          "summary",
+          "statusId",
+          "pullRequests"
+        ]
+      },
+      "QaQueue": {
+        "type": "object",
+        "properties": {
+          "readyForQa": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaTicketCard"
+            }
+          },
+          "inTesting": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaTicketCard"
+            }
+          },
+          "recheck": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaTicketCard"
+            }
+          },
+          "upcoming": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaTicketCard"
+            }
+          },
+          "truncated": {
+            "type": "object",
+            "properties": {
+              "readyForQa": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "inTesting": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "recheck": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "upcoming": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "readyForQa",
+              "inTesting",
+              "recheck",
+              "upcoming"
+            ]
+          },
+          "recentlyDecided": {
+            "type": "object",
+            "properties": {
+              "approvals": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/QaApprovalDetail"
+                }
+              },
+              "exemptions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/QaExemptionDetail"
+                }
+              }
+            },
+            "required": [
+              "approvals",
+              "exemptions"
+            ]
+          },
+          "carryOver": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaCarryOverCandidate"
+            }
+          }
+        },
+        "required": [
+          "readyForQa",
+          "inTesting",
+          "recheck",
+          "upcoming",
+          "truncated",
+          "recentlyDecided"
+        ]
+      },
+      "QaHealth": {
+        "type": "object",
+        "properties": {
+          "phases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "phase": {
+                  "type": "string"
+                },
+                "cursor": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "claimedUntil": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "x-native-type": "date"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "lastSuccessAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "x-native-type": "date"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "lastError": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "phase",
+                "cursor",
+                "claimedUntil",
+                "lastSuccessAt",
+                "lastError"
+              ]
+            }
+          },
+          "outbox": {
+            "type": "object",
+            "properties": {
+              "pending": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "claimed": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "failed": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "pending",
+              "claimed",
+              "failed"
+            ]
+          },
+          "evaluationAlerts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ticketKey": {
+                  "type": "string"
+                },
+                "attempts": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "ticketKey",
+                "attempts"
+              ]
+            }
+          },
+          "tracker": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "lastSuccessAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "x-native-type": "date"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lastError": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "lastSuccessAt",
+                  "lastError"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "phases",
+          "outbox",
+          "evaluationAlerts",
+          "tracker"
+        ]
+      },
+      "QaSessionView": {
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "ticketKey": {
+                "type": "string"
+              },
+              "environmentId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "pullRequestIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "ownerUserId": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "owner": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "state": {
+                "enum": [
+                  "preparing",
+                  "open",
+                  "ended"
+                ],
+                "type": "string"
+              },
+              "startedAt": {
+                "type": "string",
+                "format": "date-time",
+                "x-native-type": "date"
+              },
+              "endedAt": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "x-native-type": "date"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "endReason": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "approved",
+                      "rejected",
+                      "slept",
+                      "destroyed",
+                      "closed"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "startGeneration": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "currentGeneration": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "unacknowledgedChange": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "ticketKey",
+              "environmentId",
+              "pullRequestIds",
+              "ownerUserId",
+              "owner",
+              "state",
+              "startedAt",
+              "endedAt",
+              "endReason",
+              "startGeneration",
+              "currentGeneration",
+              "unacknowledgedChange"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaSessionEvent"
+            }
+          }
+        },
+        "required": [
+          "session",
+          "events"
+        ]
+      },
+      "QaVerdictPullRequest": {
+        "type": "object",
+        "properties": {
+          "pullRequestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "repositoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "forgeRepo": {
+            "type": "string"
+          },
+          "number": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "headBranch": {
+            "type": "string"
+          },
+          "headSha": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pullRequestId",
+          "repositoryId",
+          "forgeRepo",
+          "number",
+          "headBranch",
+          "headSha",
+          "title"
+        ]
+      },
+      "QaCompletion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ticketKey": {
+            "type": "string"
+          },
+          "epoch": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "pullRequestShas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pullRequestId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "sha": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "pullRequestId",
+                "sha"
+              ]
+            }
+          },
+          "approvalIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "exemptionIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "state": {
+            "enum": [
+              "pending",
+              "done",
+              "failed",
+              "cancelled",
+              "invalidated"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ticketKey",
+          "epoch",
+          "pullRequestShas",
+          "approvalIds",
+          "exemptionIds",
+          "state"
+        ]
+      },
+      "QaCompletionEvaluation": {
+        "type": "object",
+        "properties": {
+          "ticketKey": {
+            "type": "string"
+          },
+          "evaluated": {
+            "type": "boolean"
+          },
+          "created": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QaCompletion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "invalidated": {
+            "type": "boolean"
+          },
+          "epoch": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "ticketKey",
+          "evaluated",
+          "created",
+          "invalidated",
+          "epoch"
+        ]
+      },
+      "QaGateTarget": {
+        "type": "object",
+        "properties": {
+          "pullRequestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "forgeRepo": {
+            "type": "string"
+          },
+          "sha": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pullRequestId",
+          "forgeRepo",
+          "sha"
+        ]
+      },
+      "QaApprovalOutcome": {
+        "type": "object",
+        "properties": {
+          "approvalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ticketKey": {
+            "type": "string"
+          },
+          "covered": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaVerdictPullRequest"
+            }
+          },
+          "uncovered": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaVerdictPullRequest"
+            }
+          },
+          "evaluations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaCompletionEvaluation"
+            }
+          }
+        },
+        "required": [
+          "approvalId",
+          "ticketKey",
+          "covered",
+          "uncovered",
+          "evaluations"
+        ]
+      },
+      "QaRejectionOutcome": {
+        "type": "object",
+        "properties": {
+          "rejectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ticketKey": {
+            "type": "string"
+          },
+          "covered": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaVerdictPullRequest"
+            }
+          },
+          "uncovered": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaVerdictPullRequest"
+            }
+          },
+          "revokedApprovalIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "evaluations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaCompletionEvaluation"
+            }
+          }
+        },
+        "required": [
+          "rejectionId",
+          "ticketKey",
+          "covered",
+          "uncovered",
+          "revokedApprovalIds",
+          "evaluations"
+        ]
+      },
+      "QaCommentOutcome": {
+        "type": "object",
+        "properties": {
+          "ticketKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticketKey"
+        ]
+      },
+      "QaSendOutcome": {
+        "type": "object",
+        "properties": {
+          "ticketKey": {
+            "type": "string"
+          },
+          "drain": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "done": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "failed": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "cancelled": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "conflicts": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "retried": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "paused": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "done",
+                  "failed",
+                  "cancelled",
+                  "conflicts",
+                  "retried",
+                  "paused"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "ticketKey",
+          "drain"
+        ]
+      },
+      "QaExemptionOutcome": {
+        "type": "object",
+        "properties": {
+          "exemptionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scope": {
+            "enum": [
+              "pr",
+              "ticket"
+            ],
+            "type": "string"
+          },
+          "ticketKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evaluations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaCompletionEvaluation"
+            }
+          },
+          "gateTarget": {
+            "$ref": "#/components/schemas/QaGateTarget"
+          }
+        },
+        "required": [
+          "exemptionId",
+          "scope",
+          "ticketKeys",
+          "evaluations"
+        ]
+      },
+      "QaRevocationOutcome": {
+        "type": "object",
+        "properties": {
+          "ticketKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evaluations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaCompletionEvaluation"
+            }
+          },
+          "revokedApprovalIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "movedToQueue": {
+            "type": "boolean"
+          },
+          "gateTarget": {
+            "$ref": "#/components/schemas/QaGateTarget"
+          }
+        },
+        "required": [
+          "ticketKeys",
+          "evaluations",
+          "revokedApprovalIds",
+          "movedToQueue"
+        ]
+      },
+      "QaLinkOutcome": {
+        "type": "object",
+        "properties": {
+          "ticketKey": {
+            "type": "string"
+          },
+          "pullRequestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "result": {
+            "enum": [
+              "created",
+              "reactivated",
+              "existing"
+            ],
+            "type": "string"
+          },
+          "evaluations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaCompletionEvaluation"
+            }
+          }
+        },
+        "required": [
+          "ticketKey",
+          "pullRequestId",
+          "result",
+          "evaluations"
+        ]
+      },
+      "QaUnlinkOutcome": {
+        "type": "object",
+        "properties": {
+          "ticketKey": {
+            "type": "string"
+          },
+          "forgeRepo": {
+            "type": "string"
+          },
+          "sha": {
+            "type": "string"
+          },
+          "evaluations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaCompletionEvaluation"
+            }
+          },
+          "gateTarget": {
+            "$ref": "#/components/schemas/QaGateTarget"
+          }
+        },
+        "required": [
+          "ticketKey",
+          "forgeRepo",
+          "sha",
+          "evaluations",
+          "gateTarget"
+        ]
+      },
+      "QaCarryOverOutcome": {
+        "type": "object",
+        "properties": {
+          "ticketKey": {
+            "type": "string"
+          },
+          "carried": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pullRequestId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "sha": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "pullRequestId",
+                "sha"
+              ]
+            }
+          },
+          "evaluations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaCompletionEvaluation"
+            }
+          }
+        },
+        "required": [
+          "ticketKey",
+          "carried",
+          "evaluations"
+        ]
       }
     }
   },
@@ -1726,7 +4200,6 @@
                   }
                 },
                 "required": [
-                  "slug",
                   "repos"
                 ]
               }
@@ -1786,6 +4259,16 @@
           },
           "409": {
             "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2962,6 +5445,16 @@
               }
             }
           },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
           "429": {
             "description": "429",
             "content": {
@@ -3095,6 +5588,16 @@
           },
           "409": {
             "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3254,6 +5757,16 @@
           },
           "409": {
             "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3557,6 +6070,16 @@
               }
             }
           },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
           "429": {
             "description": "429",
             "content": {
@@ -3614,7 +6137,7 @@
       "post": {
         "operationId": "environments.retryBuild",
         "summary": "Retry a failed build",
-        "description": "Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every failed or canceled sibling service on the same branch is retried together; siblings on other branches are not.",
+        "description": "Re-dispatches the service's build. Only valid when the service has no build on its current branch, or its latest build on that branch is failed or canceled. For a monorepo every retryable sibling service on the same branch is retried together; siblings on other branches are not.",
         "tags": [
           "environments"
         ],
@@ -3989,6 +6512,16 @@
           },
           "409": {
             "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4581,6 +7114,16 @@
               }
             }
           },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
           "429": {
             "description": "429",
             "content": {
@@ -4719,6 +7262,16 @@
           },
           "409": {
             "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4870,6 +7423,16 @@
           },
           "409": {
             "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5033,6 +7596,16 @@
               }
             }
           },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
           "429": {
             "description": "429",
             "content": {
@@ -5185,6 +7758,16 @@
           },
           "409": {
             "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5495,6 +8078,2433 @@
           },
           "502": {
             "description": "502",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa": {
+      "get": {
+        "operationId": "qa.list",
+        "summary": "List the QA queue",
+        "description": "The queue as the QA page's sections: Ready for QA (oldest entry first), In testing, Re-check (a Linked PR head moved since its approval), Upcoming (collapsed in the UI), Recently decided (14 days, approvals and exemptions) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.",
+        "tags": [
+          "qa"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaQueue"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa/tickets/{key}": {
+      "get": {
+        "operationId": "qa.get",
+        "summary": "Get one QA ticket in full",
+        "description": "One card in full: every session with its event timeline, every approval, rejection and exemption with who, when and why, and the tracker writes with their state and last error. Takes a Ticket key only, matched case-insensitively (tracker keys are uppercase); a sub-task's key resolves to no Ticket — use its parent's key.",
+        "tags": [
+          "qa"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaTicketDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa/health": {
+      "get": {
+        "operationId": "qa.health",
+        "summary": "Get QA sync, outbox and evaluation health",
+        "description": "Each sync phase's cursor, last success and last error; the tracker outbox backlog by state; the evaluation-due markers past the alert threshold; and the tracker's reachability as the last sync recorded it. Never calls the tracker.",
+        "tags": [
+          "qa"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaHealth"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa/tickets/{key}/sessions": {
+      "post": {
+        "operationId": "qa.start",
+        "summary": "Start a QA session",
+        "description": "Partitions the Ticket's open Linked PRs so no partition holds two PRs of one Repository; omit `prs` for the first partition with no open session. A rebuild of a developer's environment happens under them — the card warns before confirming.",
+        "tags": [
+          "qa"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "prs": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "environmentId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaSessionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "502",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa/sessions/{sessionId}/ack": {
+      "post": {
+        "operationId": "qa.ack",
+        "summary": "Acknowledge a session change",
+        "description": "Clears `unacknowledgedChange` for the session's owner, `qa` or an admin without approving. A session that is not `open` is a 409.",
+        "tags": [
+          "qa"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaSessionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa/sessions/{sessionId}/close": {
+      "post": {
+        "operationId": "qa.close",
+        "summary": "Close a session",
+        "description": "Ends the session without a verdict, so the Ticket's `drift/qa` pending text goes away. A session that is already `ended` is a 409.",
+        "tags": [
+          "qa"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaSessionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa/sessions/{sessionId}/approve": {
+      "post": {
+        "operationId": "qa.approve",
+        "summary": "Approve a QA session",
+        "description": "Refused unless the session is open, the environment is `running` and the shown generation is the verified one that runs the covered PRs' heads. `retested` or a `no-retest` reason is required when the session saw a change. Files are base64 in `files`.",
+        "tags": [
+          "qa"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "shownGeneration": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "retested": {
+                    "type": "boolean"
+                  },
+                  "noRetestReason": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 4000
+                  },
+                  "files": {
+                    "type": "array",
+                    "maxItems": 10,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "filename": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 255
+                        },
+                        "contentType": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 255
+                        },
+                        "data": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 9786712
+                        }
+                      },
+                      "required": [
+                        "filename",
+                        "contentType",
+                        "data"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "shownGeneration",
+                  "retested"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaApprovalOutcome"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "502",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa/sessions/{sessionId}/reject": {
+      "post": {
+        "operationId": "qa.reject",
+        "summary": "Reject a QA session",
+        "description": "Records a rejection on the covered PRs, revokes approvals on those same (PR, sha) pairs — including a sibling Ticket's — bumps the affected Tickets' verdict epochs and moves them to the rejected status. The comment is required; files are base64 in `files`.",
+        "tags": [
+          "qa"
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "shownGeneration": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "comment": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  },
+                  "files": {
+                    "type": "array",
+                    "maxItems": 10,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "filename": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 255
+                        },
+                        "contentType": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 255
+                        },
+                        "data": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 9786712
+                        }
+                      },
+                      "required": [
+                        "filename",
+                        "contentType",
+                        "data"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "shownGeneration",
+                  "comment"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaRejectionOutcome"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "502",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa/tickets/{key}/comments": {
+      "post": {
+        "operationId": "qa.comment",
+        "summary": "Comment on a QA ticket",
+        "description": "Queues a tracker comment (and its attachments) for the Ticket. No session and no evaluator: this is QA saying something, not a verdict.",
+        "tags": [
+          "qa"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 8000
+                  },
+                  "files": {
+                    "type": "array",
+                    "maxItems": 10,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "filename": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 255
+                        },
+                        "contentType": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 255
+                        },
+                        "data": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 9786712
+                        }
+                      },
+                      "required": [
+                        "filename",
+                        "contentType",
+                        "data"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "body"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaCommentOutcome"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa/tickets/{key}/send": {
+      "post": {
+        "operationId": "qa.send",
+        "summary": "Send a ticket to QA",
+        "description": "Queues the move back to the project's queue status. Refused as a 409 when drift's last-synced view already has the Ticket in the queue, approved or Done — retry after the next sync.",
+        "tags": [
+          "qa"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaSendOutcome"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa/exemptions": {
+      "post": {
+        "operationId": "qa.exempt",
+        "summary": "Grant a QA exemption",
+        "description": "`scope: \"pr\"` needs `pullRequestId` and exempts that PR across pushes; `scope: \"ticket\"` needs `ticketKey` and covers the PRs linked at that moment. Either way the reason is required and the completion evaluator runs.",
+        "tags": [
+          "qa"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "scope": {
+                    "enum": [
+                      "pr",
+                      "ticket"
+                    ],
+                    "type": "string"
+                  },
+                  "pullRequestId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "ticketKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "scope",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaExemptionOutcome"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa/exemptions/{exemptionId}/revoke": {
+      "post": {
+        "operationId": "qa.unexempt",
+        "summary": "Revoke a QA exemption",
+        "description": "Revokes the exemption. A Ticket-scope exemption additionally revokes every approval of its Ticket, bumps the epoch and moves an approved Ticket back to the queue; a PR-scope one leaves the Ticket's approvals alone.",
+        "tags": [
+          "qa"
+        ],
+        "parameters": [
+          {
+            "name": "exemptionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaRevocationOutcome"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa/revoke": {
+      "post": {
+        "operationId": "qa.revoke",
+        "summary": "Revoke a QA approval or exemption",
+        "description": "Name exactly one of `approvalId` or `exemptionId`. A revocation bumps the Ticket's verdict epoch and re-runs the completion evaluator.",
+        "tags": [
+          "qa"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "approvalId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "exemptionId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaRevocationOutcome"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa/links": {
+      "post": {
+        "operationId": "qa.link",
+        "summary": "Link a pull request to a QA ticket",
+        "description": "Creates a manual link (or reactivates a removed one). A PR already linked to the Ticket is a 409.",
+        "tags": [
+          "qa"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ticketKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "pullRequestId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "ticketKey",
+                  "pullRequestId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaLinkOutcome"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa/links/unlink": {
+      "post": {
+        "operationId": "qa.unlink",
+        "summary": "Remove a QA link",
+        "description": "Removes the link and recomputes the gate for the PR's head. A pair that is not linked is a 404.",
+        "tags": [
+          "qa"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ticketKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "pullRequestId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "ticketKey",
+                  "pullRequestId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaUnlinkOutcome"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "502",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa/tickets/{key}/carry-over": {
+      "post": {
+        "operationId": "qa.carryOver",
+        "summary": "Carry a ticket's pull requests over",
+        "description": "Only for a Ticket the tracker already approved without a drift completion: records its open Linked PRs at their current heads. Carry-overs are sha-bound and never revoked. A Ticket not awaiting completion is a 400.",
+        "tags": [
+          "qa"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaCarryOverOutcome"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "502",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa/tracker-writes/{writeId}/retry": {
+      "post": {
+        "operationId": "qa.retryTrackerWrite",
+        "summary": "Retry a failed tracker write",
+        "description": "Re-queues a `failed` write — `claimed` when an earlier attempt may have landed, else `pending`. Any other state is a 409.",
+        "tags": [
+          "qa"
+        ],
+        "parameters": [
+          {
+            "name": "writeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaTrackerWriteDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
             "content": {
               "application/json": {
                 "schema": {

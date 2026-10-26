@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -398,6 +399,12 @@ func newHarness(t *testing.T) *harness {
 
 // run executes one command line and returns (stdout, stderr, exit code).
 func (h *harness) run(args ...string) (string, string, int) {
+	return h.runContext(context.Background(), args...)
+}
+
+// runContext is run with the caller's context, so a test can cancel a command
+// while it is mid-flight.
+func (h *harness) runContext(ctx context.Context, args ...string) (string, string, int) {
 	h.stdout.Reset()
 	h.stderr.Reset()
 	// A fresh App per run, sharing the store and buffers: cobra flag state and
@@ -416,6 +423,7 @@ func (h *harness) run(args ...string) (string, string, int) {
 	root.SetArgs(args)
 	root.SetOut(h.stdout)
 	root.SetErr(h.stderr)
+	root.SetContext(ctx)
 
 	err := root.Execute()
 	if err != nil {

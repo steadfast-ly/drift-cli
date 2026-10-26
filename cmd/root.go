@@ -44,6 +44,13 @@ const (
 	// start a promotion is not necessarily one that can end it.
 	FeaturePromotionsCancel = "promotions.cancel"
 	FeatureAuditLogRead     = "audit-log.read"
+	// FeatureQa is the QA module's read/start/comment surface. Profile-
+	// conditional: advertised only when the Install enables the module, so the
+	// group refuses on a deployment that does not do QA instead of guessing.
+	FeatureQa = "qa"
+	// FeatureQaApprove gates the approver actions (approve, reject, unlink,
+	// carry-over), which the server additionally gates on the `qa` role.
+	FeatureQaApprove = "qa.approve"
 )
 
 // NewRootCommand builds the command tree.
@@ -106,6 +113,7 @@ func NewRootCommand(app *App) *cobra.Command {
 		newEnvCommand(app),
 		newReleaseCommand(app),
 		newRepoCommand(app),
+		newQaCommand(app),
 		newAuditCommand(app),
 		newAPICommand(app),
 		newDoctorCommand(app),
