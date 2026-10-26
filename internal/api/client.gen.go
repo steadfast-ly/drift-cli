@@ -312,6 +312,585 @@ func (e PromotionCancelMutationStatus) Valid() bool {
 	}
 }
 
+// Defines values for QaCompletionState.
+const (
+	QaCompletionStateCancelled   QaCompletionState = "cancelled"
+	QaCompletionStateDone        QaCompletionState = "done"
+	QaCompletionStateFailed      QaCompletionState = "failed"
+	QaCompletionStateInvalidated QaCompletionState = "invalidated"
+	QaCompletionStatePending     QaCompletionState = "pending"
+)
+
+// Valid indicates whether the value is a known member of the QaCompletionState enum.
+func (e QaCompletionState) Valid() bool {
+	switch e {
+	case QaCompletionStateCancelled:
+		return true
+	case QaCompletionStateDone:
+		return true
+	case QaCompletionStateFailed:
+		return true
+	case QaCompletionStateInvalidated:
+		return true
+	case QaCompletionStatePending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaExemptionDetailScope.
+const (
+	QaExemptionDetailScopePr     QaExemptionDetailScope = "pr"
+	QaExemptionDetailScopeTicket QaExemptionDetailScope = "ticket"
+)
+
+// Valid indicates whether the value is a known member of the QaExemptionDetailScope enum.
+func (e QaExemptionDetailScope) Valid() bool {
+	switch e {
+	case QaExemptionDetailScopePr:
+		return true
+	case QaExemptionDetailScopeTicket:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaExemptionOutcomeScope.
+const (
+	QaExemptionOutcomeScopePr     QaExemptionOutcomeScope = "pr"
+	QaExemptionOutcomeScopeTicket QaExemptionOutcomeScope = "ticket"
+)
+
+// Valid indicates whether the value is a known member of the QaExemptionOutcomeScope enum.
+func (e QaExemptionOutcomeScope) Valid() bool {
+	switch e {
+	case QaExemptionOutcomeScopePr:
+		return true
+	case QaExemptionOutcomeScopeTicket:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaFailedTrackerWriteKind.
+const (
+	QaFailedTrackerWriteKindAttach  QaFailedTrackerWriteKind = "attach"
+	QaFailedTrackerWriteKindComment QaFailedTrackerWriteKind = "comment"
+	QaFailedTrackerWriteKindMove    QaFailedTrackerWriteKind = "move"
+)
+
+// Valid indicates whether the value is a known member of the QaFailedTrackerWriteKind enum.
+func (e QaFailedTrackerWriteKind) Valid() bool {
+	switch e {
+	case QaFailedTrackerWriteKindAttach:
+		return true
+	case QaFailedTrackerWriteKindComment:
+		return true
+	case QaFailedTrackerWriteKindMove:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaFailedTrackerWriteLastOutcome.
+const (
+	QaFailedTrackerWriteLastOutcomeAmbiguous QaFailedTrackerWriteLastOutcome = "ambiguous"
+	QaFailedTrackerWriteLastOutcomeDefinite  QaFailedTrackerWriteLastOutcome = "definite"
+)
+
+// Valid indicates whether the value is a known member of the QaFailedTrackerWriteLastOutcome enum.
+func (e QaFailedTrackerWriteLastOutcome) Valid() bool {
+	switch e {
+	case QaFailedTrackerWriteLastOutcomeAmbiguous:
+		return true
+	case QaFailedTrackerWriteLastOutcomeDefinite:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaLinkOutcomeResult.
+const (
+	QaLinkOutcomeResultCreated     QaLinkOutcomeResult = "created"
+	QaLinkOutcomeResultExisting    QaLinkOutcomeResult = "existing"
+	QaLinkOutcomeResultReactivated QaLinkOutcomeResult = "reactivated"
+)
+
+// Valid indicates whether the value is a known member of the QaLinkOutcomeResult enum.
+func (e QaLinkOutcomeResult) Valid() bool {
+	switch e {
+	case QaLinkOutcomeResultCreated:
+		return true
+	case QaLinkOutcomeResultExisting:
+		return true
+	case QaLinkOutcomeResultReactivated:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaPullRequestCardGateState.
+const (
+	QaPullRequestCardGateStateError   QaPullRequestCardGateState = "error"
+	QaPullRequestCardGateStateFailure QaPullRequestCardGateState = "failure"
+	QaPullRequestCardGateStatePending QaPullRequestCardGateState = "pending"
+	QaPullRequestCardGateStateSuccess QaPullRequestCardGateState = "success"
+)
+
+// Valid indicates whether the value is a known member of the QaPullRequestCardGateState enum.
+func (e QaPullRequestCardGateState) Valid() bool {
+	switch e {
+	case QaPullRequestCardGateStateError:
+		return true
+	case QaPullRequestCardGateStateFailure:
+		return true
+	case QaPullRequestCardGateStatePending:
+		return true
+	case QaPullRequestCardGateStateSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaPullRequestCardReviewState.
+const (
+	QaPullRequestCardReviewStateApproved         QaPullRequestCardReviewState = "approved"
+	QaPullRequestCardReviewStateChangesRequested QaPullRequestCardReviewState = "changes_requested"
+	QaPullRequestCardReviewStatePending          QaPullRequestCardReviewState = "pending"
+)
+
+// Valid indicates whether the value is a known member of the QaPullRequestCardReviewState enum.
+func (e QaPullRequestCardReviewState) Valid() bool {
+	switch e {
+	case QaPullRequestCardReviewStateApproved:
+		return true
+	case QaPullRequestCardReviewStateChangesRequested:
+		return true
+	case QaPullRequestCardReviewStatePending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaRejectionDetailPullRequestsRetiredReason.
+const (
+	QaRejectionDetailPullRequestsRetiredReasonApproved QaRejectionDetailPullRequestsRetiredReason = "approved"
+	QaRejectionDetailPullRequestsRetiredReasonExempted QaRejectionDetailPullRequestsRetiredReason = "exempted"
+	QaRejectionDetailPullRequestsRetiredReasonNewHead  QaRejectionDetailPullRequestsRetiredReason = "new-head"
+)
+
+// Valid indicates whether the value is a known member of the QaRejectionDetailPullRequestsRetiredReason enum.
+func (e QaRejectionDetailPullRequestsRetiredReason) Valid() bool {
+	switch e {
+	case QaRejectionDetailPullRequestsRetiredReasonApproved:
+		return true
+	case QaRejectionDetailPullRequestsRetiredReasonExempted:
+		return true
+	case QaRejectionDetailPullRequestsRetiredReasonNewHead:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaSessionCardEndReason.
+const (
+	QaSessionCardEndReasonApproved  QaSessionCardEndReason = "approved"
+	QaSessionCardEndReasonClosed    QaSessionCardEndReason = "closed"
+	QaSessionCardEndReasonDestroyed QaSessionCardEndReason = "destroyed"
+	QaSessionCardEndReasonRejected  QaSessionCardEndReason = "rejected"
+	QaSessionCardEndReasonSlept     QaSessionCardEndReason = "slept"
+)
+
+// Valid indicates whether the value is a known member of the QaSessionCardEndReason enum.
+func (e QaSessionCardEndReason) Valid() bool {
+	switch e {
+	case QaSessionCardEndReasonApproved:
+		return true
+	case QaSessionCardEndReasonClosed:
+		return true
+	case QaSessionCardEndReasonDestroyed:
+		return true
+	case QaSessionCardEndReasonRejected:
+		return true
+	case QaSessionCardEndReasonSlept:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaSessionCardState.
+const (
+	QaSessionCardStateEnded     QaSessionCardState = "ended"
+	QaSessionCardStateOpen      QaSessionCardState = "open"
+	QaSessionCardStatePreparing QaSessionCardState = "preparing"
+)
+
+// Valid indicates whether the value is a known member of the QaSessionCardState enum.
+func (e QaSessionCardState) Valid() bool {
+	switch e {
+	case QaSessionCardStateEnded:
+		return true
+	case QaSessionCardStateOpen:
+		return true
+	case QaSessionCardStatePreparing:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaSessionDetailEndReason.
+const (
+	QaSessionDetailEndReasonApproved  QaSessionDetailEndReason = "approved"
+	QaSessionDetailEndReasonClosed    QaSessionDetailEndReason = "closed"
+	QaSessionDetailEndReasonDestroyed QaSessionDetailEndReason = "destroyed"
+	QaSessionDetailEndReasonRejected  QaSessionDetailEndReason = "rejected"
+	QaSessionDetailEndReasonSlept     QaSessionDetailEndReason = "slept"
+)
+
+// Valid indicates whether the value is a known member of the QaSessionDetailEndReason enum.
+func (e QaSessionDetailEndReason) Valid() bool {
+	switch e {
+	case QaSessionDetailEndReasonApproved:
+		return true
+	case QaSessionDetailEndReasonClosed:
+		return true
+	case QaSessionDetailEndReasonDestroyed:
+		return true
+	case QaSessionDetailEndReasonRejected:
+		return true
+	case QaSessionDetailEndReasonSlept:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaSessionDetailState.
+const (
+	QaSessionDetailStateEnded     QaSessionDetailState = "ended"
+	QaSessionDetailStateOpen      QaSessionDetailState = "open"
+	QaSessionDetailStatePreparing QaSessionDetailState = "preparing"
+)
+
+// Valid indicates whether the value is a known member of the QaSessionDetailState enum.
+func (e QaSessionDetailState) Valid() bool {
+	switch e {
+	case QaSessionDetailStateEnded:
+		return true
+	case QaSessionDetailStateOpen:
+		return true
+	case QaSessionDetailStatePreparing:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaSessionEventKind.
+const (
+	QaSessionEventKindAcknowledged           QaSessionEventKind = "acknowledged"
+	QaSessionEventKindMigrationSourceChanged QaSessionEventKind = "migration-source-changed"
+	QaSessionEventKindRedeploy               QaSessionEventKind = "redeploy"
+	QaSessionEventKindUnverified             QaSessionEventKind = "unverified"
+)
+
+// Valid indicates whether the value is a known member of the QaSessionEventKind enum.
+func (e QaSessionEventKind) Valid() bool {
+	switch e {
+	case QaSessionEventKindAcknowledged:
+		return true
+	case QaSessionEventKindMigrationSourceChanged:
+		return true
+	case QaSessionEventKindRedeploy:
+		return true
+	case QaSessionEventKindUnverified:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaSessionViewSessionEndReason.
+const (
+	QaSessionViewSessionEndReasonApproved  QaSessionViewSessionEndReason = "approved"
+	QaSessionViewSessionEndReasonClosed    QaSessionViewSessionEndReason = "closed"
+	QaSessionViewSessionEndReasonDestroyed QaSessionViewSessionEndReason = "destroyed"
+	QaSessionViewSessionEndReasonRejected  QaSessionViewSessionEndReason = "rejected"
+	QaSessionViewSessionEndReasonSlept     QaSessionViewSessionEndReason = "slept"
+)
+
+// Valid indicates whether the value is a known member of the QaSessionViewSessionEndReason enum.
+func (e QaSessionViewSessionEndReason) Valid() bool {
+	switch e {
+	case QaSessionViewSessionEndReasonApproved:
+		return true
+	case QaSessionViewSessionEndReasonClosed:
+		return true
+	case QaSessionViewSessionEndReasonDestroyed:
+		return true
+	case QaSessionViewSessionEndReasonRejected:
+		return true
+	case QaSessionViewSessionEndReasonSlept:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaSessionViewSessionState.
+const (
+	QaSessionViewSessionStateEnded     QaSessionViewSessionState = "ended"
+	QaSessionViewSessionStateOpen      QaSessionViewSessionState = "open"
+	QaSessionViewSessionStatePreparing QaSessionViewSessionState = "preparing"
+)
+
+// Valid indicates whether the value is a known member of the QaSessionViewSessionState enum.
+func (e QaSessionViewSessionState) Valid() bool {
+	switch e {
+	case QaSessionViewSessionStateEnded:
+		return true
+	case QaSessionViewSessionStateOpen:
+		return true
+	case QaSessionViewSessionStatePreparing:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaTicketCardActiveSessionsBannersKind.
+const (
+	QaTicketCardActiveSessionsBannersKindAcknowledged           QaTicketCardActiveSessionsBannersKind = "acknowledged"
+	QaTicketCardActiveSessionsBannersKindMigrationSourceChanged QaTicketCardActiveSessionsBannersKind = "migration-source-changed"
+	QaTicketCardActiveSessionsBannersKindRedeploy               QaTicketCardActiveSessionsBannersKind = "redeploy"
+	QaTicketCardActiveSessionsBannersKindUnverified             QaTicketCardActiveSessionsBannersKind = "unverified"
+)
+
+// Valid indicates whether the value is a known member of the QaTicketCardActiveSessionsBannersKind enum.
+func (e QaTicketCardActiveSessionsBannersKind) Valid() bool {
+	switch e {
+	case QaTicketCardActiveSessionsBannersKindAcknowledged:
+		return true
+	case QaTicketCardActiveSessionsBannersKindMigrationSourceChanged:
+		return true
+	case QaTicketCardActiveSessionsBannersKindRedeploy:
+		return true
+	case QaTicketCardActiveSessionsBannersKindUnverified:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaTicketCardActiveSessionsEndReason.
+const (
+	QaTicketCardActiveSessionsEndReasonApproved  QaTicketCardActiveSessionsEndReason = "approved"
+	QaTicketCardActiveSessionsEndReasonClosed    QaTicketCardActiveSessionsEndReason = "closed"
+	QaTicketCardActiveSessionsEndReasonDestroyed QaTicketCardActiveSessionsEndReason = "destroyed"
+	QaTicketCardActiveSessionsEndReasonRejected  QaTicketCardActiveSessionsEndReason = "rejected"
+	QaTicketCardActiveSessionsEndReasonSlept     QaTicketCardActiveSessionsEndReason = "slept"
+)
+
+// Valid indicates whether the value is a known member of the QaTicketCardActiveSessionsEndReason enum.
+func (e QaTicketCardActiveSessionsEndReason) Valid() bool {
+	switch e {
+	case QaTicketCardActiveSessionsEndReasonApproved:
+		return true
+	case QaTicketCardActiveSessionsEndReasonClosed:
+		return true
+	case QaTicketCardActiveSessionsEndReasonDestroyed:
+		return true
+	case QaTicketCardActiveSessionsEndReasonRejected:
+		return true
+	case QaTicketCardActiveSessionsEndReasonSlept:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaTicketCardActiveSessionsState.
+const (
+	QaTicketCardActiveSessionsStateEnded     QaTicketCardActiveSessionsState = "ended"
+	QaTicketCardActiveSessionsStateOpen      QaTicketCardActiveSessionsState = "open"
+	QaTicketCardActiveSessionsStatePreparing QaTicketCardActiveSessionsState = "preparing"
+)
+
+// Valid indicates whether the value is a known member of the QaTicketCardActiveSessionsState enum.
+func (e QaTicketCardActiveSessionsState) Valid() bool {
+	switch e {
+	case QaTicketCardActiveSessionsStateEnded:
+		return true
+	case QaTicketCardActiveSessionsStateOpen:
+		return true
+	case QaTicketCardActiveSessionsStatePreparing:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaTicketCardCompletionState.
+const (
+	QaTicketCardCompletionStateDone    QaTicketCardCompletionState = "done"
+	QaTicketCardCompletionStatePending QaTicketCardCompletionState = "pending"
+)
+
+// Valid indicates whether the value is a known member of the QaTicketCardCompletionState enum.
+func (e QaTicketCardCompletionState) Valid() bool {
+	switch e {
+	case QaTicketCardCompletionStateDone:
+		return true
+	case QaTicketCardCompletionStatePending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaTicketCardEnvironmentsStatus.
+const (
+	QaTicketCardEnvironmentsStatusBuildFailed  QaTicketCardEnvironmentsStatus = "build_failed"
+	QaTicketCardEnvironmentsStatusBuilding     QaTicketCardEnvironmentsStatus = "building"
+	QaTicketCardEnvironmentsStatusCanceled     QaTicketCardEnvironmentsStatus = "canceled"
+	QaTicketCardEnvironmentsStatusDeployFailed QaTicketCardEnvironmentsStatus = "deploy_failed"
+	QaTicketCardEnvironmentsStatusDeploying    QaTicketCardEnvironmentsStatus = "deploying"
+	QaTicketCardEnvironmentsStatusDestroyed    QaTicketCardEnvironmentsStatus = "destroyed"
+	QaTicketCardEnvironmentsStatusDestroying   QaTicketCardEnvironmentsStatus = "destroying"
+	QaTicketCardEnvironmentsStatusRequested    QaTicketCardEnvironmentsStatus = "requested"
+	QaTicketCardEnvironmentsStatusRunning      QaTicketCardEnvironmentsStatus = "running"
+	QaTicketCardEnvironmentsStatusSleeping     QaTicketCardEnvironmentsStatus = "sleeping"
+	QaTicketCardEnvironmentsStatusWaking       QaTicketCardEnvironmentsStatus = "waking"
+)
+
+// Valid indicates whether the value is a known member of the QaTicketCardEnvironmentsStatus enum.
+func (e QaTicketCardEnvironmentsStatus) Valid() bool {
+	switch e {
+	case QaTicketCardEnvironmentsStatusBuildFailed:
+		return true
+	case QaTicketCardEnvironmentsStatusBuilding:
+		return true
+	case QaTicketCardEnvironmentsStatusCanceled:
+		return true
+	case QaTicketCardEnvironmentsStatusDeployFailed:
+		return true
+	case QaTicketCardEnvironmentsStatusDeploying:
+		return true
+	case QaTicketCardEnvironmentsStatusDestroyed:
+		return true
+	case QaTicketCardEnvironmentsStatusDestroying:
+		return true
+	case QaTicketCardEnvironmentsStatusRequested:
+		return true
+	case QaTicketCardEnvironmentsStatusRunning:
+		return true
+	case QaTicketCardEnvironmentsStatusSleeping:
+		return true
+	case QaTicketCardEnvironmentsStatusWaking:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaTicketCardStatusCategory.
+const (
+	QaTicketCardStatusCategoryDone       QaTicketCardStatusCategory = "done"
+	QaTicketCardStatusCategoryInProgress QaTicketCardStatusCategory = "in-progress"
+	QaTicketCardStatusCategoryTodo       QaTicketCardStatusCategory = "todo"
+)
+
+// Valid indicates whether the value is a known member of the QaTicketCardStatusCategory enum.
+func (e QaTicketCardStatusCategory) Valid() bool {
+	switch e {
+	case QaTicketCardStatusCategoryDone:
+		return true
+	case QaTicketCardStatusCategoryInProgress:
+		return true
+	case QaTicketCardStatusCategoryTodo:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaTrackerWriteDetailKind.
+const (
+	QaTrackerWriteDetailKindAttach  QaTrackerWriteDetailKind = "attach"
+	QaTrackerWriteDetailKindComment QaTrackerWriteDetailKind = "comment"
+	QaTrackerWriteDetailKindMove    QaTrackerWriteDetailKind = "move"
+)
+
+// Valid indicates whether the value is a known member of the QaTrackerWriteDetailKind enum.
+func (e QaTrackerWriteDetailKind) Valid() bool {
+	switch e {
+	case QaTrackerWriteDetailKindAttach:
+		return true
+	case QaTrackerWriteDetailKindComment:
+		return true
+	case QaTrackerWriteDetailKindMove:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaTrackerWriteDetailLastOutcome.
+const (
+	QaTrackerWriteDetailLastOutcomeAmbiguous QaTrackerWriteDetailLastOutcome = "ambiguous"
+	QaTrackerWriteDetailLastOutcomeDefinite  QaTrackerWriteDetailLastOutcome = "definite"
+)
+
+// Valid indicates whether the value is a known member of the QaTrackerWriteDetailLastOutcome enum.
+func (e QaTrackerWriteDetailLastOutcome) Valid() bool {
+	switch e {
+	case QaTrackerWriteDetailLastOutcomeAmbiguous:
+		return true
+	case QaTrackerWriteDetailLastOutcomeDefinite:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaTrackerWriteDetailState.
+const (
+	QaTrackerWriteDetailStateCancelled QaTrackerWriteDetailState = "cancelled"
+	QaTrackerWriteDetailStateClaimed   QaTrackerWriteDetailState = "claimed"
+	QaTrackerWriteDetailStateDone      QaTrackerWriteDetailState = "done"
+	QaTrackerWriteDetailStateFailed    QaTrackerWriteDetailState = "failed"
+	QaTrackerWriteDetailStatePending   QaTrackerWriteDetailState = "pending"
+)
+
+// Valid indicates whether the value is a known member of the QaTrackerWriteDetailState enum.
+func (e QaTrackerWriteDetailState) Valid() bool {
+	switch e {
+	case QaTrackerWriteDetailStateCancelled:
+		return true
+	case QaTrackerWriteDetailStateClaimed:
+		return true
+	case QaTrackerWriteDetailStateDone:
+		return true
+	case QaTrackerWriteDetailStateFailed:
+		return true
+	case QaTrackerWriteDetailStatePending:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ServiceHealthStatus.
 const (
 	ServiceHealthStatusDegraded    ServiceHealthStatus = "degraded"
@@ -358,6 +937,7 @@ func (e WhoAmIChannel) Valid() bool {
 const (
 	WhoAmIRoleAdmin    WhoAmIRole = "admin"
 	WhoAmIRolePreview  WhoAmIRole = "preview"
+	WhoAmIRoleQa       WhoAmIRole = "qa"
 	WhoAmIRoleReadOnly WhoAmIRole = "read-only"
 	WhoAmIRoleRelease  WhoAmIRole = "release"
 )
@@ -368,6 +948,8 @@ func (e WhoAmIRole) Valid() bool {
 	case WhoAmIRoleAdmin:
 		return true
 	case WhoAmIRolePreview:
+		return true
+	case WhoAmIRoleQa:
 		return true
 	case WhoAmIRoleReadOnly:
 		return true
@@ -486,6 +1068,24 @@ func (e EnvironmentsListParamsStatus) Valid() bool {
 	}
 }
 
+// Defines values for QaExemptJSONBodyScope.
+const (
+	QaExemptJSONBodyScopePr     QaExemptJSONBodyScope = "pr"
+	QaExemptJSONBodyScopeTicket QaExemptJSONBodyScope = "ticket"
+)
+
+// Valid indicates whether the value is a known member of the QaExemptJSONBodyScope enum.
+func (e QaExemptJSONBodyScope) Valid() bool {
+	switch e {
+	case QaExemptJSONBodyScopePr:
+		return true
+	case QaExemptJSONBodyScopeTicket:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ReleasesPromotionsActiveParamsPromotionType.
 const (
 	ReleasesPromotionsActiveParamsPromotionTypePrd ReleasesPromotionsActiveParamsPromotionType = "prd"
@@ -514,10 +1114,11 @@ type ActivePromotions struct {
 type ApiProblem struct {
 	Code string `json:"code"`
 	Data *struct {
-		Detail *string `json:"detail,omitempty"`
-		Event  *string `json:"event,omitempty"`
-		State  *string `json:"state,omitempty"`
-		Type   string  `json:"type"`
+		Detail   *string `json:"detail,omitempty"`
+		Event    *string `json:"event,omitempty"`
+		Revision *int    `json:"revision,omitempty"`
+		State    *string `json:"state,omitempty"`
+		Type     string  `json:"type"`
 	} `json:"data,omitempty"`
 	Defined bool   `json:"defined"`
 	Message string `json:"message"`
@@ -758,6 +1359,516 @@ type PromotionPage struct {
 	Pagination PageInfo    `json:"pagination"`
 }
 
+// QaApprovalDetail defines model for QaApprovalDetail.
+type QaApprovalDetail struct {
+	Approver       *string            `json:"approver"`
+	At             time.Time          `json:"at"`
+	Generation     int                `json:"generation"`
+	Id             openapi_types.UUID `json:"id"`
+	NoRetestReason *string            `json:"noRetestReason"`
+	Note           *string            `json:"note"`
+	PullRequests   []struct {
+		ForgeRepo     string             `json:"forgeRepo"`
+		Number        int                `json:"number"`
+		PullRequestId openapi_types.UUID `json:"pullRequestId"`
+		Sha           string             `json:"sha"`
+	} `json:"pullRequests"`
+	Retested     bool       `json:"retested"`
+	RevokeReason *string    `json:"revokeReason"`
+	RevokedAt    *time.Time `json:"revokedAt"`
+	RevokedBy    *string    `json:"revokedBy"`
+	TicketKey    string     `json:"ticketKey"`
+}
+
+// QaApprovalOutcome defines model for QaApprovalOutcome.
+type QaApprovalOutcome struct {
+	ApprovalId  openapi_types.UUID       `json:"approvalId"`
+	Covered     []QaVerdictPullRequest   `json:"covered"`
+	Evaluations []QaCompletionEvaluation `json:"evaluations"`
+	TicketKey   string                   `json:"ticketKey"`
+	Uncovered   []QaVerdictPullRequest   `json:"uncovered"`
+}
+
+// QaCarryOverCandidate defines model for QaCarryOverCandidate.
+type QaCarryOverCandidate struct {
+	PullRequests []struct {
+		ForgeRepo     string             `json:"forgeRepo"`
+		HeadSha       string             `json:"headSha"`
+		Number        int                `json:"number"`
+		PullRequestId openapi_types.UUID `json:"pullRequestId"`
+		Title         string             `json:"title"`
+	} `json:"pullRequests"`
+	StatusId  string `json:"statusId"`
+	Summary   string `json:"summary"`
+	TicketKey string `json:"ticketKey"`
+}
+
+// QaCarryOverOutcome defines model for QaCarryOverOutcome.
+type QaCarryOverOutcome struct {
+	Carried []struct {
+		PullRequestId openapi_types.UUID `json:"pullRequestId"`
+		Sha           string             `json:"sha"`
+	} `json:"carried"`
+	Evaluations []QaCompletionEvaluation `json:"evaluations"`
+	TicketKey   string                   `json:"ticketKey"`
+}
+
+// QaCommentOutcome defines model for QaCommentOutcome.
+type QaCommentOutcome struct {
+	TicketKey string `json:"ticketKey"`
+}
+
+// QaCompletion defines model for QaCompletion.
+type QaCompletion struct {
+	ApprovalIds     []openapi_types.UUID `json:"approvalIds"`
+	Epoch           int                  `json:"epoch"`
+	ExemptionIds    []openapi_types.UUID `json:"exemptionIds"`
+	Id              openapi_types.UUID   `json:"id"`
+	PullRequestShas []struct {
+		PullRequestId openapi_types.UUID `json:"pullRequestId"`
+		Sha           string             `json:"sha"`
+	} `json:"pullRequestShas"`
+	State     QaCompletionState `json:"state"`
+	TicketKey string            `json:"ticketKey"`
+}
+
+// QaCompletionState defines model for QaCompletion.State.
+type QaCompletionState string
+
+// QaCompletionEvaluation defines model for QaCompletionEvaluation.
+type QaCompletionEvaluation struct {
+	Created     *QaCompletion `json:"created"`
+	Epoch       int           `json:"epoch"`
+	Evaluated   bool          `json:"evaluated"`
+	Invalidated bool          `json:"invalidated"`
+	TicketKey   string        `json:"ticketKey"`
+}
+
+// QaDeploymentService defines model for QaDeploymentService.
+type QaDeploymentService struct {
+	Branch       string             `json:"branch"`
+	CommitSha    *string            `json:"commitSha"`
+	ImageTag     string             `json:"imageTag"`
+	RepositoryId openapi_types.UUID `json:"repositoryId"`
+}
+
+// QaExemptionDetail defines model for QaExemptionDetail.
+type QaExemptionDetail struct {
+	At            time.Time              `json:"at"`
+	ForgeRepo     *string                `json:"forgeRepo"`
+	GrantedAuto   bool                   `json:"grantedAuto"`
+	GrantedBy     string                 `json:"grantedBy"`
+	Id            openapi_types.UUID     `json:"id"`
+	Number        *int                   `json:"number"`
+	PullRequestId *openapi_types.UUID    `json:"pullRequestId"`
+	Reason        string                 `json:"reason"`
+	RevokedAt     *time.Time             `json:"revokedAt"`
+	RevokedBy     *string                `json:"revokedBy"`
+	Scope         QaExemptionDetailScope `json:"scope"`
+	TicketKey     *string                `json:"ticketKey"`
+}
+
+// QaExemptionDetailScope defines model for QaExemptionDetail.Scope.
+type QaExemptionDetailScope string
+
+// QaExemptionOutcome defines model for QaExemptionOutcome.
+type QaExemptionOutcome struct {
+	Evaluations []QaCompletionEvaluation `json:"evaluations"`
+	ExemptionId openapi_types.UUID       `json:"exemptionId"`
+	GateTarget  *QaGateTarget            `json:"gateTarget,omitempty"`
+	Scope       QaExemptionOutcomeScope  `json:"scope"`
+	TicketKeys  []string                 `json:"ticketKeys"`
+}
+
+// QaExemptionOutcomeScope defines model for QaExemptionOutcome.Scope.
+type QaExemptionOutcomeScope string
+
+// QaFailedTrackerWrite defines model for QaFailedTrackerWrite.
+type QaFailedTrackerWrite struct {
+	Attempts    int                              `json:"attempts"`
+	Id          openapi_types.UUID               `json:"id"`
+	Kind        QaFailedTrackerWriteKind         `json:"kind"`
+	LastError   *string                          `json:"lastError"`
+	LastOutcome *QaFailedTrackerWriteLastOutcome `json:"lastOutcome"`
+}
+
+// QaFailedTrackerWriteKind defines model for QaFailedTrackerWrite.Kind.
+type QaFailedTrackerWriteKind string
+
+// QaFailedTrackerWriteLastOutcome defines model for QaFailedTrackerWrite.LastOutcome.
+type QaFailedTrackerWriteLastOutcome string
+
+// QaGateTarget defines model for QaGateTarget.
+type QaGateTarget struct {
+	ForgeRepo     string             `json:"forgeRepo"`
+	PullRequestId openapi_types.UUID `json:"pullRequestId"`
+	Sha           string             `json:"sha"`
+}
+
+// QaHealth defines model for QaHealth.
+type QaHealth struct {
+	EvaluationAlerts []struct {
+		Attempts  int    `json:"attempts"`
+		TicketKey string `json:"ticketKey"`
+	} `json:"evaluationAlerts"`
+	Outbox struct {
+		Claimed int `json:"claimed"`
+		Failed  int `json:"failed"`
+		Pending int `json:"pending"`
+	} `json:"outbox"`
+	Phases []struct {
+		ClaimedUntil  *time.Time `json:"claimedUntil"`
+		Cursor        *string    `json:"cursor"`
+		LastError     *string    `json:"lastError"`
+		LastSuccessAt *time.Time `json:"lastSuccessAt"`
+		Phase         string     `json:"phase"`
+	} `json:"phases"`
+	Tracker *struct {
+		LastError     *string    `json:"lastError"`
+		LastSuccessAt *time.Time `json:"lastSuccessAt"`
+	} `json:"tracker"`
+}
+
+// QaLinkOutcome defines model for QaLinkOutcome.
+type QaLinkOutcome struct {
+	Evaluations   []QaCompletionEvaluation `json:"evaluations"`
+	PullRequestId openapi_types.UUID       `json:"pullRequestId"`
+	Result        QaLinkOutcomeResult      `json:"result"`
+	TicketKey     string                   `json:"ticketKey"`
+}
+
+// QaLinkOutcomeResult defines model for QaLinkOutcome.Result.
+type QaLinkOutcomeResult string
+
+// QaPartition defines model for QaPartition.
+type QaPartition struct {
+	PullRequestIds []openapi_types.UUID `json:"pullRequestIds"`
+	SessionId      *openapi_types.UUID  `json:"sessionId"`
+}
+
+// QaPullRequestCard defines model for QaPullRequestCard.
+type QaPullRequestCard struct {
+	ApprovedAtHead      bool    `json:"approvedAtHead"`
+	ApprovedAtOtherHead bool    `json:"approvedAtOtherHead"`
+	CarriedAtHead       bool    `json:"carriedAtHead"`
+	ExemptReason        *string `json:"exemptReason"`
+	ForgeRepo           string  `json:"forgeRepo"`
+	Gate                *struct {
+		Description string                     `json:"description"`
+		State       QaPullRequestCardGateState `json:"state"`
+		TargetUrl   *string                    `json:"targetUrl"`
+	} `json:"gate"`
+	HeadBranch     string                       `json:"headBranch"`
+	HeadSha        string                       `json:"headSha"`
+	IsOpen         bool                         `json:"isOpen"`
+	MergeHeadSha   *string                      `json:"mergeHeadSha"`
+	MergedAt       *time.Time                   `json:"mergedAt"`
+	MergedBeforeQa bool                         `json:"mergedBeforeQa"`
+	Number         int                          `json:"number"`
+	PullRequestId  openapi_types.UUID           `json:"pullRequestId"`
+	RepositoryId   openapi_types.UUID           `json:"repositoryId"`
+	ReviewState    QaPullRequestCardReviewState `json:"reviewState"`
+	Title          string                       `json:"title"`
+	Url            string                       `json:"url"`
+}
+
+// QaPullRequestCardGateState defines model for QaPullRequestCard.Gate.State.
+type QaPullRequestCardGateState string
+
+// QaPullRequestCardReviewState defines model for QaPullRequestCard.ReviewState.
+type QaPullRequestCardReviewState string
+
+// QaQueue defines model for QaQueue.
+type QaQueue struct {
+	CarryOver       *[]QaCarryOverCandidate `json:"carryOver,omitempty"`
+	InTesting       []QaTicketCard          `json:"inTesting"`
+	ReadyForQa      []QaTicketCard          `json:"readyForQa"`
+	RecentlyDecided struct {
+		Approvals  []QaApprovalDetail  `json:"approvals"`
+		Exemptions []QaExemptionDetail `json:"exemptions"`
+	} `json:"recentlyDecided"`
+	Recheck   []QaTicketCard `json:"recheck"`
+	Truncated struct {
+		InTesting  int `json:"inTesting"`
+		ReadyForQa int `json:"readyForQa"`
+		Recheck    int `json:"recheck"`
+		Upcoming   int `json:"upcoming"`
+	} `json:"truncated"`
+	Upcoming []QaTicketCard `json:"upcoming"`
+}
+
+// QaRejectionDetail defines model for QaRejectionDetail.
+type QaRejectionDetail struct {
+	At           time.Time          `json:"at"`
+	Comment      string             `json:"comment"`
+	Id           openapi_types.UUID `json:"id"`
+	PullRequests []struct {
+		ForgeRepo     string                                      `json:"forgeRepo"`
+		Number        int                                         `json:"number"`
+		PullRequestId openapi_types.UUID                          `json:"pullRequestId"`
+		RetiredAt     *time.Time                                  `json:"retiredAt"`
+		RetiredReason *QaRejectionDetailPullRequestsRetiredReason `json:"retiredReason"`
+		Sha           string                                      `json:"sha"`
+	} `json:"pullRequests"`
+	RejectedBy *string `json:"rejectedBy"`
+}
+
+// QaRejectionDetailPullRequestsRetiredReason defines model for QaRejectionDetail.PullRequests.RetiredReason.
+type QaRejectionDetailPullRequestsRetiredReason string
+
+// QaRejectionOutcome defines model for QaRejectionOutcome.
+type QaRejectionOutcome struct {
+	Covered            []QaVerdictPullRequest   `json:"covered"`
+	Evaluations        []QaCompletionEvaluation `json:"evaluations"`
+	RejectionId        openapi_types.UUID       `json:"rejectionId"`
+	RevokedApprovalIds []openapi_types.UUID     `json:"revokedApprovalIds"`
+	TicketKey          string                   `json:"ticketKey"`
+	Uncovered          []QaVerdictPullRequest   `json:"uncovered"`
+}
+
+// QaRevocationOutcome defines model for QaRevocationOutcome.
+type QaRevocationOutcome struct {
+	Evaluations        []QaCompletionEvaluation `json:"evaluations"`
+	GateTarget         *QaGateTarget            `json:"gateTarget,omitempty"`
+	MovedToQueue       bool                     `json:"movedToQueue"`
+	RevokedApprovalIds []openapi_types.UUID     `json:"revokedApprovalIds"`
+	TicketKeys         []string                 `json:"ticketKeys"`
+}
+
+// QaSendOutcome defines model for QaSendOutcome.
+type QaSendOutcome struct {
+	Drain *struct {
+		Cancelled int  `json:"cancelled"`
+		Conflicts int  `json:"conflicts"`
+		Done      int  `json:"done"`
+		Failed    int  `json:"failed"`
+		Paused    bool `json:"paused"`
+		Retried   int  `json:"retried"`
+	} `json:"drain"`
+	TicketKey string `json:"ticketKey"`
+}
+
+// QaSessionCard defines model for QaSessionCard.
+type QaSessionCard struct {
+	CurrentGeneration         *int                    `json:"currentGeneration"`
+	CurrentGenerationVerified bool                    `json:"currentGenerationVerified"`
+	EndReason                 *QaSessionCardEndReason `json:"endReason"`
+	EndedAt                   *time.Time              `json:"endedAt"`
+	EnvironmentId             *openapi_types.UUID     `json:"environmentId"`
+	EnvironmentSlug           *string                 `json:"environmentSlug"`
+	Id                        openapi_types.UUID      `json:"id"`
+	Owner                     *string                 `json:"owner"`
+	PullRequestIds            []openapi_types.UUID    `json:"pullRequestIds"`
+	SawChange                 bool                    `json:"sawChange"`
+	StartGeneration           *int                    `json:"startGeneration"`
+	StartedAt                 time.Time               `json:"startedAt"`
+	State                     QaSessionCardState      `json:"state"`
+	TicketKey                 string                  `json:"ticketKey"`
+	UnacknowledgedChange      bool                    `json:"unacknowledgedChange"`
+}
+
+// QaSessionCardEndReason defines model for QaSessionCard.EndReason.
+type QaSessionCardEndReason string
+
+// QaSessionCardState defines model for QaSessionCard.State.
+type QaSessionCardState string
+
+// QaSessionDetail defines model for QaSessionDetail.
+type QaSessionDetail struct {
+	CurrentGeneration         *int                      `json:"currentGeneration"`
+	CurrentGenerationVerified bool                      `json:"currentGenerationVerified"`
+	EndReason                 *QaSessionDetailEndReason `json:"endReason"`
+	EndedAt                   *time.Time                `json:"endedAt"`
+	EnvironmentId             *openapi_types.UUID       `json:"environmentId"`
+	EnvironmentSlug           *string                   `json:"environmentSlug"`
+	Events                    []QaSessionEvent          `json:"events"`
+	Id                        openapi_types.UUID        `json:"id"`
+	Owner                     *string                   `json:"owner"`
+	PullRequestIds            []openapi_types.UUID      `json:"pullRequestIds"`
+	SawChange                 bool                      `json:"sawChange"`
+	StartGeneration           *int                      `json:"startGeneration"`
+	StartedAt                 time.Time                 `json:"startedAt"`
+	State                     QaSessionDetailState      `json:"state"`
+	TicketKey                 string                    `json:"ticketKey"`
+	UnacknowledgedChange      bool                      `json:"unacknowledgedChange"`
+}
+
+// QaSessionDetailEndReason defines model for QaSessionDetail.EndReason.
+type QaSessionDetailEndReason string
+
+// QaSessionDetailState defines model for QaSessionDetail.State.
+type QaSessionDetailState string
+
+// QaSessionEvent defines model for QaSessionEvent.
+type QaSessionEvent struct {
+	After      *[]QaDeploymentService `json:"after"`
+	At         time.Time              `json:"at"`
+	Before     *[]QaDeploymentService `json:"before"`
+	Generation int                    `json:"generation"`
+	Id         openapi_types.UUID     `json:"id"`
+	Kind       QaSessionEventKind     `json:"kind"`
+}
+
+// QaSessionEventKind defines model for QaSessionEvent.Kind.
+type QaSessionEventKind string
+
+// QaSessionView defines model for QaSessionView.
+type QaSessionView struct {
+	Events  []QaSessionEvent `json:"events"`
+	Session struct {
+		CurrentGeneration    *int                           `json:"currentGeneration"`
+		EndReason            *QaSessionViewSessionEndReason `json:"endReason"`
+		EndedAt              *time.Time                     `json:"endedAt"`
+		EnvironmentId        *openapi_types.UUID            `json:"environmentId"`
+		Id                   openapi_types.UUID             `json:"id"`
+		Owner                *string                        `json:"owner"`
+		OwnerUserId          *string                        `json:"ownerUserId"`
+		PullRequestIds       []openapi_types.UUID           `json:"pullRequestIds"`
+		StartGeneration      *int                           `json:"startGeneration"`
+		StartedAt            time.Time                      `json:"startedAt"`
+		State                QaSessionViewSessionState      `json:"state"`
+		TicketKey            string                         `json:"ticketKey"`
+		UnacknowledgedChange bool                           `json:"unacknowledgedChange"`
+	} `json:"session"`
+}
+
+// QaSessionViewSessionEndReason defines model for QaSessionView.Session.EndReason.
+type QaSessionViewSessionEndReason string
+
+// QaSessionViewSessionState defines model for QaSessionView.Session.State.
+type QaSessionViewSessionState string
+
+// QaTicketCard defines model for QaTicketCard.
+type QaTicketCard struct {
+	ActiveSessions []struct {
+		Banners []struct {
+			At         time.Time                             `json:"at"`
+			Generation int                                   `json:"generation"`
+			Id         openapi_types.UUID                    `json:"id"`
+			Kind       QaTicketCardActiveSessionsBannersKind `json:"kind"`
+			Services   []struct {
+				AfterSha     *string            `json:"afterSha"`
+				BeforeSha    *string            `json:"beforeSha"`
+				Branch       string             `json:"branch"`
+				CompareUrl   *string            `json:"compareUrl"`
+				ForgeRepo    *string            `json:"forgeRepo"`
+				RepositoryId openapi_types.UUID `json:"repositoryId"`
+			} `json:"services"`
+		} `json:"banners"`
+		ChangeCount               int                                  `json:"changeCount"`
+		CurrentGeneration         *int                                 `json:"currentGeneration"`
+		CurrentGenerationVerified bool                                 `json:"currentGenerationVerified"`
+		EndReason                 *QaTicketCardActiveSessionsEndReason `json:"endReason"`
+		EndedAt                   *time.Time                           `json:"endedAt"`
+		EnvironmentId             *openapi_types.UUID                  `json:"environmentId"`
+		EnvironmentSlug           *string                              `json:"environmentSlug"`
+		Id                        openapi_types.UUID                   `json:"id"`
+		Owner                     *string                              `json:"owner"`
+		PullRequestIds            []openapi_types.UUID                 `json:"pullRequestIds"`
+		SawChange                 bool                                 `json:"sawChange"`
+		StartGeneration           *int                                 `json:"startGeneration"`
+		StartedAt                 time.Time                            `json:"startedAt"`
+		State                     QaTicketCardActiveSessionsState      `json:"state"`
+		TicketKey                 string                               `json:"ticketKey"`
+		UnacknowledgedChange      bool                                 `json:"unacknowledgedChange"`
+	} `json:"activeSessions"`
+	Completion *struct {
+		Current bool                        `json:"current"`
+		Epoch   int                         `json:"epoch"`
+		State   QaTicketCardCompletionState `json:"state"`
+	} `json:"completion"`
+	EnteredQueueAt *time.Time `json:"enteredQueueAt"`
+	Environments   []struct {
+		Id     openapi_types.UUID             `json:"id"`
+		Slug   string                         `json:"slug"`
+		Status QaTicketCardEnvironmentsStatus `json:"status"`
+	} `json:"environments"`
+	FailedWrites                 []QaFailedTrackerWrite     `json:"failedWrites"`
+	InTrackerApprovedUnconfirmed bool                       `json:"inTrackerApprovedUnconfirmed"`
+	Key                          string                     `json:"key"`
+	Partitions                   []QaPartition              `json:"partitions"`
+	ProjectKey                   string                     `json:"projectKey"`
+	PullRequests                 []QaPullRequestCard        `json:"pullRequests"`
+	StatusCategory               QaTicketCardStatusCategory `json:"statusCategory"`
+	StatusId                     string                     `json:"statusId"`
+	StatusName                   *string                    `json:"statusName"`
+	Summary                      string                     `json:"summary"`
+	Url                          *string                    `json:"url"`
+	VerdictEpoch                 int                        `json:"verdictEpoch"`
+}
+
+// QaTicketCardActiveSessionsBannersKind defines model for QaTicketCard.ActiveSessions.Banners.Kind.
+type QaTicketCardActiveSessionsBannersKind string
+
+// QaTicketCardActiveSessionsEndReason defines model for QaTicketCard.ActiveSessions.EndReason.
+type QaTicketCardActiveSessionsEndReason string
+
+// QaTicketCardActiveSessionsState defines model for QaTicketCard.ActiveSessions.State.
+type QaTicketCardActiveSessionsState string
+
+// QaTicketCardCompletionState defines model for QaTicketCard.Completion.State.
+type QaTicketCardCompletionState string
+
+// QaTicketCardEnvironmentsStatus defines model for QaTicketCard.Environments.Status.
+type QaTicketCardEnvironmentsStatus string
+
+// QaTicketCardStatusCategory defines model for QaTicketCard.StatusCategory.
+type QaTicketCardStatusCategory string
+
+// QaTicketDetail defines model for QaTicketDetail.
+type QaTicketDetail struct {
+	Approvals     []QaApprovalDetail     `json:"approvals"`
+	Card          QaTicketCard           `json:"card"`
+	Exemptions    []QaExemptionDetail    `json:"exemptions"`
+	Rejections    []QaRejectionDetail    `json:"rejections"`
+	Sessions      []QaSessionDetail      `json:"sessions"`
+	TrackerWrites []QaTrackerWriteDetail `json:"trackerWrites"`
+}
+
+// QaTrackerWriteDetail defines model for QaTrackerWriteDetail.
+type QaTrackerWriteDetail struct {
+	Attempts      int                              `json:"attempts"`
+	CompletedAt   *time.Time                       `json:"completedAt"`
+	Epoch         int                              `json:"epoch"`
+	Id            openapi_types.UUID               `json:"id"`
+	Kind          QaTrackerWriteDetailKind         `json:"kind"`
+	LastError     *string                          `json:"lastError"`
+	LastOutcome   *QaTrackerWriteDetailLastOutcome `json:"lastOutcome"`
+	NextAttemptAt *time.Time                       `json:"nextAttemptAt"`
+	SentAt        *time.Time                       `json:"sentAt"`
+	Seq           int                              `json:"seq"`
+	State         QaTrackerWriteDetailState        `json:"state"`
+}
+
+// QaTrackerWriteDetailKind defines model for QaTrackerWriteDetail.Kind.
+type QaTrackerWriteDetailKind string
+
+// QaTrackerWriteDetailLastOutcome defines model for QaTrackerWriteDetail.LastOutcome.
+type QaTrackerWriteDetailLastOutcome string
+
+// QaTrackerWriteDetailState defines model for QaTrackerWriteDetail.State.
+type QaTrackerWriteDetailState string
+
+// QaUnlinkOutcome defines model for QaUnlinkOutcome.
+type QaUnlinkOutcome struct {
+	Evaluations []QaCompletionEvaluation `json:"evaluations"`
+	ForgeRepo   string                   `json:"forgeRepo"`
+	GateTarget  QaGateTarget             `json:"gateTarget"`
+	Sha         string                   `json:"sha"`
+	TicketKey   string                   `json:"ticketKey"`
+}
+
+// QaVerdictPullRequest defines model for QaVerdictPullRequest.
+type QaVerdictPullRequest struct {
+	ForgeRepo     string             `json:"forgeRepo"`
+	HeadBranch    string             `json:"headBranch"`
+	HeadSha       string             `json:"headSha"`
+	Number        int                `json:"number"`
+	PullRequestId openapi_types.UUID `json:"pullRequestId"`
+	RepositoryId  openapi_types.UUID `json:"repositoryId"`
+	Title         string             `json:"title"`
+}
+
 // ReleaseState defines model for ReleaseState.
 type ReleaseState struct {
 	Rc  NamespaceRelease `json:"rc"`
@@ -894,7 +2005,7 @@ type EnvironmentsCreateJSONBody struct {
 		PrUrl        *string            `json:"prUrl,omitempty"`
 		RepositoryId openapi_types.UUID `json:"repositoryId"`
 	} `json:"repos"`
-	Slug     string  `json:"slug"`
+	Slug     *string `json:"slug,omitempty"`
 	TicketId *string `json:"ticketId,omitempty"`
 	TtlHours *int    `json:"ttlHours,omitempty"`
 }
@@ -939,6 +2050,75 @@ type EnvironmentsDbAccess200JSONResponseBody1 struct {
 // EnvironmentsDbAccess200JSONResponseBody defines parameters for EnvironmentsDbAccess.
 type EnvironmentsDbAccess200JSONResponseBody struct {
 	union json.RawMessage
+}
+
+// QaExemptJSONBody defines parameters for QaExempt.
+type QaExemptJSONBody struct {
+	PullRequestId *openapi_types.UUID   `json:"pullRequestId,omitempty"`
+	Reason        string                `json:"reason"`
+	Scope         QaExemptJSONBodyScope `json:"scope"`
+	TicketKey     *string               `json:"ticketKey,omitempty"`
+}
+
+// QaExemptJSONBodyScope defines parameters for QaExempt.
+type QaExemptJSONBodyScope string
+
+// QaLinkJSONBody defines parameters for QaLink.
+type QaLinkJSONBody struct {
+	PullRequestId openapi_types.UUID `json:"pullRequestId"`
+	TicketKey     string             `json:"ticketKey"`
+}
+
+// QaUnlinkJSONBody defines parameters for QaUnlink.
+type QaUnlinkJSONBody struct {
+	PullRequestId openapi_types.UUID `json:"pullRequestId"`
+	TicketKey     string             `json:"ticketKey"`
+}
+
+// QaRevokeJSONBody defines parameters for QaRevoke.
+type QaRevokeJSONBody struct {
+	ApprovalId  *openapi_types.UUID `json:"approvalId,omitempty"`
+	ExemptionId *openapi_types.UUID `json:"exemptionId,omitempty"`
+}
+
+// QaApproveJSONBody defines parameters for QaApprove.
+type QaApproveJSONBody struct {
+	Files *[]struct {
+		ContentType string `json:"contentType"`
+		Data        string `json:"data"`
+		Filename    string `json:"filename"`
+	} `json:"files,omitempty"`
+	NoRetestReason  *string `json:"noRetestReason,omitempty"`
+	Note            *string `json:"note,omitempty"`
+	Retested        bool    `json:"retested"`
+	ShownGeneration int     `json:"shownGeneration"`
+}
+
+// QaRejectJSONBody defines parameters for QaReject.
+type QaRejectJSONBody struct {
+	Comment string `json:"comment"`
+	Files   *[]struct {
+		ContentType string `json:"contentType"`
+		Data        string `json:"data"`
+		Filename    string `json:"filename"`
+	} `json:"files,omitempty"`
+	ShownGeneration int `json:"shownGeneration"`
+}
+
+// QaCommentJSONBody defines parameters for QaComment.
+type QaCommentJSONBody struct {
+	Body  string `json:"body"`
+	Files *[]struct {
+		ContentType string `json:"contentType"`
+		Data        string `json:"data"`
+		Filename    string `json:"filename"`
+	} `json:"files,omitempty"`
+}
+
+// QaStartJSONBody defines parameters for QaStart.
+type QaStartJSONBody struct {
+	EnvironmentId *openapi_types.UUID   `json:"environmentId,omitempty"`
+	Prs           *[]openapi_types.UUID `json:"prs,omitempty"`
 }
 
 // ReleasesPromotionsActiveParams defines parameters for ReleasesPromotionsActive.
@@ -1012,6 +2192,30 @@ type EnvironmentsSwapBranchJSONRequestBody EnvironmentsSwapBranchJSONBody
 
 // EnvironmentsSetVisibilityJSONRequestBody defines body for EnvironmentsSetVisibility for application/json ContentType.
 type EnvironmentsSetVisibilityJSONRequestBody EnvironmentsSetVisibilityJSONBody
+
+// QaExemptJSONRequestBody defines body for QaExempt for application/json ContentType.
+type QaExemptJSONRequestBody QaExemptJSONBody
+
+// QaLinkJSONRequestBody defines body for QaLink for application/json ContentType.
+type QaLinkJSONRequestBody QaLinkJSONBody
+
+// QaUnlinkJSONRequestBody defines body for QaUnlink for application/json ContentType.
+type QaUnlinkJSONRequestBody QaUnlinkJSONBody
+
+// QaRevokeJSONRequestBody defines body for QaRevoke for application/json ContentType.
+type QaRevokeJSONRequestBody QaRevokeJSONBody
+
+// QaApproveJSONRequestBody defines body for QaApprove for application/json ContentType.
+type QaApproveJSONRequestBody QaApproveJSONBody
+
+// QaRejectJSONRequestBody defines body for QaReject for application/json ContentType.
+type QaRejectJSONRequestBody QaRejectJSONBody
+
+// QaCommentJSONRequestBody defines body for QaComment for application/json ContentType.
+type QaCommentJSONRequestBody QaCommentJSONBody
+
+// QaStartJSONRequestBody defines body for QaStart for application/json ContentType.
+type QaStartJSONRequestBody QaStartJSONBody
 
 // ReleasesPromotePrdJSONRequestBody defines body for ReleasesPromotePrd for application/json ContentType.
 type ReleasesPromotePrdJSONRequestBody ReleasesPromotePrdJSONBody
@@ -1326,7 +2530,7 @@ type ClientInterface interface {
 
 	// EnvironmentsRetryBuild Retry a failed build
 	//
-	// Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every failed or canceled sibling service on the same branch is retried together; siblings on other branches are not.
+	// Re-dispatches the service's build. Only valid when the service has no build on its current branch, or its latest build on that branch is failed or canceled. For a monorepo every retryable sibling service on the same branch is retried together; siblings on other branches are not.
 	//
 	// Corresponds with POST /environments/{environmentId}/services/{environmentRepoId}/retry-build (the `EnvironmentsRetryBuild` operationId).
 	EnvironmentsRetryBuild(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1383,6 +2587,213 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /environments/{ref}/status (the `EnvironmentsStatus` operationId).
 	EnvironmentsStatus(ctx context.Context, ref string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaList List the QA queue
+	//
+	// The queue as the QA page's sections: Ready for QA (oldest entry first), In testing, Re-check (a Linked PR head moved since its approval), Upcoming (collapsed in the UI), Recently decided (14 days, approvals and exemptions) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
+	//
+	// Corresponds with GET /qa (the `QaList` operationId).
+	QaList(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaExemptWithBody Grant a QA exemption
+	//
+	// `scope: "pr"` needs `pullRequestId` and exempts that PR across pushes; `scope: "ticket"` needs `ticketKey` and covers the PRs linked at that moment. Either way the reason is required and the completion evaluator runs.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /qa/exemptions (the `QaExempt` operationId).
+	QaExemptWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaExempt Grant a QA exemption
+	//
+	// `scope: "pr"` needs `pullRequestId` and exempts that PR across pushes; `scope: "ticket"` needs `ticketKey` and covers the PRs linked at that moment. Either way the reason is required and the completion evaluator runs.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /qa/exemptions (the `QaExempt` operationId).
+	QaExempt(ctx context.Context, body QaExemptJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaUnexempt Revoke a QA exemption
+	//
+	// Revokes the exemption. A Ticket-scope exemption additionally revokes every approval of its Ticket, bumps the epoch and moves an approved Ticket back to the queue; a PR-scope one leaves the Ticket's approvals alone.
+	//
+	// Corresponds with POST /qa/exemptions/{exemptionId}/revoke (the `QaUnexempt` operationId).
+	QaUnexempt(ctx context.Context, exemptionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaHealth Get QA sync, outbox and evaluation health
+	//
+	// Each sync phase's cursor, last success and last error; the tracker outbox backlog by state; the evaluation-due markers past the alert threshold; and the tracker's reachability as the last sync recorded it. Never calls the tracker.
+	//
+	// Corresponds with GET /qa/health (the `QaHealth` operationId).
+	QaHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaLinkWithBody Link a pull request to a QA ticket
+	//
+	// Creates a manual link (or reactivates a removed one). A PR already linked to the Ticket is a 409.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /qa/links (the `QaLink` operationId).
+	QaLinkWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaLink Link a pull request to a QA ticket
+	//
+	// Creates a manual link (or reactivates a removed one). A PR already linked to the Ticket is a 409.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /qa/links (the `QaLink` operationId).
+	QaLink(ctx context.Context, body QaLinkJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaUnlinkWithBody Remove a QA link
+	//
+	// Removes the link and recomputes the gate for the PR's head. A pair that is not linked is a 404.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /qa/links/unlink (the `QaUnlink` operationId).
+	QaUnlinkWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaUnlink Remove a QA link
+	//
+	// Removes the link and recomputes the gate for the PR's head. A pair that is not linked is a 404.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /qa/links/unlink (the `QaUnlink` operationId).
+	QaUnlink(ctx context.Context, body QaUnlinkJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaRevokeWithBody Revoke a QA approval or exemption
+	//
+	// Name exactly one of `approvalId` or `exemptionId`. A revocation bumps the Ticket's verdict epoch and re-runs the completion evaluator.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /qa/revoke (the `QaRevoke` operationId).
+	QaRevokeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaRevoke Revoke a QA approval or exemption
+	//
+	// Name exactly one of `approvalId` or `exemptionId`. A revocation bumps the Ticket's verdict epoch and re-runs the completion evaluator.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /qa/revoke (the `QaRevoke` operationId).
+	QaRevoke(ctx context.Context, body QaRevokeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaAck Acknowledge a session change
+	//
+	// Clears `unacknowledgedChange` for the session's owner, `qa` or an admin without approving. A session that is not `open` is a 409.
+	//
+	// Corresponds with POST /qa/sessions/{sessionId}/ack (the `QaAck` operationId).
+	QaAck(ctx context.Context, sessionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaApproveWithBody Approve a QA session
+	//
+	// Refused unless the session is open, the environment is `running` and the shown generation is the verified one that runs the covered PRs' heads. `retested` or a `no-retest` reason is required when the session saw a change. Files are base64 in `files`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /qa/sessions/{sessionId}/approve (the `QaApprove` operationId).
+	QaApproveWithBody(ctx context.Context, sessionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaApprove Approve a QA session
+	//
+	// Refused unless the session is open, the environment is `running` and the shown generation is the verified one that runs the covered PRs' heads. `retested` or a `no-retest` reason is required when the session saw a change. Files are base64 in `files`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /qa/sessions/{sessionId}/approve (the `QaApprove` operationId).
+	QaApprove(ctx context.Context, sessionId openapi_types.UUID, body QaApproveJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaClose Close a session
+	//
+	// Ends the session without a verdict, so the Ticket's `drift/qa` pending text goes away. A session that is already `ended` is a 409.
+	//
+	// Corresponds with POST /qa/sessions/{sessionId}/close (the `QaClose` operationId).
+	QaClose(ctx context.Context, sessionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaRejectWithBody Reject a QA session
+	//
+	// Records a rejection on the covered PRs, revokes approvals on those same (PR, sha) pairs — including a sibling Ticket's — bumps the affected Tickets' verdict epochs and moves them to the rejected status. The comment is required; files are base64 in `files`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /qa/sessions/{sessionId}/reject (the `QaReject` operationId).
+	QaRejectWithBody(ctx context.Context, sessionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaReject Reject a QA session
+	//
+	// Records a rejection on the covered PRs, revokes approvals on those same (PR, sha) pairs — including a sibling Ticket's — bumps the affected Tickets' verdict epochs and moves them to the rejected status. The comment is required; files are base64 in `files`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /qa/sessions/{sessionId}/reject (the `QaReject` operationId).
+	QaReject(ctx context.Context, sessionId openapi_types.UUID, body QaRejectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaGet Get one QA ticket in full
+	//
+	// One card in full: every session with its event timeline, every approval, rejection and exemption with who, when and why, and the tracker writes with their state and last error. Takes a Ticket key only, matched case-insensitively (tracker keys are uppercase); a sub-task's key resolves to no Ticket — use its parent's key.
+	//
+	// Corresponds with GET /qa/tickets/{key} (the `QaGet` operationId).
+	QaGet(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaCarryOver Carry a ticket's pull requests over
+	//
+	// Only for a Ticket the tracker already approved without a drift completion: records its open Linked PRs at their current heads. Carry-overs are sha-bound and never revoked. A Ticket not awaiting completion is a 400.
+	//
+	// Corresponds with POST /qa/tickets/{key}/carry-over (the `QaCarryOver` operationId).
+	QaCarryOver(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaCommentWithBody Comment on a QA ticket
+	//
+	// Queues a tracker comment (and its attachments) for the Ticket. No session and no evaluator: this is QA saying something, not a verdict.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /qa/tickets/{key}/comments (the `QaComment` operationId).
+	QaCommentWithBody(ctx context.Context, key string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaComment Comment on a QA ticket
+	//
+	// Queues a tracker comment (and its attachments) for the Ticket. No session and no evaluator: this is QA saying something, not a verdict.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /qa/tickets/{key}/comments (the `QaComment` operationId).
+	QaComment(ctx context.Context, key string, body QaCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaSend Send a ticket to QA
+	//
+	// Queues the move back to the project's queue status. Refused as a 409 when drift's last-synced view already has the Ticket in the queue, approved or Done — retry after the next sync.
+	//
+	// Corresponds with POST /qa/tickets/{key}/send (the `QaSend` operationId).
+	QaSend(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaStartWithBody Start a QA session
+	//
+	// Partitions the Ticket's open Linked PRs so no partition holds two PRs of one Repository; omit `prs` for the first partition with no open session. A rebuild of a developer's environment happens under them — the card warns before confirming.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /qa/tickets/{key}/sessions (the `QaStart` operationId).
+	QaStartWithBody(ctx context.Context, key string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaStart Start a QA session
+	//
+	// Partitions the Ticket's open Linked PRs so no partition holds two PRs of one Repository; omit `prs` for the first partition with no open session. A rebuild of a developer's environment happens under them — the card warns before confirming.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /qa/tickets/{key}/sessions (the `QaStart` operationId).
+	QaStart(ctx context.Context, key string, body QaStartJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaRetryTrackerWrite Retry a failed tracker write
+	//
+	// Re-queues a `failed` write — `claimed` when an earlier attempt may have landed, else `pending`. Any other state is a 409.
+	//
+	// Corresponds with POST /qa/tracker-writes/{writeId}/retry (the `QaRetryTrackerWrite` operationId).
+	QaRetryTrackerWrite(ctx context.Context, writeId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ReleasesPromotionsActive Get the in-flight promotion and recent history
 	//
@@ -1868,7 +3279,7 @@ func (c *Client) EnvironmentsSwapBranch(ctx context.Context, environmentId opena
 
 // EnvironmentsRetryBuild Retry a failed build
 //
-// Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every failed or canceled sibling service on the same branch is retried together; siblings on other branches are not.
+// Re-dispatches the service's build. Only valid when the service has no build on its current branch, or its latest build on that branch is failed or canceled. For a monorepo every retryable sibling service on the same branch is retried together; siblings on other branches are not.
 //
 // Corresponds with POST /environments/{environmentId}/services/{environmentRepoId}/retry-build (the `EnvironmentsRetryBuild` operationId).
 func (c *Client) EnvironmentsRetryBuild(ctx context.Context, environmentId openapi_types.UUID, environmentRepoId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -1996,6 +3407,463 @@ func (c *Client) EnvironmentsDbAccess(ctx context.Context, ref string, reqEditor
 // Corresponds with GET /environments/{ref}/status (the `EnvironmentsStatus` operationId).
 func (c *Client) EnvironmentsStatus(ctx context.Context, ref string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewEnvironmentsStatusRequest(c.Server, ref)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaList List the QA queue
+//
+// The queue as the QA page's sections: Ready for QA (oldest entry first), In testing, Re-check (a Linked PR head moved since its approval), Upcoming (collapsed in the UI), Recently decided (14 days, approvals and exemptions) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
+//
+// Corresponds with GET /qa (the `QaList` operationId).
+func (c *Client) QaList(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaListRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaExemptWithBody Grant a QA exemption
+//
+// `scope: "pr"` needs `pullRequestId` and exempts that PR across pushes; `scope: "ticket"` needs `ticketKey` and covers the PRs linked at that moment. Either way the reason is required and the completion evaluator runs.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /qa/exemptions (the `QaExempt` operationId).
+func (c *Client) QaExemptWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaExemptRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaExempt Grant a QA exemption
+//
+// `scope: "pr"` needs `pullRequestId` and exempts that PR across pushes; `scope: "ticket"` needs `ticketKey` and covers the PRs linked at that moment. Either way the reason is required and the completion evaluator runs.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /qa/exemptions (the `QaExempt` operationId).
+func (c *Client) QaExempt(ctx context.Context, body QaExemptJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaExemptRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaUnexempt Revoke a QA exemption
+//
+// Revokes the exemption. A Ticket-scope exemption additionally revokes every approval of its Ticket, bumps the epoch and moves an approved Ticket back to the queue; a PR-scope one leaves the Ticket's approvals alone.
+//
+// Corresponds with POST /qa/exemptions/{exemptionId}/revoke (the `QaUnexempt` operationId).
+func (c *Client) QaUnexempt(ctx context.Context, exemptionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaUnexemptRequest(c.Server, exemptionId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaHealth Get QA sync, outbox and evaluation health
+//
+// Each sync phase's cursor, last success and last error; the tracker outbox backlog by state; the evaluation-due markers past the alert threshold; and the tracker's reachability as the last sync recorded it. Never calls the tracker.
+//
+// Corresponds with GET /qa/health (the `QaHealth` operationId).
+func (c *Client) QaHealth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaHealthRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaLinkWithBody Link a pull request to a QA ticket
+//
+// Creates a manual link (or reactivates a removed one). A PR already linked to the Ticket is a 409.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /qa/links (the `QaLink` operationId).
+func (c *Client) QaLinkWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaLinkRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaLink Link a pull request to a QA ticket
+//
+// Creates a manual link (or reactivates a removed one). A PR already linked to the Ticket is a 409.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /qa/links (the `QaLink` operationId).
+func (c *Client) QaLink(ctx context.Context, body QaLinkJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaLinkRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaUnlinkWithBody Remove a QA link
+//
+// Removes the link and recomputes the gate for the PR's head. A pair that is not linked is a 404.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /qa/links/unlink (the `QaUnlink` operationId).
+func (c *Client) QaUnlinkWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaUnlinkRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaUnlink Remove a QA link
+//
+// Removes the link and recomputes the gate for the PR's head. A pair that is not linked is a 404.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /qa/links/unlink (the `QaUnlink` operationId).
+func (c *Client) QaUnlink(ctx context.Context, body QaUnlinkJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaUnlinkRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaRevokeWithBody Revoke a QA approval or exemption
+//
+// Name exactly one of `approvalId` or `exemptionId`. A revocation bumps the Ticket's verdict epoch and re-runs the completion evaluator.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /qa/revoke (the `QaRevoke` operationId).
+func (c *Client) QaRevokeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaRevokeRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaRevoke Revoke a QA approval or exemption
+//
+// Name exactly one of `approvalId` or `exemptionId`. A revocation bumps the Ticket's verdict epoch and re-runs the completion evaluator.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /qa/revoke (the `QaRevoke` operationId).
+func (c *Client) QaRevoke(ctx context.Context, body QaRevokeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaRevokeRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaAck Acknowledge a session change
+//
+// Clears `unacknowledgedChange` for the session's owner, `qa` or an admin without approving. A session that is not `open` is a 409.
+//
+// Corresponds with POST /qa/sessions/{sessionId}/ack (the `QaAck` operationId).
+func (c *Client) QaAck(ctx context.Context, sessionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaAckRequest(c.Server, sessionId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaApproveWithBody Approve a QA session
+//
+// Refused unless the session is open, the environment is `running` and the shown generation is the verified one that runs the covered PRs' heads. `retested` or a `no-retest` reason is required when the session saw a change. Files are base64 in `files`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /qa/sessions/{sessionId}/approve (the `QaApprove` operationId).
+func (c *Client) QaApproveWithBody(ctx context.Context, sessionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaApproveRequestWithBody(c.Server, sessionId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaApprove Approve a QA session
+//
+// Refused unless the session is open, the environment is `running` and the shown generation is the verified one that runs the covered PRs' heads. `retested` or a `no-retest` reason is required when the session saw a change. Files are base64 in `files`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /qa/sessions/{sessionId}/approve (the `QaApprove` operationId).
+func (c *Client) QaApprove(ctx context.Context, sessionId openapi_types.UUID, body QaApproveJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaApproveRequest(c.Server, sessionId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaClose Close a session
+//
+// Ends the session without a verdict, so the Ticket's `drift/qa` pending text goes away. A session that is already `ended` is a 409.
+//
+// Corresponds with POST /qa/sessions/{sessionId}/close (the `QaClose` operationId).
+func (c *Client) QaClose(ctx context.Context, sessionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaCloseRequest(c.Server, sessionId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaRejectWithBody Reject a QA session
+//
+// Records a rejection on the covered PRs, revokes approvals on those same (PR, sha) pairs — including a sibling Ticket's — bumps the affected Tickets' verdict epochs and moves them to the rejected status. The comment is required; files are base64 in `files`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /qa/sessions/{sessionId}/reject (the `QaReject` operationId).
+func (c *Client) QaRejectWithBody(ctx context.Context, sessionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaRejectRequestWithBody(c.Server, sessionId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaReject Reject a QA session
+//
+// Records a rejection on the covered PRs, revokes approvals on those same (PR, sha) pairs — including a sibling Ticket's — bumps the affected Tickets' verdict epochs and moves them to the rejected status. The comment is required; files are base64 in `files`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /qa/sessions/{sessionId}/reject (the `QaReject` operationId).
+func (c *Client) QaReject(ctx context.Context, sessionId openapi_types.UUID, body QaRejectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaRejectRequest(c.Server, sessionId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaGet Get one QA ticket in full
+//
+// One card in full: every session with its event timeline, every approval, rejection and exemption with who, when and why, and the tracker writes with their state and last error. Takes a Ticket key only, matched case-insensitively (tracker keys are uppercase); a sub-task's key resolves to no Ticket — use its parent's key.
+//
+// Corresponds with GET /qa/tickets/{key} (the `QaGet` operationId).
+func (c *Client) QaGet(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaGetRequest(c.Server, key)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaCarryOver Carry a ticket's pull requests over
+//
+// Only for a Ticket the tracker already approved without a drift completion: records its open Linked PRs at their current heads. Carry-overs are sha-bound and never revoked. A Ticket not awaiting completion is a 400.
+//
+// Corresponds with POST /qa/tickets/{key}/carry-over (the `QaCarryOver` operationId).
+func (c *Client) QaCarryOver(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaCarryOverRequest(c.Server, key)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaCommentWithBody Comment on a QA ticket
+//
+// Queues a tracker comment (and its attachments) for the Ticket. No session and no evaluator: this is QA saying something, not a verdict.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /qa/tickets/{key}/comments (the `QaComment` operationId).
+func (c *Client) QaCommentWithBody(ctx context.Context, key string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaCommentRequestWithBody(c.Server, key, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaComment Comment on a QA ticket
+//
+// Queues a tracker comment (and its attachments) for the Ticket. No session and no evaluator: this is QA saying something, not a verdict.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /qa/tickets/{key}/comments (the `QaComment` operationId).
+func (c *Client) QaComment(ctx context.Context, key string, body QaCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaCommentRequest(c.Server, key, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaSend Send a ticket to QA
+//
+// Queues the move back to the project's queue status. Refused as a 409 when drift's last-synced view already has the Ticket in the queue, approved or Done — retry after the next sync.
+//
+// Corresponds with POST /qa/tickets/{key}/send (the `QaSend` operationId).
+func (c *Client) QaSend(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaSendRequest(c.Server, key)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaStartWithBody Start a QA session
+//
+// Partitions the Ticket's open Linked PRs so no partition holds two PRs of one Repository; omit `prs` for the first partition with no open session. A rebuild of a developer's environment happens under them — the card warns before confirming.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /qa/tickets/{key}/sessions (the `QaStart` operationId).
+func (c *Client) QaStartWithBody(ctx context.Context, key string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaStartRequestWithBody(c.Server, key, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaStart Start a QA session
+//
+// Partitions the Ticket's open Linked PRs so no partition holds two PRs of one Repository; omit `prs` for the first partition with no open session. A rebuild of a developer's environment happens under them — the card warns before confirming.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /qa/tickets/{key}/sessions (the `QaStart` operationId).
+func (c *Client) QaStart(ctx context.Context, key string, body QaStartJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaStartRequest(c.Server, key, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaRetryTrackerWrite Retry a failed tracker write
+//
+// Re-queues a `failed` write — `claimed` when an earlier attempt may have landed, else `pending`. Any other state is a 409.
+//
+// Corresponds with POST /qa/tracker-writes/{writeId}/retry (the `QaRetryTrackerWrite` operationId).
+func (c *Client) QaRetryTrackerWrite(ctx context.Context, writeId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaRetryTrackerWriteRequest(c.Server, writeId)
 	if err != nil {
 		return nil, err
 	}
@@ -3309,6 +5177,646 @@ func NewEnvironmentsStatusRequest(server string, ref string) (*http.Request, err
 	return req, nil
 }
 
+// NewQaListRequest constructs an http.Request for the QaList method
+func NewQaListRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewQaExemptRequest calls the generic QaExempt builder with application/json body
+func NewQaExemptRequest(server string, body QaExemptJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewQaExemptRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewQaExemptRequestWithBody constructs an http.Request for the QaExempt method, with any body, and a specified content type
+func NewQaExemptRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa/exemptions")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewQaUnexemptRequest constructs an http.Request for the QaUnexempt method
+func NewQaUnexemptRequest(server string, exemptionId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "exemptionId", exemptionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa/exemptions/%s/revoke", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewQaHealthRequest constructs an http.Request for the QaHealth method
+func NewQaHealthRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa/health")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewQaLinkRequest calls the generic QaLink builder with application/json body
+func NewQaLinkRequest(server string, body QaLinkJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewQaLinkRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewQaLinkRequestWithBody constructs an http.Request for the QaLink method, with any body, and a specified content type
+func NewQaLinkRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa/links")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewQaUnlinkRequest calls the generic QaUnlink builder with application/json body
+func NewQaUnlinkRequest(server string, body QaUnlinkJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewQaUnlinkRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewQaUnlinkRequestWithBody constructs an http.Request for the QaUnlink method, with any body, and a specified content type
+func NewQaUnlinkRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa/links/unlink")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewQaRevokeRequest calls the generic QaRevoke builder with application/json body
+func NewQaRevokeRequest(server string, body QaRevokeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewQaRevokeRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewQaRevokeRequestWithBody constructs an http.Request for the QaRevoke method, with any body, and a specified content type
+func NewQaRevokeRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa/revoke")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewQaAckRequest constructs an http.Request for the QaAck method
+func NewQaAckRequest(server string, sessionId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa/sessions/%s/ack", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewQaApproveRequest calls the generic QaApprove builder with application/json body
+func NewQaApproveRequest(server string, sessionId openapi_types.UUID, body QaApproveJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewQaApproveRequestWithBody(server, sessionId, "application/json", bodyReader)
+}
+
+// NewQaApproveRequestWithBody constructs an http.Request for the QaApprove method, with any body, and a specified content type
+func NewQaApproveRequestWithBody(server string, sessionId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa/sessions/%s/approve", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewQaCloseRequest constructs an http.Request for the QaClose method
+func NewQaCloseRequest(server string, sessionId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa/sessions/%s/close", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewQaRejectRequest calls the generic QaReject builder with application/json body
+func NewQaRejectRequest(server string, sessionId openapi_types.UUID, body QaRejectJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewQaRejectRequestWithBody(server, sessionId, "application/json", bodyReader)
+}
+
+// NewQaRejectRequestWithBody constructs an http.Request for the QaReject method, with any body, and a specified content type
+func NewQaRejectRequestWithBody(server string, sessionId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "sessionId", sessionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa/sessions/%s/reject", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewQaGetRequest constructs an http.Request for the QaGet method
+func NewQaGetRequest(server string, key string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "key", key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa/tickets/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewQaCarryOverRequest constructs an http.Request for the QaCarryOver method
+func NewQaCarryOverRequest(server string, key string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "key", key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa/tickets/%s/carry-over", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewQaCommentRequest calls the generic QaComment builder with application/json body
+func NewQaCommentRequest(server string, key string, body QaCommentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewQaCommentRequestWithBody(server, key, "application/json", bodyReader)
+}
+
+// NewQaCommentRequestWithBody constructs an http.Request for the QaComment method, with any body, and a specified content type
+func NewQaCommentRequestWithBody(server string, key string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "key", key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa/tickets/%s/comments", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewQaSendRequest constructs an http.Request for the QaSend method
+func NewQaSendRequest(server string, key string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "key", key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa/tickets/%s/send", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewQaStartRequest calls the generic QaStart builder with application/json body
+func NewQaStartRequest(server string, key string, body QaStartJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewQaStartRequestWithBody(server, key, "application/json", bodyReader)
+}
+
+// NewQaStartRequestWithBody constructs an http.Request for the QaStart method, with any body, and a specified content type
+func NewQaStartRequestWithBody(server string, key string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "key", key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa/tickets/%s/sessions", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewQaRetryTrackerWriteRequest constructs an http.Request for the QaRetryTrackerWrite method
+func NewQaRetryTrackerWriteRequest(server string, writeId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "writeId", writeId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa/tracker-writes/%s/retry", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewReleasesPromotionsActiveRequest constructs an http.Request for the ReleasesPromotionsActive method
 func NewReleasesPromotionsActiveRequest(server string, params *ReleasesPromotionsActiveParams) (*http.Request, error) {
 	var err error
@@ -4040,7 +6548,7 @@ type ClientWithResponsesInterface interface {
 
 	// EnvironmentsRetryBuildWithResponse Retry a failed build
 	//
-	// Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every failed or canceled sibling service on the same branch is retried together; siblings on other branches are not.
+	// Re-dispatches the service's build. Only valid when the service has no build on its current branch, or its latest build on that branch is failed or canceled. For a monorepo every retryable sibling service on the same branch is retried together; siblings on other branches are not.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -4109,6 +6617,231 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /environments/{ref}/status (the `EnvironmentsStatus` operationId).
 	EnvironmentsStatusWithResponse(ctx context.Context, ref string, reqEditors ...RequestEditorFn) (*EnvironmentsStatusResponse, error)
+
+	// QaListWithResponse List the QA queue
+	//
+	// The queue as the QA page's sections: Ready for QA (oldest entry first), In testing, Re-check (a Linked PR head moved since its approval), Upcoming (collapsed in the UI), Recently decided (14 days, approvals and exemptions) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /qa (the `QaList` operationId).
+	QaListWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*QaListResponse, error)
+
+	// QaExemptWithBodyWithResponse Grant a QA exemption
+	//
+	// `scope: "pr"` needs `pullRequestId` and exempts that PR across pushes; `scope: "ticket"` needs `ticketKey` and covers the PRs linked at that moment. Either way the reason is required and the completion evaluator runs.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/exemptions (the `QaExempt` operationId).
+	QaExemptWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*QaExemptResponse, error)
+
+	// QaExemptWithResponse Grant a QA exemption
+	//
+	// `scope: "pr"` needs `pullRequestId` and exempts that PR across pushes; `scope: "ticket"` needs `ticketKey` and covers the PRs linked at that moment. Either way the reason is required and the completion evaluator runs.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/exemptions (the `QaExempt` operationId).
+	QaExemptWithResponse(ctx context.Context, body QaExemptJSONRequestBody, reqEditors ...RequestEditorFn) (*QaExemptResponse, error)
+
+	// QaUnexemptWithResponse Revoke a QA exemption
+	//
+	// Revokes the exemption. A Ticket-scope exemption additionally revokes every approval of its Ticket, bumps the epoch and moves an approved Ticket back to the queue; a PR-scope one leaves the Ticket's approvals alone.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/exemptions/{exemptionId}/revoke (the `QaUnexempt` operationId).
+	QaUnexemptWithResponse(ctx context.Context, exemptionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*QaUnexemptResponse, error)
+
+	// QaHealthWithResponse Get QA sync, outbox and evaluation health
+	//
+	// Each sync phase's cursor, last success and last error; the tracker outbox backlog by state; the evaluation-due markers past the alert threshold; and the tracker's reachability as the last sync recorded it. Never calls the tracker.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /qa/health (the `QaHealth` operationId).
+	QaHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*QaHealthResponse, error)
+
+	// QaLinkWithBodyWithResponse Link a pull request to a QA ticket
+	//
+	// Creates a manual link (or reactivates a removed one). A PR already linked to the Ticket is a 409.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/links (the `QaLink` operationId).
+	QaLinkWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*QaLinkResponse, error)
+
+	// QaLinkWithResponse Link a pull request to a QA ticket
+	//
+	// Creates a manual link (or reactivates a removed one). A PR already linked to the Ticket is a 409.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/links (the `QaLink` operationId).
+	QaLinkWithResponse(ctx context.Context, body QaLinkJSONRequestBody, reqEditors ...RequestEditorFn) (*QaLinkResponse, error)
+
+	// QaUnlinkWithBodyWithResponse Remove a QA link
+	//
+	// Removes the link and recomputes the gate for the PR's head. A pair that is not linked is a 404.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/links/unlink (the `QaUnlink` operationId).
+	QaUnlinkWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*QaUnlinkResponse, error)
+
+	// QaUnlinkWithResponse Remove a QA link
+	//
+	// Removes the link and recomputes the gate for the PR's head. A pair that is not linked is a 404.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/links/unlink (the `QaUnlink` operationId).
+	QaUnlinkWithResponse(ctx context.Context, body QaUnlinkJSONRequestBody, reqEditors ...RequestEditorFn) (*QaUnlinkResponse, error)
+
+	// QaRevokeWithBodyWithResponse Revoke a QA approval or exemption
+	//
+	// Name exactly one of `approvalId` or `exemptionId`. A revocation bumps the Ticket's verdict epoch and re-runs the completion evaluator.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/revoke (the `QaRevoke` operationId).
+	QaRevokeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*QaRevokeResponse, error)
+
+	// QaRevokeWithResponse Revoke a QA approval or exemption
+	//
+	// Name exactly one of `approvalId` or `exemptionId`. A revocation bumps the Ticket's verdict epoch and re-runs the completion evaluator.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/revoke (the `QaRevoke` operationId).
+	QaRevokeWithResponse(ctx context.Context, body QaRevokeJSONRequestBody, reqEditors ...RequestEditorFn) (*QaRevokeResponse, error)
+
+	// QaAckWithResponse Acknowledge a session change
+	//
+	// Clears `unacknowledgedChange` for the session's owner, `qa` or an admin without approving. A session that is not `open` is a 409.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/sessions/{sessionId}/ack (the `QaAck` operationId).
+	QaAckWithResponse(ctx context.Context, sessionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*QaAckResponse, error)
+
+	// QaApproveWithBodyWithResponse Approve a QA session
+	//
+	// Refused unless the session is open, the environment is `running` and the shown generation is the verified one that runs the covered PRs' heads. `retested` or a `no-retest` reason is required when the session saw a change. Files are base64 in `files`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/sessions/{sessionId}/approve (the `QaApprove` operationId).
+	QaApproveWithBodyWithResponse(ctx context.Context, sessionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*QaApproveResponse, error)
+
+	// QaApproveWithResponse Approve a QA session
+	//
+	// Refused unless the session is open, the environment is `running` and the shown generation is the verified one that runs the covered PRs' heads. `retested` or a `no-retest` reason is required when the session saw a change. Files are base64 in `files`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/sessions/{sessionId}/approve (the `QaApprove` operationId).
+	QaApproveWithResponse(ctx context.Context, sessionId openapi_types.UUID, body QaApproveJSONRequestBody, reqEditors ...RequestEditorFn) (*QaApproveResponse, error)
+
+	// QaCloseWithResponse Close a session
+	//
+	// Ends the session without a verdict, so the Ticket's `drift/qa` pending text goes away. A session that is already `ended` is a 409.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/sessions/{sessionId}/close (the `QaClose` operationId).
+	QaCloseWithResponse(ctx context.Context, sessionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*QaCloseResponse, error)
+
+	// QaRejectWithBodyWithResponse Reject a QA session
+	//
+	// Records a rejection on the covered PRs, revokes approvals on those same (PR, sha) pairs — including a sibling Ticket's — bumps the affected Tickets' verdict epochs and moves them to the rejected status. The comment is required; files are base64 in `files`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/sessions/{sessionId}/reject (the `QaReject` operationId).
+	QaRejectWithBodyWithResponse(ctx context.Context, sessionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*QaRejectResponse, error)
+
+	// QaRejectWithResponse Reject a QA session
+	//
+	// Records a rejection on the covered PRs, revokes approvals on those same (PR, sha) pairs — including a sibling Ticket's — bumps the affected Tickets' verdict epochs and moves them to the rejected status. The comment is required; files are base64 in `files`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/sessions/{sessionId}/reject (the `QaReject` operationId).
+	QaRejectWithResponse(ctx context.Context, sessionId openapi_types.UUID, body QaRejectJSONRequestBody, reqEditors ...RequestEditorFn) (*QaRejectResponse, error)
+
+	// QaGetWithResponse Get one QA ticket in full
+	//
+	// One card in full: every session with its event timeline, every approval, rejection and exemption with who, when and why, and the tracker writes with their state and last error. Takes a Ticket key only, matched case-insensitively (tracker keys are uppercase); a sub-task's key resolves to no Ticket — use its parent's key.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /qa/tickets/{key} (the `QaGet` operationId).
+	QaGetWithResponse(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*QaGetResponse, error)
+
+	// QaCarryOverWithResponse Carry a ticket's pull requests over
+	//
+	// Only for a Ticket the tracker already approved without a drift completion: records its open Linked PRs at their current heads. Carry-overs are sha-bound and never revoked. A Ticket not awaiting completion is a 400.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/tickets/{key}/carry-over (the `QaCarryOver` operationId).
+	QaCarryOverWithResponse(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*QaCarryOverResponse, error)
+
+	// QaCommentWithBodyWithResponse Comment on a QA ticket
+	//
+	// Queues a tracker comment (and its attachments) for the Ticket. No session and no evaluator: this is QA saying something, not a verdict.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/tickets/{key}/comments (the `QaComment` operationId).
+	QaCommentWithBodyWithResponse(ctx context.Context, key string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*QaCommentResponse, error)
+
+	// QaCommentWithResponse Comment on a QA ticket
+	//
+	// Queues a tracker comment (and its attachments) for the Ticket. No session and no evaluator: this is QA saying something, not a verdict.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/tickets/{key}/comments (the `QaComment` operationId).
+	QaCommentWithResponse(ctx context.Context, key string, body QaCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*QaCommentResponse, error)
+
+	// QaSendWithResponse Send a ticket to QA
+	//
+	// Queues the move back to the project's queue status. Refused as a 409 when drift's last-synced view already has the Ticket in the queue, approved or Done — retry after the next sync.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/tickets/{key}/send (the `QaSend` operationId).
+	QaSendWithResponse(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*QaSendResponse, error)
+
+	// QaStartWithBodyWithResponse Start a QA session
+	//
+	// Partitions the Ticket's open Linked PRs so no partition holds two PRs of one Repository; omit `prs` for the first partition with no open session. A rebuild of a developer's environment happens under them — the card warns before confirming.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/tickets/{key}/sessions (the `QaStart` operationId).
+	QaStartWithBodyWithResponse(ctx context.Context, key string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*QaStartResponse, error)
+
+	// QaStartWithResponse Start a QA session
+	//
+	// Partitions the Ticket's open Linked PRs so no partition holds two PRs of one Repository; omit `prs` for the first partition with no open session. A rebuild of a developer's environment happens under them — the card warns before confirming.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/tickets/{key}/sessions (the `QaStart` operationId).
+	QaStartWithResponse(ctx context.Context, key string, body QaStartJSONRequestBody, reqEditors ...RequestEditorFn) (*QaStartResponse, error)
+
+	// QaRetryTrackerWriteWithResponse Retry a failed tracker write
+	//
+	// Re-queues a `failed` write — `claimed` when an earlier attempt may have landed, else `pending`. Any other state is a 409.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/tracker-writes/{writeId}/retry (the `QaRetryTrackerWrite` operationId).
+	QaRetryTrackerWriteWithResponse(ctx context.Context, writeId openapi_types.UUID, reqEditors ...RequestEditorFn) (*QaRetryTrackerWriteResponse, error)
 
 	// ReleasesPromotionsActiveWithResponse Get the in-flight promotion and recent history
 	//
@@ -4622,6 +7355,8 @@ type EnvironmentsCreateResponse struct {
 	JSON404 *ApiProblem
 	// JSON409 the response for an HTTP 409 `application/json` response
 	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
 	// JSON429 the response for an HTTP 429 `application/json` response
 	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
@@ -4662,6 +7397,11 @@ func (r EnvironmentsCreateResponse) GetJSON404() *ApiProblem {
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
 func (r EnvironmentsCreateResponse) GetJSON409() *ApiProblem {
 	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r EnvironmentsCreateResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
@@ -4945,6 +7685,8 @@ type EnvironmentsTriggerE2eResponse struct {
 	JSON404 *ApiProblem
 	// JSON409 the response for an HTTP 409 `application/json` response
 	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
 	// JSON429 the response for an HTTP 429 `application/json` response
 	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
@@ -4989,6 +7731,11 @@ func (r EnvironmentsTriggerE2eResponse) GetJSON404() *ApiProblem {
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
 func (r EnvironmentsTriggerE2eResponse) GetJSON409() *ApiProblem {
 	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r EnvironmentsTriggerE2eResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
@@ -5157,6 +7904,8 @@ type EnvironmentsExtendResponse struct {
 	JSON404 *ApiProblem
 	// JSON409 the response for an HTTP 409 `application/json` response
 	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
 	// JSON429 the response for an HTTP 429 `application/json` response
 	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
@@ -5195,6 +7944,11 @@ func (r EnvironmentsExtendResponse) GetJSON404() *ApiProblem {
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
 func (r EnvironmentsExtendResponse) GetJSON409() *ApiProblem {
 	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r EnvironmentsExtendResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
@@ -5483,6 +8237,8 @@ type EnvironmentsAddServiceResponse struct {
 	JSON404 *ApiProblem
 	// JSON409 the response for an HTTP 409 `application/json` response
 	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
 	// JSON429 the response for an HTTP 429 `application/json` response
 	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
@@ -5523,6 +8279,11 @@ func (r EnvironmentsAddServiceResponse) GetJSON404() *ApiProblem {
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
 func (r EnvironmentsAddServiceResponse) GetJSON409() *ApiProblem {
 	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r EnvironmentsAddServiceResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
@@ -5698,6 +8459,8 @@ type EnvironmentsSwapBranchResponse struct {
 	JSON404 *ApiProblem
 	// JSON409 the response for an HTTP 409 `application/json` response
 	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
 	// JSON429 the response for an HTTP 429 `application/json` response
 	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
@@ -5738,6 +8501,11 @@ func (r EnvironmentsSwapBranchResponse) GetJSON404() *ApiProblem {
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
 func (r EnvironmentsSwapBranchResponse) GetJSON409() *ApiProblem {
 	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r EnvironmentsSwapBranchResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
@@ -6031,6 +8799,8 @@ type EnvironmentsSetVisibilityResponse struct {
 	JSON404 *ApiProblem
 	// JSON409 the response for an HTTP 409 `application/json` response
 	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
 	// JSON429 the response for an HTTP 429 `application/json` response
 	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
@@ -6071,6 +8841,11 @@ func (r EnvironmentsSetVisibilityResponse) GetJSON404() *ApiProblem {
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
 func (r EnvironmentsSetVisibilityResponse) GetJSON409() *ApiProblem {
 	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r EnvironmentsSetVisibilityResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
@@ -6524,6 +9299,1844 @@ func (r EnvironmentsStatusResponse) ContentType() string {
 	return ""
 }
 
+// QaListResponse429Headers the declared response headers of an HTTP 429 response for QaList
+type QaListResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaListResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaQueue
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaListResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaListResponse) GetJSON200() *QaQueue {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaListResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaListResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaListResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaListResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaListResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaListResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaListResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaListResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaListResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaListResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaListResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// QaExemptResponse429Headers the declared response headers of an HTTP 429 response for QaExempt
+type QaExemptResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaExemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaExemptionOutcome
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaExemptResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaExemptResponse) GetJSON200() *QaExemptionOutcome {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaExemptResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaExemptResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaExemptResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaExemptResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r QaExemptResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r QaExemptResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaExemptResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaExemptResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaExemptResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaExemptResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaExemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaExemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaExemptResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// QaUnexemptResponse429Headers the declared response headers of an HTTP 429 response for QaUnexempt
+type QaUnexemptResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaUnexemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaRevocationOutcome
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaUnexemptResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaUnexemptResponse) GetJSON200() *QaRevocationOutcome {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaUnexemptResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaUnexemptResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaUnexemptResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaUnexemptResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r QaUnexemptResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaUnexemptResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaUnexemptResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaUnexemptResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaUnexemptResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaUnexemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaUnexemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaUnexemptResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// QaHealthResponse429Headers the declared response headers of an HTTP 429 response for QaHealth
+type QaHealthResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaHealthResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaHealth
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaHealthResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaHealthResponse) GetJSON200() *QaHealth {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaHealthResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaHealthResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaHealthResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaHealthResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaHealthResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaHealthResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaHealthResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaHealthResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaHealthResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaHealthResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaHealthResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// QaLinkResponse429Headers the declared response headers of an HTTP 429 response for QaLink
+type QaLinkResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaLinkResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaLinkOutcome
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaLinkResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaLinkResponse) GetJSON200() *QaLinkOutcome {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaLinkResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaLinkResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaLinkResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaLinkResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r QaLinkResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r QaLinkResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaLinkResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaLinkResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaLinkResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaLinkResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaLinkResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaLinkResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaLinkResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// QaUnlinkResponse429Headers the declared response headers of an HTTP 429 response for QaUnlink
+type QaUnlinkResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaUnlinkResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaUnlinkOutcome
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaUnlinkResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaUnlinkResponse) GetJSON200() *QaUnlinkOutcome {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaUnlinkResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaUnlinkResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaUnlinkResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaUnlinkResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r QaUnlinkResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r QaUnlinkResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaUnlinkResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaUnlinkResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r QaUnlinkResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaUnlinkResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaUnlinkResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaUnlinkResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaUnlinkResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaUnlinkResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// QaRevokeResponse429Headers the declared response headers of an HTTP 429 response for QaRevoke
+type QaRevokeResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaRevokeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaRevocationOutcome
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaRevokeResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaRevokeResponse) GetJSON200() *QaRevocationOutcome {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaRevokeResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaRevokeResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaRevokeResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaRevokeResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r QaRevokeResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r QaRevokeResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaRevokeResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaRevokeResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaRevokeResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaRevokeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaRevokeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaRevokeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaRevokeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// QaAckResponse429Headers the declared response headers of an HTTP 429 response for QaAck
+type QaAckResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaAckResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaSessionView
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaAckResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaAckResponse) GetJSON200() *QaSessionView {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaAckResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaAckResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaAckResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaAckResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r QaAckResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaAckResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaAckResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaAckResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaAckResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaAckResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaAckResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaAckResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// QaApproveResponse429Headers the declared response headers of an HTTP 429 response for QaApprove
+type QaApproveResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaApproveResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaApprovalOutcome
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaApproveResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaApproveResponse) GetJSON200() *QaApprovalOutcome {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaApproveResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaApproveResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaApproveResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaApproveResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r QaApproveResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r QaApproveResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaApproveResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaApproveResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r QaApproveResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaApproveResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaApproveResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaApproveResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaApproveResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaApproveResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// QaCloseResponse429Headers the declared response headers of an HTTP 429 response for QaClose
+type QaCloseResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaCloseResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaSessionView
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaCloseResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaCloseResponse) GetJSON200() *QaSessionView {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaCloseResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaCloseResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaCloseResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaCloseResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r QaCloseResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaCloseResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaCloseResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaCloseResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaCloseResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaCloseResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaCloseResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaCloseResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// QaRejectResponse429Headers the declared response headers of an HTTP 429 response for QaReject
+type QaRejectResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaRejectResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaRejectionOutcome
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaRejectResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaRejectResponse) GetJSON200() *QaRejectionOutcome {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaRejectResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaRejectResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaRejectResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaRejectResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r QaRejectResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r QaRejectResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaRejectResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaRejectResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r QaRejectResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaRejectResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaRejectResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaRejectResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaRejectResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaRejectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// QaGetResponse429Headers the declared response headers of an HTTP 429 response for QaGet
+type QaGetResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaGetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaTicketDetail
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaGetResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaGetResponse) GetJSON200() *QaTicketDetail {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaGetResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaGetResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaGetResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaGetResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaGetResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaGetResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaGetResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaGetResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaGetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaGetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaGetResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// QaCarryOverResponse429Headers the declared response headers of an HTTP 429 response for QaCarryOver
+type QaCarryOverResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaCarryOverResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaCarryOverOutcome
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaCarryOverResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaCarryOverResponse) GetJSON200() *QaCarryOverOutcome {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaCarryOverResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaCarryOverResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaCarryOverResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaCarryOverResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r QaCarryOverResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaCarryOverResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaCarryOverResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r QaCarryOverResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaCarryOverResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaCarryOverResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaCarryOverResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaCarryOverResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaCarryOverResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// QaCommentResponse429Headers the declared response headers of an HTTP 429 response for QaComment
+type QaCommentResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaCommentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaCommentOutcome
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaCommentResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaCommentResponse) GetJSON200() *QaCommentOutcome {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaCommentResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaCommentResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaCommentResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaCommentResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r QaCommentResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r QaCommentResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaCommentResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaCommentResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaCommentResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaCommentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaCommentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaCommentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaCommentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// QaSendResponse429Headers the declared response headers of an HTTP 429 response for QaSend
+type QaSendResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaSendResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaSendOutcome
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaSendResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaSendResponse) GetJSON200() *QaSendOutcome {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaSendResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaSendResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaSendResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaSendResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r QaSendResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaSendResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaSendResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaSendResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaSendResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaSendResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaSendResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaSendResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// QaStartResponse429Headers the declared response headers of an HTTP 429 response for QaStart
+type QaStartResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaStartResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaSessionView
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaStartResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaStartResponse) GetJSON200() *QaSessionView {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaStartResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaStartResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaStartResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaStartResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r QaStartResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r QaStartResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaStartResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaStartResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r QaStartResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaStartResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaStartResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaStartResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaStartResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaStartResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// QaRetryTrackerWriteResponse429Headers the declared response headers of an HTTP 429 response for QaRetryTrackerWrite
+type QaRetryTrackerWriteResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaRetryTrackerWriteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaTrackerWriteDetail
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaRetryTrackerWriteResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaRetryTrackerWriteResponse) GetJSON200() *QaTrackerWriteDetail {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaRetryTrackerWriteResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaRetryTrackerWriteResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaRetryTrackerWriteResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaRetryTrackerWriteResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r QaRetryTrackerWriteResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaRetryTrackerWriteResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaRetryTrackerWriteResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaRetryTrackerWriteResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaRetryTrackerWriteResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaRetryTrackerWriteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaRetryTrackerWriteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaRetryTrackerWriteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ReleasesPromotionsActiveResponse429Headers the declared response headers of an HTTP 429 response for ReleasesPromotionsActive
 type ReleasesPromotionsActiveResponse429Headers struct {
 	RetryAfter int
@@ -6729,6 +11342,8 @@ type ReleasesPromotePrdResponse struct {
 	JSON404 *ApiProblem
 	// JSON409 the response for an HTTP 409 `application/json` response
 	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
 	// JSON429 the response for an HTTP 429 `application/json` response
 	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
@@ -6771,6 +11386,11 @@ func (r ReleasesPromotePrdResponse) GetJSON404() *ApiProblem {
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
 func (r ReleasesPromotePrdResponse) GetJSON409() *ApiProblem {
 	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r ReleasesPromotePrdResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
@@ -6847,6 +11467,8 @@ type ReleasesPromotePrdHotfixResponse struct {
 	JSON404 *ApiProblem
 	// JSON409 the response for an HTTP 409 `application/json` response
 	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
 	// JSON429 the response for an HTTP 429 `application/json` response
 	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
@@ -6889,6 +11511,11 @@ func (r ReleasesPromotePrdHotfixResponse) GetJSON404() *ApiProblem {
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
 func (r ReleasesPromotePrdHotfixResponse) GetJSON409() *ApiProblem {
 	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r ReleasesPromotePrdHotfixResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
@@ -6960,6 +11587,8 @@ type ReleasesPromoteRcResponse struct {
 	JSON404 *ApiProblem
 	// JSON409 the response for an HTTP 409 `application/json` response
 	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
 	// JSON429 the response for an HTTP 429 `application/json` response
 	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
@@ -7000,6 +11629,11 @@ func (r ReleasesPromoteRcResponse) GetJSON404() *ApiProblem {
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
 func (r ReleasesPromoteRcResponse) GetJSON409() *ApiProblem {
 	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r ReleasesPromoteRcResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
@@ -7071,6 +11705,8 @@ type ReleasesPromoteRcHotfixResponse struct {
 	JSON404 *ApiProblem
 	// JSON409 the response for an HTTP 409 `application/json` response
 	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
 	// JSON429 the response for an HTTP 429 `application/json` response
 	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
@@ -7111,6 +11747,11 @@ func (r ReleasesPromoteRcHotfixResponse) GetJSON404() *ApiProblem {
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
 func (r ReleasesPromoteRcHotfixResponse) GetJSON409() *ApiProblem {
 	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r ReleasesPromoteRcHotfixResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
@@ -7182,6 +11823,8 @@ type ReleasesPromotionsCancelResponse struct {
 	JSON404 *ApiProblem
 	// JSON409 the response for an HTTP 409 `application/json` response
 	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
 	// JSON429 the response for an HTTP 429 `application/json` response
 	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
@@ -7222,6 +11865,11 @@ func (r ReleasesPromotionsCancelResponse) GetJSON404() *ApiProblem {
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
 func (r ReleasesPromotionsCancelResponse) GetJSON409() *ApiProblem {
 	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r ReleasesPromotionsCancelResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
@@ -7859,7 +12507,7 @@ func (c *ClientWithResponses) EnvironmentsSwapBranchWithResponse(ctx context.Con
 
 // EnvironmentsRetryBuildWithResponse Retry a failed build
 //
-// Re-dispatches the service's build. Only valid when its latest build is failed or canceled. For a monorepo every failed or canceled sibling service on the same branch is retried together; siblings on other branches are not.
+// Re-dispatches the service's build. Only valid when the service has no build on its current branch, or its latest build on that branch is failed or canceled. For a monorepo every retryable sibling service on the same branch is retried together; siblings on other branches are not.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -7975,6 +12623,381 @@ func (c *ClientWithResponses) EnvironmentsStatusWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseEnvironmentsStatusResponse(rsp)
+}
+
+// QaListWithResponse List the QA queue
+//
+// The queue as the QA page's sections: Ready for QA (oldest entry first), In testing, Re-check (a Linked PR head moved since its approval), Upcoming (collapsed in the UI), Recently decided (14 days, approvals and exemptions) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /qa (the `QaList` operationId).
+func (c *ClientWithResponses) QaListWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*QaListResponse, error) {
+	rsp, err := c.QaList(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaListResponse(rsp)
+}
+
+// QaExemptWithBodyWithResponse Grant a QA exemption
+//
+// `scope: "pr"` needs `pullRequestId` and exempts that PR across pushes; `scope: "ticket"` needs `ticketKey` and covers the PRs linked at that moment. Either way the reason is required and the completion evaluator runs.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/exemptions (the `QaExempt` operationId).
+func (c *ClientWithResponses) QaExemptWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*QaExemptResponse, error) {
+	rsp, err := c.QaExemptWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaExemptResponse(rsp)
+}
+
+// QaExemptWithResponse Grant a QA exemption
+//
+// `scope: "pr"` needs `pullRequestId` and exempts that PR across pushes; `scope: "ticket"` needs `ticketKey` and covers the PRs linked at that moment. Either way the reason is required and the completion evaluator runs.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/exemptions (the `QaExempt` operationId).
+func (c *ClientWithResponses) QaExemptWithResponse(ctx context.Context, body QaExemptJSONRequestBody, reqEditors ...RequestEditorFn) (*QaExemptResponse, error) {
+	rsp, err := c.QaExempt(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaExemptResponse(rsp)
+}
+
+// QaUnexemptWithResponse Revoke a QA exemption
+//
+// Revokes the exemption. A Ticket-scope exemption additionally revokes every approval of its Ticket, bumps the epoch and moves an approved Ticket back to the queue; a PR-scope one leaves the Ticket's approvals alone.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/exemptions/{exemptionId}/revoke (the `QaUnexempt` operationId).
+func (c *ClientWithResponses) QaUnexemptWithResponse(ctx context.Context, exemptionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*QaUnexemptResponse, error) {
+	rsp, err := c.QaUnexempt(ctx, exemptionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaUnexemptResponse(rsp)
+}
+
+// QaHealthWithResponse Get QA sync, outbox and evaluation health
+//
+// Each sync phase's cursor, last success and last error; the tracker outbox backlog by state; the evaluation-due markers past the alert threshold; and the tracker's reachability as the last sync recorded it. Never calls the tracker.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /qa/health (the `QaHealth` operationId).
+func (c *ClientWithResponses) QaHealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*QaHealthResponse, error) {
+	rsp, err := c.QaHealth(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaHealthResponse(rsp)
+}
+
+// QaLinkWithBodyWithResponse Link a pull request to a QA ticket
+//
+// Creates a manual link (or reactivates a removed one). A PR already linked to the Ticket is a 409.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/links (the `QaLink` operationId).
+func (c *ClientWithResponses) QaLinkWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*QaLinkResponse, error) {
+	rsp, err := c.QaLinkWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaLinkResponse(rsp)
+}
+
+// QaLinkWithResponse Link a pull request to a QA ticket
+//
+// Creates a manual link (or reactivates a removed one). A PR already linked to the Ticket is a 409.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/links (the `QaLink` operationId).
+func (c *ClientWithResponses) QaLinkWithResponse(ctx context.Context, body QaLinkJSONRequestBody, reqEditors ...RequestEditorFn) (*QaLinkResponse, error) {
+	rsp, err := c.QaLink(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaLinkResponse(rsp)
+}
+
+// QaUnlinkWithBodyWithResponse Remove a QA link
+//
+// Removes the link and recomputes the gate for the PR's head. A pair that is not linked is a 404.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/links/unlink (the `QaUnlink` operationId).
+func (c *ClientWithResponses) QaUnlinkWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*QaUnlinkResponse, error) {
+	rsp, err := c.QaUnlinkWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaUnlinkResponse(rsp)
+}
+
+// QaUnlinkWithResponse Remove a QA link
+//
+// Removes the link and recomputes the gate for the PR's head. A pair that is not linked is a 404.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/links/unlink (the `QaUnlink` operationId).
+func (c *ClientWithResponses) QaUnlinkWithResponse(ctx context.Context, body QaUnlinkJSONRequestBody, reqEditors ...RequestEditorFn) (*QaUnlinkResponse, error) {
+	rsp, err := c.QaUnlink(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaUnlinkResponse(rsp)
+}
+
+// QaRevokeWithBodyWithResponse Revoke a QA approval or exemption
+//
+// Name exactly one of `approvalId` or `exemptionId`. A revocation bumps the Ticket's verdict epoch and re-runs the completion evaluator.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/revoke (the `QaRevoke` operationId).
+func (c *ClientWithResponses) QaRevokeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*QaRevokeResponse, error) {
+	rsp, err := c.QaRevokeWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaRevokeResponse(rsp)
+}
+
+// QaRevokeWithResponse Revoke a QA approval or exemption
+//
+// Name exactly one of `approvalId` or `exemptionId`. A revocation bumps the Ticket's verdict epoch and re-runs the completion evaluator.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/revoke (the `QaRevoke` operationId).
+func (c *ClientWithResponses) QaRevokeWithResponse(ctx context.Context, body QaRevokeJSONRequestBody, reqEditors ...RequestEditorFn) (*QaRevokeResponse, error) {
+	rsp, err := c.QaRevoke(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaRevokeResponse(rsp)
+}
+
+// QaAckWithResponse Acknowledge a session change
+//
+// Clears `unacknowledgedChange` for the session's owner, `qa` or an admin without approving. A session that is not `open` is a 409.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/sessions/{sessionId}/ack (the `QaAck` operationId).
+func (c *ClientWithResponses) QaAckWithResponse(ctx context.Context, sessionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*QaAckResponse, error) {
+	rsp, err := c.QaAck(ctx, sessionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaAckResponse(rsp)
+}
+
+// QaApproveWithBodyWithResponse Approve a QA session
+//
+// Refused unless the session is open, the environment is `running` and the shown generation is the verified one that runs the covered PRs' heads. `retested` or a `no-retest` reason is required when the session saw a change. Files are base64 in `files`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/sessions/{sessionId}/approve (the `QaApprove` operationId).
+func (c *ClientWithResponses) QaApproveWithBodyWithResponse(ctx context.Context, sessionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*QaApproveResponse, error) {
+	rsp, err := c.QaApproveWithBody(ctx, sessionId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaApproveResponse(rsp)
+}
+
+// QaApproveWithResponse Approve a QA session
+//
+// Refused unless the session is open, the environment is `running` and the shown generation is the verified one that runs the covered PRs' heads. `retested` or a `no-retest` reason is required when the session saw a change. Files are base64 in `files`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/sessions/{sessionId}/approve (the `QaApprove` operationId).
+func (c *ClientWithResponses) QaApproveWithResponse(ctx context.Context, sessionId openapi_types.UUID, body QaApproveJSONRequestBody, reqEditors ...RequestEditorFn) (*QaApproveResponse, error) {
+	rsp, err := c.QaApprove(ctx, sessionId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaApproveResponse(rsp)
+}
+
+// QaCloseWithResponse Close a session
+//
+// Ends the session without a verdict, so the Ticket's `drift/qa` pending text goes away. A session that is already `ended` is a 409.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/sessions/{sessionId}/close (the `QaClose` operationId).
+func (c *ClientWithResponses) QaCloseWithResponse(ctx context.Context, sessionId openapi_types.UUID, reqEditors ...RequestEditorFn) (*QaCloseResponse, error) {
+	rsp, err := c.QaClose(ctx, sessionId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaCloseResponse(rsp)
+}
+
+// QaRejectWithBodyWithResponse Reject a QA session
+//
+// Records a rejection on the covered PRs, revokes approvals on those same (PR, sha) pairs — including a sibling Ticket's — bumps the affected Tickets' verdict epochs and moves them to the rejected status. The comment is required; files are base64 in `files`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/sessions/{sessionId}/reject (the `QaReject` operationId).
+func (c *ClientWithResponses) QaRejectWithBodyWithResponse(ctx context.Context, sessionId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*QaRejectResponse, error) {
+	rsp, err := c.QaRejectWithBody(ctx, sessionId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaRejectResponse(rsp)
+}
+
+// QaRejectWithResponse Reject a QA session
+//
+// Records a rejection on the covered PRs, revokes approvals on those same (PR, sha) pairs — including a sibling Ticket's — bumps the affected Tickets' verdict epochs and moves them to the rejected status. The comment is required; files are base64 in `files`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/sessions/{sessionId}/reject (the `QaReject` operationId).
+func (c *ClientWithResponses) QaRejectWithResponse(ctx context.Context, sessionId openapi_types.UUID, body QaRejectJSONRequestBody, reqEditors ...RequestEditorFn) (*QaRejectResponse, error) {
+	rsp, err := c.QaReject(ctx, sessionId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaRejectResponse(rsp)
+}
+
+// QaGetWithResponse Get one QA ticket in full
+//
+// One card in full: every session with its event timeline, every approval, rejection and exemption with who, when and why, and the tracker writes with their state and last error. Takes a Ticket key only, matched case-insensitively (tracker keys are uppercase); a sub-task's key resolves to no Ticket — use its parent's key.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /qa/tickets/{key} (the `QaGet` operationId).
+func (c *ClientWithResponses) QaGetWithResponse(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*QaGetResponse, error) {
+	rsp, err := c.QaGet(ctx, key, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaGetResponse(rsp)
+}
+
+// QaCarryOverWithResponse Carry a ticket's pull requests over
+//
+// Only for a Ticket the tracker already approved without a drift completion: records its open Linked PRs at their current heads. Carry-overs are sha-bound and never revoked. A Ticket not awaiting completion is a 400.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/tickets/{key}/carry-over (the `QaCarryOver` operationId).
+func (c *ClientWithResponses) QaCarryOverWithResponse(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*QaCarryOverResponse, error) {
+	rsp, err := c.QaCarryOver(ctx, key, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaCarryOverResponse(rsp)
+}
+
+// QaCommentWithBodyWithResponse Comment on a QA ticket
+//
+// Queues a tracker comment (and its attachments) for the Ticket. No session and no evaluator: this is QA saying something, not a verdict.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/tickets/{key}/comments (the `QaComment` operationId).
+func (c *ClientWithResponses) QaCommentWithBodyWithResponse(ctx context.Context, key string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*QaCommentResponse, error) {
+	rsp, err := c.QaCommentWithBody(ctx, key, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaCommentResponse(rsp)
+}
+
+// QaCommentWithResponse Comment on a QA ticket
+//
+// Queues a tracker comment (and its attachments) for the Ticket. No session and no evaluator: this is QA saying something, not a verdict.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/tickets/{key}/comments (the `QaComment` operationId).
+func (c *ClientWithResponses) QaCommentWithResponse(ctx context.Context, key string, body QaCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*QaCommentResponse, error) {
+	rsp, err := c.QaComment(ctx, key, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaCommentResponse(rsp)
+}
+
+// QaSendWithResponse Send a ticket to QA
+//
+// Queues the move back to the project's queue status. Refused as a 409 when drift's last-synced view already has the Ticket in the queue, approved or Done — retry after the next sync.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/tickets/{key}/send (the `QaSend` operationId).
+func (c *ClientWithResponses) QaSendWithResponse(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*QaSendResponse, error) {
+	rsp, err := c.QaSend(ctx, key, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaSendResponse(rsp)
+}
+
+// QaStartWithBodyWithResponse Start a QA session
+//
+// Partitions the Ticket's open Linked PRs so no partition holds two PRs of one Repository; omit `prs` for the first partition with no open session. A rebuild of a developer's environment happens under them — the card warns before confirming.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/tickets/{key}/sessions (the `QaStart` operationId).
+func (c *ClientWithResponses) QaStartWithBodyWithResponse(ctx context.Context, key string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*QaStartResponse, error) {
+	rsp, err := c.QaStartWithBody(ctx, key, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaStartResponse(rsp)
+}
+
+// QaStartWithResponse Start a QA session
+//
+// Partitions the Ticket's open Linked PRs so no partition holds two PRs of one Repository; omit `prs` for the first partition with no open session. A rebuild of a developer's environment happens under them — the card warns before confirming.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/tickets/{key}/sessions (the `QaStart` operationId).
+func (c *ClientWithResponses) QaStartWithResponse(ctx context.Context, key string, body QaStartJSONRequestBody, reqEditors ...RequestEditorFn) (*QaStartResponse, error) {
+	rsp, err := c.QaStart(ctx, key, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaStartResponse(rsp)
+}
+
+// QaRetryTrackerWriteWithResponse Retry a failed tracker write
+//
+// Re-queues a `failed` write — `claimed` when an earlier attempt may have landed, else `pending`. Any other state is a 409.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/tracker-writes/{writeId}/retry (the `QaRetryTrackerWrite` operationId).
+func (c *ClientWithResponses) QaRetryTrackerWriteWithResponse(ctx context.Context, writeId openapi_types.UUID, reqEditors ...RequestEditorFn) (*QaRetryTrackerWriteResponse, error) {
+	rsp, err := c.QaRetryTrackerWrite(ctx, writeId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaRetryTrackerWriteResponse(rsp)
 }
 
 // ReleasesPromotionsActiveWithResponse Get the in-flight promotion and recent history
@@ -8578,6 +13601,13 @@ func ParseEnvironmentsCreateResponse(rsp *http.Response) (*EnvironmentsCreateRes
 		}
 		response.JSON409 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest ApiProblem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -8874,6 +13904,13 @@ func ParseEnvironmentsTriggerE2eResponse(rsp *http.Response) (*EnvironmentsTrigg
 		}
 		response.JSON409 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest ApiProblem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -9063,6 +14100,13 @@ func ParseEnvironmentsExtendResponse(rsp *http.Response) (*EnvironmentsExtendRes
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest ApiProblem
@@ -9363,6 +14407,13 @@ func ParseEnvironmentsAddServiceResponse(rsp *http.Response) (*EnvironmentsAddSe
 		}
 		response.JSON409 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest ApiProblem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -9559,6 +14610,13 @@ func ParseEnvironmentsSwapBranchResponse(rsp *http.Response) (*EnvironmentsSwapB
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest ApiProblem
@@ -9865,6 +14923,13 @@ func ParseEnvironmentsSetVisibilityResponse(rsp *http.Response) (*EnvironmentsSe
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest ApiProblem
@@ -10278,6 +15343,1691 @@ func ParseEnvironmentsStatusResponse(rsp *http.Response) (*EnvironmentsStatusRes
 	return response, nil
 }
 
+// ParseQaListResponse parses an HTTP response from a QaListWithResponse call
+func ParseQaListResponse(rsp *http.Response) (*QaListResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaListResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaQueue
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaListResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseQaExemptResponse parses an HTTP response from a QaExemptWithResponse call
+func ParseQaExemptResponse(rsp *http.Response) (*QaExemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaExemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaExemptionOutcome
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaExemptResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseQaUnexemptResponse parses an HTTP response from a QaUnexemptWithResponse call
+func ParseQaUnexemptResponse(rsp *http.Response) (*QaUnexemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaUnexemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaRevocationOutcome
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaUnexemptResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseQaHealthResponse parses an HTTP response from a QaHealthWithResponse call
+func ParseQaHealthResponse(rsp *http.Response) (*QaHealthResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaHealthResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaHealth
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaHealthResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseQaLinkResponse parses an HTTP response from a QaLinkWithResponse call
+func ParseQaLinkResponse(rsp *http.Response) (*QaLinkResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaLinkResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaLinkOutcome
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaLinkResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseQaUnlinkResponse parses an HTTP response from a QaUnlinkWithResponse call
+func ParseQaUnlinkResponse(rsp *http.Response) (*QaUnlinkResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaUnlinkResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaUnlinkOutcome
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaUnlinkResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseQaRevokeResponse parses an HTTP response from a QaRevokeWithResponse call
+func ParseQaRevokeResponse(rsp *http.Response) (*QaRevokeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaRevokeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaRevocationOutcome
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaRevokeResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseQaAckResponse parses an HTTP response from a QaAckWithResponse call
+func ParseQaAckResponse(rsp *http.Response) (*QaAckResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaAckResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaSessionView
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaAckResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseQaApproveResponse parses an HTTP response from a QaApproveWithResponse call
+func ParseQaApproveResponse(rsp *http.Response) (*QaApproveResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaApproveResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaApprovalOutcome
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaApproveResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseQaCloseResponse parses an HTTP response from a QaCloseWithResponse call
+func ParseQaCloseResponse(rsp *http.Response) (*QaCloseResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaCloseResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaSessionView
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaCloseResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseQaRejectResponse parses an HTTP response from a QaRejectWithResponse call
+func ParseQaRejectResponse(rsp *http.Response) (*QaRejectResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaRejectResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaRejectionOutcome
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaRejectResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseQaGetResponse parses an HTTP response from a QaGetWithResponse call
+func ParseQaGetResponse(rsp *http.Response) (*QaGetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaGetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaTicketDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaGetResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseQaCarryOverResponse parses an HTTP response from a QaCarryOverWithResponse call
+func ParseQaCarryOverResponse(rsp *http.Response) (*QaCarryOverResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaCarryOverResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaCarryOverOutcome
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaCarryOverResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseQaCommentResponse parses an HTTP response from a QaCommentWithResponse call
+func ParseQaCommentResponse(rsp *http.Response) (*QaCommentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaCommentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaCommentOutcome
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaCommentResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseQaSendResponse parses an HTTP response from a QaSendWithResponse call
+func ParseQaSendResponse(rsp *http.Response) (*QaSendResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaSendResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaSendOutcome
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaSendResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseQaStartResponse parses an HTTP response from a QaStartWithResponse call
+func ParseQaStartResponse(rsp *http.Response) (*QaStartResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaStartResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaSessionView
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaStartResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseQaRetryTrackerWriteResponse parses an HTTP response from a QaRetryTrackerWriteWithResponse call
+func ParseQaRetryTrackerWriteResponse(rsp *http.Response) (*QaRetryTrackerWriteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaRetryTrackerWriteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaTrackerWriteDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaRetryTrackerWriteResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseReleasesPromotionsActiveResponse parses an HTTP response from a ReleasesPromotionsActiveWithResponse call
 func ParseReleasesPromotionsActiveResponse(rsp *http.Response) (*ReleasesPromotionsActiveResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -10496,6 +17246,13 @@ func ParseReleasesPromotePrdResponse(rsp *http.Response) (*ReleasesPromotePrdRes
 		}
 		response.JSON409 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest ApiProblem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -10607,6 +17364,13 @@ func ParseReleasesPromotePrdHotfixResponse(rsp *http.Response) (*ReleasesPromote
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest ApiProblem
@@ -10720,6 +17484,13 @@ func ParseReleasesPromoteRcResponse(rsp *http.Response) (*ReleasesPromoteRcRespo
 		}
 		response.JSON409 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest ApiProblem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -10822,6 +17593,13 @@ func ParseReleasesPromoteRcHotfixResponse(rsp *http.Response) (*ReleasesPromoteR
 		}
 		response.JSON409 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest ApiProblem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -10923,6 +17701,13 @@ func ParseReleasesPromotionsCancelResponse(rsp *http.Response) (*ReleasesPromoti
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest ApiProblem
