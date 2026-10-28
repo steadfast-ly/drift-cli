@@ -52,14 +52,12 @@ design: every credential traces back to a human who signed in through SSO.
 
 ### Roles
 
-Roles form a hierarchy:
+Drift has five access roles: `read-only`, `preview`, `release`, `qa` and
+`admin`. `release` and `qa` sit side by side rather than one above the other,
+and `admin` holds both.
 
-| Role | Can do |
-| ---- | ------ |
-| `read-only` | List and inspect environments, releases, audit log |
-| `preview` | Everything above, plus create/manage preview environments |
-| `release` | Everything above, plus promote to rc and hotfix |
-| `admin` | Everything above (admin-only operations are web-UI-only) |
+See [Roles](roles.md) for what each role can do, who assigns them and when a
+change reaches you.
 
 You can mint a credential at or below your own role. A token's effective
 authority at request time is **min(role at mint, owner's current role)** --
@@ -69,8 +67,11 @@ is deactivated, all their tokens stop working.
 ### Scopes
 
 Exactly one scope exists: `promote:prd`. Ordinary mints cannot carry it.
-Production promotion requires a short-lived elevated credential minted through
-a dedicated UI flow (see [Promotions](../guides/promotions.md)).
+Production promotion from the CLI or API requires a short-lived elevated
+credential minted through a dedicated UI flow (see
+[Promotions](../guides/promotions.md)). The web **Promote to Production**
+button runs on your signed-in browser session and needs only the `release`
+role.
 
 ### Revocation
 

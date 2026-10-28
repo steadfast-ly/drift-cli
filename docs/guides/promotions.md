@@ -1,5 +1,8 @@
 # Promotions
 
+**Requires:** the `release` role to promote, hotfix or cancel. Any signed-in
+user can view release state in the web UI.
+
 ## Everyday workflow
 
 ### Check release state
@@ -12,6 +15,20 @@ drift release history
 `release status` shows what is deployed to stg and rc, with pod health.
 `release history` lists past promotions.
 
+**In the web UI:** open **Releases** in the sidebar. The tabs carry your
+install's own names for staging, RC and production, followed by
+**Operations**. Each table lists **Service**, **URL**, the two version
+columns, **Sync Status**, **Health** and **Last Deployed**; the **Show only
+out-of-sync** switch shows only services whose stg build is ahead of RC --
+services with unknown sync status are hidden too. When nothing matches, the
+table reads **All services are in sync.** The **Promotion
+History** card at the bottom lists past promotions -- newest first, with
+**Load more** -- and its rows carry the states **Dispatched**, **Promoting**,
+**Deploying**, **Completed**, **Failed** and **Deploy Failed**. The page
+refreshes itself every 10 seconds while a promotion is in flight and every
+30 seconds otherwise. A failed tier read is shown as a red alert and withheld
+promotions, never as an empty list.
+
 ### Promote to rc
 
 ```bash
@@ -20,6 +37,14 @@ drift release promote rc svc-a svc-b --yes
 
 This retags each service's current stg image as rc and dispatches the
 workflow. Blocks until the promotion finishes deploying (20-minute timeout).
+
+**In the web UI:** on **Releases**, open the staging tab, tick the services,
+and choose **Promote to RC** in the bar that appears at the bottom
+("3 selected"). The **Promote to Release Candidate** dialog lists each service
+with its short commit and the **RC** target; **Promote 3 apps** (the count
+follows the selection) starts it.
+The web UI does not wait -- the progress appears in **Promotion History**
+and the in-flight banner.
 
 ### Hotfix to rc
 
@@ -30,11 +55,26 @@ drift release promote hotfix svc-a --branch hotfix/urgent --yes
 Builds a branch straight to rc, bypassing stg. For emergencies only --
 nothing has validated the build before it reaches rc.
 
+**In the web UI:** open the **Operations** tab. The **Hotfix Process** panel
+lists the steps; select one or more services under **Services**, pick the
+**Branch**, set **Target Environment** to **Release Candidate (RC)**, then
+**Deploy Hotfix**. The **Confirm Hotfix Deployment** dialog shows the branch,
+the target and the selected services; **Deploy Hotfix** dispatches. The branch
+head is resolved and pinned at dispatch time, exactly as with the CLI. The
+same panel offers **Production (PRD)** as a target.
+
 ## Production promotion
 
-Production promotion is the highest-consequence operation in drift. It
-requires a short-lived elevated credential that cannot be minted
-programmatically.
+Production promotion is the highest-consequence operation in drift. From the
+CLI or API, production promotion requires a short-lived elevated credential
+that cannot be minted programmatically; the web **Promote to Production**
+button needs only the `release` role.
+
+**In the web UI:** open **Releases**, switch to the RC tab, tick the services
+and choose **Promote to Production**, then **Promote 3 apps** (the count
+follows the selection) in the confirmation dialog. This path runs on your
+signed-in browser session and needs the `release` role; the elevated
+credential below is what the CLI and the API require.
 
 ### Step 1: Mint an elevated credential
 
@@ -119,9 +159,14 @@ return as soon as the workflows are dispatched, then check progress with
 ## Cancelling a stuck promotion
 
 A promotion whose retag workflow was cancelled, whose target was rolled back
-by hand, or that never received its ArgoCD notification stays in flight
+by hand, or that never received its deployment notification stays in flight
 forever. While it does, the concurrency guard refuses the next promotion of
 the same services, and no `--wait` will ever finish.
+
+**In the web UI:** a banner at the top of **Releases** reads **RC promotion in
+progress (dispatched)** -- or **Production**, with the live state in place of
+`dispatched` -- and names the services. **Cancel promotion** fails it, with
+the same state mapping as the CLI below. The web UI takes no reason.
 
 `drift release cancel` fails it:
 

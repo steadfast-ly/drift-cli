@@ -127,13 +127,15 @@ vendor-spec SERVER_REPO:
 docs-gen:
     {{ GO }} run ./tools/docsgen
 
-# Build docs and serve locally
+# Build docs and serve locally. The theme is pinned to the version CI builds
+# with (.github/workflows/docs.yaml); an unpinned theme can change rendering
+# and validation behaviour between local runs and the deploy.
 docs-serve: docs-gen
-    uvx --with mkdocs-material mkdocs serve
+    uvx --with mkdocs-material==9.7.7 mkdocs serve
 
-# Build the docs site
+# Build the docs site (same pinned theme as CI)
 docs-build: docs-gen
-    uvx --with mkdocs-material mkdocs build --strict
+    uvx --with mkdocs-material==9.7.7 mkdocs build --strict
 
 # Remove build output and generated docs
 clean:

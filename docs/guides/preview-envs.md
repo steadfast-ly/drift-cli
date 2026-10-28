@@ -1,6 +1,10 @@
 # Preview environments
 
-Task-oriented walkthroughs for the full environment lifecycle.
+**Requires:** the `preview` role for creating or changing environments, in the
+CLI and in the web UI. Any signed-in user can view them.
+
+Task-oriented walkthroughs for the full environment lifecycle. Each task lists
+the CLI first, then its web UI equivalent where one exists.
 
 ## Create
 
@@ -17,6 +21,20 @@ From inside a git checkout, `drift env create` infers everything it can:
 Every field has a flag that overrides inference. Outside a git repository or
 in a non-interactive session, nothing is inferred and `--slug` and `--repo`
 are required.
+
+**In the web UI:** on **Previews**, choose **New Environment**. The **Create
+Environment** dialog takes the same values explicitly -- nothing is inferred:
+
+- **Ticket ID (optional)** -- `ABC-123`-shaped; a valid one derives the slug,
+  shown as **Slug:** below the field.
+- **Slug** -- shown until a valid ticket ID is entered.
+- **TTL (hours)** -- defaults to 24.
+- **Visibility** -- **Internal (VPN)** or **Public**.
+- **Repositories** -- tick each service and choose its branch.
+
+**Export** writes the current draft to a JSON file and **Import** loads one
+back, for repeatable setups. **Create Environment** submits; the button is
+disabled until the form is valid.
 
 ```bash
 # From a checkout (interactive) -- everything is inferred.
@@ -44,6 +62,12 @@ drift env create \
   --yes
 ```
 
+**In the web UI:** tick every service under **Repositories** and choose a
+branch for each. Services that others depend on are selected automatically
+and marked **(auto-selected)**; application groups can be selected as one
+unit. The same rule applies as in the CLI -- at least one repository must use
+a non-default branch.
+
 Repos without a `:pr` segment get their PR resolved by the server
 (exactly-one-open-PR by head branch, else none).
 
@@ -63,6 +87,14 @@ drift env create \
   --migration-source orders-api \
   --yes
 ```
+
+**In the web UI:** when more than one eligible database service is selected,
+the **Create Environment** dialog adds a **DB migrations source** select. It
+lists only the services the profile considers eligible. When the install's
+default source is among the selected services it is pre-selected and the
+button stays enabled; if the default is not among them, the button is disabled
+with **Choose a DB migrations source above to continue.** until you pick one.
+The server applies the same defaults and rejections as it does for the CLI.
 
 The flag maps directly to the optional `migrationSourceEcrRepository` request
 field and is shown in the confirmation plan. The **server** is the only
@@ -119,6 +151,11 @@ produces one.
 Commands that **start work** block by default. Commands that **end work**
 return immediately. `--wait` and `--no-wait` override.
 
+**In the web UI:** there are no wait flags. The environment list shows
+**Auto-updating...** and the detail page shows **Auto-updating** while work is
+in progress, so the status changes without a reload. An action that starts
+work returns to the page immediately.
+
 | Command | Default | Goal state | Timeout |
 | ------- | ------- | ---------- | ------- |
 | `create` | blocks | `running` | 30m |
@@ -152,6 +189,11 @@ drift env extend my-env --hours 24
 Extensions are **additive**: extending by 24 hours twice adds 48 hours total.
 The cumulative lifetime cap is **120 hours** (creation + all extensions).
 
+**In the web UI:** choose **Extend TTL** on the environment card or its detail
+page. The dialog shows **Current expiry**, an **Extend by** choice of **6h**,
+**12h**, **24h** or **48h**, and the resulting **New expiry**. **Extend**
+applies it.
+
 ## Sleep and wake
 
 ```bash
@@ -160,6 +202,10 @@ drift env wake my-env
 ```
 
 Sleeping freezes the TTL clock. Waking credits back the slept time.
+
+**In the web UI:** **Sleep** asks for confirmation in a **Sleep Environment**
+dialog -- **Confirm Sleep** scales all replicas to zero. **Wake** runs
+directly, with no dialog.
 
 ## Swap branch
 
@@ -170,6 +216,11 @@ drift env swap-branch my-env backend:hotfix/urgent
 Only the **first colon** separates the repository from the branch, so branch
 names containing colons or slashes pass through intact.
 
+**In the web UI:** open the environment, stay on the **Services** tab and
+choose the pencil beside a service's branch (labelled **Swap branch for** that
+service). Pick the new branch and choose **Swap**. The server re-resolves the
+pull request exactly as it does for the CLI.
+
 ## Add and remove services
 
 ```bash
@@ -179,6 +230,13 @@ drift env remove-service my-env another-repo --yes
 
 Adding a service requires its dependencies to already be present in the
 environment. Removing a service is destructive and confirms on a terminal.
+
+**In the web UI:** on the environment's **Services** tab, **Add Service**
+opens a dialog with **Repository** and **Branch**; **Add** attaches it.
+Removal is the trash icon on the service row: the **Remove Service** dialog
+warns that in-flight builds are cancelled, and **Remove** confirms. A service
+that another service in the environment depends on cannot be removed -- its
+trash icon does nothing when clicked, and its tooltip gives the reason.
 
 Neither `swap-branch` nor `add-service` accepts a `--pr` flag. When the
 branch changes, the server re-resolves the pull request the same way it
@@ -192,12 +250,23 @@ drift env retry-build my-env
 drift env retry-build my-env backend
 ```
 
+**In the web UI:** a service row in the **Services** tab shows a retry control
+(tooltip **Retry build**) when retry is allowed. It uses the same rule as the
+CLI: retry is offered when there is no build yet on the row's current branch,
+or when that build failed or was canceled.
+
 ## Share and unshare
 
 ```bash
 drift env share my-env      # make publicly reachable
 drift env unshare my-env    # revert to private
 ```
+
+**In the web UI:** on the environment's detail page, while the environment is
+in a state that allows it, the **Public** or **Internal** badge beside its
+name is a button. Its dialog says
+**Change to Public** or **Change to Internal** and explains the domain
+change; **Switch to Public** or **Switch to Internal** applies it.
 
 ## Inspect
 
@@ -211,6 +280,13 @@ drift env get my-env
 drift env get my-env -o json
 drift env get my-env --json slug,status,expires
 ```
+
+**In the web UI:** **Previews** is the same list. Its stat cards count **Total
+Environments**, **Running**, **In Progress**, **Failed** and **Sleeping**;
+**Show historical** includes destroyed and canceled environments, and
+**Filter by creator...** works like `--owner`. Choose a slug to open the
+detail page, whose tabs are **Services**, **Build History**, **Access** and
+**Activity**, plus **E2E** where the install enables end-to-end testing.
 
 `--mine` lists only the environments you created; `--owner <email>` filters
 by creator (an exact match). `--mine` and `--owner` are mutually exclusive.
@@ -239,6 +315,10 @@ This opens a chisel tunnel, then exec's `psql` (Postgres) or
 is left to the client's own prompt. When the client exits, the tunnel
 closes and the client's exit code is propagated.
 
+**In the web UI:** the environment's **Access** tab shows the connection
+details for the database and the internal infrastructure services, where the
+install publishes them.
+
 To open the tunnel without launching a client (e.g. for a GUI tool):
 
 ```bash
@@ -266,6 +346,12 @@ drift env e2e my-env --wait --wait-timeout 60m
 # Run the test code from a specific branch of the e2e repository.
 drift env e2e my-env --tests-branch feature/e2e-updates
 ```
+
+**In the web UI:** the **Run E2E** button is on the environment's **E2E**
+tab. The **Run E2E Tests** dialog pre-selects the configured default test
+branch -- choosing it is the same as triggering an unselected run. **Trigger
+run** dispatches and refreshes the page; the run appears on the **E2E** tab
+under **E2E Test Runs**.
 
 Without `--wait`, the command returns immediately (exit 0) after the server
 accepts the trigger. With `--wait`, it follows the run until it completes:
@@ -298,6 +384,11 @@ audit entry on the fallback path).
 ```bash
 drift env rm my-env --yes
 ```
+
+**In the web UI:** choose **Destroy** on the environment card or detail page,
+then **Confirm Destroy** in the **Destroy Environment** dialog. Destroyed and
+canceled environments show **Relaunch**, which clones the environment's
+configuration into a new environment and rebuilds it from current branch heads.
 
 Destroy convergence is owned by a server-side cron with an escalation window
 and routinely exceeds ten minutes, which is why `rm` returns immediately by

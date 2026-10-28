@@ -1,4 +1,4 @@
-site_name: drift CLI
+site_name: Drift
 site_url: https://steadfast-ly.github.io/drift-cli/
 repo_url: https://github.com/steadfast-ly/drift-cli
 edit_uri: ""
@@ -19,12 +19,14 @@ theme:
   features:
     - navigation.sections
     - content.code.copy
+    - search.highlight
 
 exclude_docs: |
   TODO.md
 
 markdown_extensions:
   - admonition
+  - attr_list
   - pymdownx.superfences
   - pymdownx.highlight:
       anchor_linenums: true
@@ -35,6 +37,11 @@ markdown_extensions:
 validation:
   nav:
     omitted_files: ignore
+  links:
+    not_found: warn
+    anchors: warn
+    absolute_links: warn
+    unrecognized_links: warn
 
 nav:
   - Home: index.md
@@ -42,14 +49,25 @@ nav:
       - Install: getting-started/install.md
       - Network access: getting-started/network.md
       - First steps: getting-started/first-steps.md
+      - Web UI: getting-started/web-ui.md
   - Concepts:
+      - Roles: concepts/roles.md
       - Contexts and authentication: concepts/contexts-auth.md
       - Environments: concepts/environments.md
       - Releases and promotions: concepts/releases.md
-  - Guides:
+  - For developers:
       - Preview environments: guides/preview-envs.md
-      - Promotions: guides/promotions.md
+      - PR statuses: guides/pr-statuses.md
+      - End-to-end tests: guides/e2e.md
+  - For QA:
       - QA queue: guides/qa.md
+  - For release managers:
+      - Promotions: guides/promotions.md
+  - For admins:
+      - Administration: guides/administration.md
+  - Activity:
+      - Audit log and KPIs: guides/activity.md
+  - Automation:
       - CI and automation: guides/automation.md
       - LLM agents: guides/agents.md
       - Updating: guides/updating.md

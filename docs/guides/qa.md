@@ -1,183 +1,432 @@
-# QA queue
+# QA
+
+**Requires:** the `preview` role to view the queue and start testing; `qa` or
+`admin` to approve, reject, unlink a pull request or carry a Ticket over.
+drift server 0.32.0 or later with the QA module enabled by your admin; the
+`drift qa` commands need drift CLI 0.16.0.
 
 The QA module turns drift into the QA team's work queue. Tickets enter the
-queue when the issue tracker moves them to the ready-for-QA status; a **Test
-Session** runs one Ticket's Linked PRs on a preview environment; a verdict
-writes the result back to the tracker and posts the `drift/qa` commit status
-on the covered commits.
+queue when your tracker moves them to the ready-for-QA status. A **Test
+Session** runs one Ticket's Linked PRs on a preview environment, and a verdict
+writes the result back to the tracker and posts the `drift/qa` commit status on
+the covered commits.
 
-`drift qa` drives all of it from the terminal. The module is off unless the
-Install's Stack Profile enables it: a deployment without it refuses every
-command here, and the CLI decides that from
-`/.well-known/drift.json` (capabilities `qa` and `qa.approve`).
+`drift/qa` is advisory unless your organisation makes it required in branch
+protection. drift never blocks a merge by itself.
 
-## Reading the queue
+## The /qa page
+
+Open **QA** in the sidebar. The page is available only when your admin has
+enabled the module; otherwise it is not found.
+
+| Section | What is in it |
+| ------- | ------------- |
+| **Carry-over** | Approvers only, at the top: Tickets approved before the module existed and not yet complete. The **Carry over** button records a green on their current heads. |
+| **Ready for QA** | Tickets in the ready-for-QA status whose open Linked PRs are all review-approved or exempt, and Tickets in the approved status with no current drift completion (for example after an approval was revoked), oldest first. |
+| **In testing** | Tickets with an active Test Session (preparing or open). |
+| **Re-check** | Tickets with an unrevoked approval whose pull request head has moved, where nothing covers the new head. |
+| **Upcoming** | Collapsed by default. Tickets in the queue status still waiting on code review, and Tickets in the upcoming statuses. |
+| **Recently decided** | Approvals and exemptions from the last 14 days; a live one offers **Revoke** or **Unexempt**. |
+
+A section the server capped shows a `+N more` count in its heading. If a sync phase or a
+Ticket evaluation is failing, a **QA sync needs attention** strip appears above
+the sections; the strip names the failing phase and its error.
+
+The page header reads "Tickets ready for testing, their linked pull requests
+and the QA verdicts posted on them."
+
+## The Ticket card
+
+Each card carries the Ticket key (linked to the tracker), the Ticket's tracker
+status, its summary, and `in queue <time>` when drift knows when it entered the
+queue.
+
+A card can also show these badges:
+
+| Badge | Meaning |
+| ----- | ------- |
+| **Awaiting code review** | At least one open Linked PR is not review-approved and not exempt, so the Ticket is not ready for QA. |
+| **Tested in Jira, not approved in drift** | Someone moved the Ticket to the approved status in the tracker without a drift verdict. Hovering the badge says "Tested in Jira, not approved in drift — approve here to clear the gate". No green is posted. |
+
+Linked PRs are grouped under their repository. Each row shows the forge pull
+request (`acme/app#42`), its title, its review state (**Review approved**,
+**Changes requested** or **Review pending**), whether it is **Open** or
+**Merged**, and the QA gate badge, which reads `<context>: <state>` (for
+example `drift/qa: pending`, or `drift/qa: not reported`). The gate's
+description is printed beside it.
+
+A PR row can additionally carry:
+
+- **Approved**, **Mixed approval** or **Changed since approval** — the
+  approval state at the current head. "Mixed" means some of a monorepo PR's
+  repository registrations are approved and some are not.
+- **Merged before QA** — the PR was merged without a session covering it.
+- **Exempt: <reason>**, with a registration count when the exemption covers
+  only part of a monorepo PR.
+- **Carried over** — a pre-rollout green at this head.
+- **Unlink** (approvers only).
+
+Below the PRs, the card prints the **Partitions** the server derived (for
+example `Partitions: #42 + #7 · #9`) and a completion line: `Completion: none
+yet`, `Completion: pending`, `Completion: done` or `Completion: done (stale)`.
+
+If a tracker write fails, a **Tracker writes failed** block lists the write,
+its attempts and the last error, with **Retry**.
+
+### Card buttons
+
+| Button | Who sees it | What it does |
+| ------ | ----------- | ------------ |
+| **Start session** | `preview` and above, when a partition has no session | Opens a Test Session (see below). |
+| **Comment** | `preview` and above | Queues a tracker comment with optional files. No status change and no verdict. |
+| **Send to QA** | `preview` and above | Moves a rejected or upcoming Ticket back to the queue status. It is refused while the last-synced view shows the Ticket in the queue, approved or Done; retry after the next sync. |
+| **Exempt** | `preview` and above | Records "no QA needed" for a PR or the whole Ticket. |
+| **Link PR** | `preview` and above | Links a pull request that carries no ticket key. |
+| **Approve**, **Reject** | `qa` or `admin`, on an open session | Records the verdict. |
+| **Acknowledge**, **Close** | The session owner, `qa` or `admin` | Acknowledges a redeploy, or closes a session without a verdict. |
+
+## How pull requests join a Ticket
+
+drift reads the Ticket key from a pull request's **title** and **head branch**,
+case-insensitively, but only for the projects your admin configured. A
+sub-task's key resolves to its parent: the PR links to the parent Ticket, and
+`drift qa show` on the sub-task key answers not found — use the parent key.
+A pull request may belong to several Tickets; its links are sticky, so a
+merged PR stays linked.
+
+A webhook records a PR change within seconds. If a delivery is missed, the
+reconcile pass catches up within about 10 minutes. A key that appears in the
+title or branch after the PR opened is picked up the same way.
+
+For a PR whose title and branch carry no key, use **Link PR**. From drift
+0.32.1 or later, the dialog asks for the **Repository** and then lists the pull
+requests drift knows for it — open ones first, closed and merged ones
+labelled, ones already linked to this Ticket greyed out; type to filter by
+number, title, author or branch. Earlier versions ask for the **Repository**
+and a **Pull request number**. drift must already know the PR from a webhook
+or the sync; a PR it has never seen answers not found. An approver can remove
+a link with **Unlink** on the PR row.
 
 ```bash
-drift qa list
-drift qa list --json section,key,status,prs
-drift qa show DT-123
+drift qa link   PROJ-123 acme/app#42
+drift qa unlink PROJ-123 acme/app#42
 ```
 
-`list` prints one table with a `section` column: `ready`, `testing`,
-`recheck` and `upcoming`. The server caps each section, so one it shortened
-ends with a `+N more` row saying how many it held back; the machine formats
-carry the same counts under `truncated` (`ready`, `testing`, `recheck`,
-`upcoming`) and no pseudo-row. The carry-over list (pre-rollout Tickets an
-approver still has to decide) is rendered after the table and travels as
-`carry_over` in JSON; verdicts decided in the last 14 days travel as
-`recently_decided`.
-
-`show` takes a Ticket key and prints the Linked PRs, sessions, approvals and
-exemptions. A sub-task's key resolves to no Ticket -- use the parent key.
-Machine output carries the operational detail too: `rejections`,
-`tracker_writes`, `failed_writes` and `partitions`, and each session carries
-its event timeline under `events`. Each session also says `verified` -- the
-generation it runs is verified -- and `saw_change`, the fact that it ever saw
-a change. `saw_change` outlives the acknowledgement: acknowledging a redeploy
-clears `unacknowledged_change`, not the fact that the revision moved.
-
-```bash
-drift qa show DT-123 -o json | jq '.sessions[] | {id, state, current_generation}'
-drift qa show DT-123 -o json | jq '.sessions[].events[] | {kind, generation}'
-```
-
-A session's timeline records what moved under the operator: `redeploy` (with
-the deployment before and after), `migration-source-changed` and `unverified`.
-Everything after the last `acknowledged` entry is what nobody has looked at
-yet, and the table prints those as a `CHANGES (unacknowledged)` section while
-the session is open and the server flags it (`unacknowledged_change`). A
-flagged open session with nothing after the last ack still raises the section,
-as one `unacknowledged` row: the flag is the server's and the timeline can lag
-it. An ended session's timeline is history: it never raises the section.
-
-## Starting a session
-
-```bash
-drift qa start DT-123
-drift qa start DT-123 --prs acme/widget#42,acme/api#7
-drift qa start DT-123 --env my-env
-```
-
-The server reuses or creates an environment running every Linked PR's head.
-`--prs` selects a partition explicitly, as `repo#n` references to the
-Ticket's Linked PRs; omitted, the server takes the first partition with no
-open session. `--env` reuses an existing environment instead.
-
-A rebuild of a developer's environment can happen under them, so the command
-confirms and takes `--yes`.
-
-## Approving and rejecting
-
-A verdict binds the **session revision** -- the deploy generation the verdict
-was shown. Read it from `qa show` and pass it as `--revision`:
-
-```bash
-drift qa show DT-123 -o json | jq '.sessions[]'   # current_generation
-drift qa approve <session> --revision 3 --retested --note "checked the flow"
-drift qa reject  <session> --revision 3 --comment "build 42 crashes on save"
-```
-
-Say whether the revision was retested: `--retested`, or `--no-retest
-<reason>` (`--retested=false` is not a statement either way and is refused).
-Saying neither is refused too; when the session saw a change, the refusal
-says that is why a reason is required.
-If the environment redeployed between reading and deciding, the
-server refuses with the new revision and the CLI prints it; re-check with
-`qa show` rather than retrying the old number.
-
-Attach evidence with `--file` (repeatable):
-
-```bash
-drift qa approve <session> --revision 3 --retested --file shot.png --file log.txt --yes
-```
-
-The CLI reads the files, checks the server's caps client-side (at most 10
-files, 7 MiB of decoded bytes in total) and sends them base64-encoded. The
-content type comes from the extension, else `application/octet-stream`.
-
-`drift qa comment DT-123 --body "..."` writes a tracker comment without
-changing the status; `--file` works there too.
-
-## Exemptions, links and revocations
-
-```bash
-# No QA needed for one PR (survives pushes), or for a whole ticket.
-drift qa exempt --pr acme/widget#42 --reason "docs only"
-drift qa exempt --ticket DT-123 --reason "covered by the e2e suite"
-
-drift qa unexempt <exemption-id>
-drift qa revoke --approval <approval-id>
-drift qa revoke --exemption <exemption-id>
-
-drift qa link   DT-123 acme/widget#42
-drift qa unlink DT-123 acme/widget#42
-```
-
-`repo#n` is resolved against the QA queue (`--pr`, `link`) or against the
-Ticket's own Linked PRs (`start`, `unlink`). A pull request that is no longer
-on any queued Ticket is not reachable through the QA reads; pass its UUID
-instead, which the API accepts for `link`, `unlink`, `exempt --pr`.
-
-A PR registered under several repositories (a monorepo's services are separate
-Repositories) appears once per registration, and each registration is its own
-link, exemption and partition on the server. `repo#n` names the forge PR, so
-the command acts on every one of its rows: `start --prs` sends them all, and
-`link`, `unlink` and `exempt --pr` repeat once per row. A UUID names exactly
-one repository row, whether or not it is still on the queue: it is the precise
-address for a single row, and the retry target for a row that failed. The
-`unlink` and `exempt --pr` confirmations name the row count when there is more
-than one.
-
-Every row is attempted even when an earlier one fails, because the server
-commits each row on its own. `-o json` reports every row under `rows`, each
-with its `pull_request_id` and `outcome`:
+`repo#n` names the forge PR, so on a monorepo it acts on every repository
+registration of that PR. Pass a row UUID to address exactly one registration.
+When a reference covers several rows, every row is attempted even if one
+fails, because the server commits each row on its own. `-o json` reports every
+row under `rows`, each with its `pull_request_id` and `outcome`:
 
 - `ok` — the row changed; it also carries the row's `exemption_id` or link
   `result`, and its `gate_target` where the server reports one.
 - `refused` — the server answered with an HTTP error, so nothing changed for
   that row; it carries the `exit_code` and the server's `message`/`hint`.
 - `unknown` — a transport error, a timeout or no usable response, so the row
-  may have changed; check it with `drift qa show <key>` before retrying.
+  may have changed; check it before retrying, with `drift qa show <key>` or,
+  for a PR exemption, the PR's `drift/qa` status (`QA exempt: …` means it
+  landed).
 - `not_attempted` — the run was interrupted (Ctrl-C) before this row was sent,
-  so nothing changed for it. The row in flight at the interrupt stays `unknown`.
+  so nothing changed for it. The row in flight at the interrupt stays
+  `unknown`.
 
 `partial` is true when at least one row is `ok` and at least one is not; it
 says nothing about whether an `unknown` row committed. The table adds a
 `FAILED ROWS` section with each row's hint, and the exit code is the first
-failed row's. Retry the failed rows by UUID rather than re-running the `repo#n`
-command, which would repeat the rows that already succeeded. A partial
-exemption is revoked with the ids under `exemption_ids`.
+failed row's. Retry the failed rows by UUID rather than re-running the
+`repo#n` command, which would repeat the rows that already succeeded. A
+partial exemption's ids are under `exemption_ids`.
 
-## Session and ticket actions
+## Starting a test session
+
+Click **Start session**. drift reuses an environment already running the
+partition's branches, or creates one:
+
+- A reused environment is woken if it is sleeping, and rebuilt if its commits
+  are behind the PR heads. That can rebuild a developer's environment under
+  them; the dialog says so.
+- A new environment is named after the Ticket in lowercase: `<key>`, then
+  `qa-<key>`, `qa-<key>-2`, and so on.
+- When the Ticket has several partitions or existing environments, the
+  **Start testing <key>** dialog lets you pick a **Partition** and optionally a
+  **Reuse environment** ("Let drift choose" by default). Otherwise the button
+  starts the first free partition directly.
+
+With no open Linked PRs there is nothing to test, so the card has no **Start
+session** button and says "No Linked PRs — the tracker owns this Ticket (Q5)."
+A Ticket whose partitions all already have a session has no button either.
 
 ```bash
-drift qa ack  <session>   # acknowledge a redeploy, clearing the change banner
-drift qa end  <session>   # close the session without a verdict (API: close; --yes)
-drift qa send DT-123      # move the ticket back to the queue, drain the outbox
-drift qa carryover DT-123 # carry pre-rollout open PRs over at their heads
-drift qa health           # tracker, sync phases, outbox and evaluation health
+drift qa start PROJ-123
+drift qa start PROJ-123 --prs acme/app#42,acme/api#7
+drift qa start PROJ-123 --env my-env
 ```
 
-`carryover` requires the `qa` role; `health` is for operators -- a verdict
-command that fails is usually explained by a line there.
+The command asks for confirmation because it may rebuild a developer's
+environment; pass `--yes` in scripts.
 
-## Confirmation
+### Preparing and open
+
+The session banner shows **Preparing** until a verified deployment runs every
+partition PR at its current head. That generation is the **start revision**,
+and the banner then shows **Session open**, the owner, the environment link,
+`generation <n>` (with the start generation when it differs), the PRs it runs
+and `started <time> ago`. A push during **Preparing** waits for a deployment at
+the new head; a failed build can leave the session preparing indefinitely, in
+which case the owner, `qa` or an admin can **Close** it.
+
+### Pushes during a session
+
+Every new deployment appends a change to the session:
+
+- **Redeployed** — with each service's branch and `before → after` commits, and
+  a **compare** link to the forge.
+- **Migration source changed** — the migrations job may have run.
+- **Revision not verified** — the deployment has not been verified yet, and
+  "Approve stays blocked until this revision, or a later one, is verified."
+
+The banner shows **Changes not acknowledged** while changes are outstanding.
+**Acknowledge** clears that flag without approving anything. It does not clear
+the retest requirement: a session that ever saw a change needs **I retested
+the changes** or a no-retest reason on Approve.
+
+`drift qa show PROJ-123` prints each session with its state, current
+generation, `verified` and `saw_change`. The JSON form carries the event
+timeline:
+
+```bash
+drift qa show PROJ-123 -o json | jq '.sessions[] | {id, state, current_generation}'
+drift qa show PROJ-123 -o json | jq '.sessions[].events[] | {kind, generation}'
+```
+
+## Approving
+
+**Approve** opens a dialog bound to the revision it shows: "Approving binds
+generation <n> of <environment> to the Linked PRs it runs." It offers:
+
+- **I retested the changes**.
+- **No-retest reason**, marked "(required)" when the session saw a change.
+- **Note (optional)**.
+- **Files** — up to 10 files, 7 MiB in total.
+
+The submit button reads **Approve generation <n>**. If the environment
+redeployed while the dialog was open, the server refuses and the dialog
+re-renders with the new generation and the changes since; review them and
+submit again.
+
+An approval covers the partition PRs whose deployed commit equals the PR head.
+Other PRs in the partition are listed as uncovered — usually because their head
+moved and has not deployed yet — and the tracker comment names what remains.
+With several partitions, approve each session; the Ticket completes only when
+every open Linked PR is approved, exempt or carried over.
+
+What drift then does:
+
+1. Uploads the evidence files and posts a tracker comment naming the approver,
+   linking the environment, listing the covered commits, the retest state, the
+   note and any attachments, plus any **Merged before QA** PRs.
+2. Moves the Ticket to the approved status, once every Linked PR is covered.
+3. Posts `drift/qa` success on the covered commits — only after those tracker
+   writes land. Until then the status reads "QA approved — recording in
+   tracker (<key>)".
+
+```bash
+drift qa show PROJ-123 -o json | jq '.sessions[]'   # read current_generation
+drift qa approve <session> --revision 3 --retested --note "checked the flow"
+drift qa approve <session> --revision 3 --no-retest "only docs changed" --yes
+drift qa approve <session> --revision 3 --retested --file shot.png --file log.txt --yes
+```
+
+`--revision` is the generation shown by `qa show`. Say whether it was
+retested: `--retested`, or `--no-retest <reason>`. Saying neither, or passing
+`--retested=false`, is refused; when the session saw a change the refusal says
+that is why a reason is required.
+
+## Rejecting
+
+**Reject** binds the same revision and requires a **Comment (required)**;
+**Files** work as on Approve. The submit button reads **Reject generation
+<n>**. The dialog warns: "Rejecting generation <n> moves the Ticket to the
+rejected status and withdraws approvals on these commits."
+
+A rejection:
+
+- records the rejection on the covered commits and withdraws any approval of
+  the same commits, including another Ticket's approval on a shared PR;
+- posts the comment and files to the tracker and moves the Ticket to the
+  rejected status;
+- posts `drift/qa` failure: "QA rejected: <first line of the comment>".
+
+A later approval of the same commits, or an exemption on the PR, retires the
+rejection.
+
+```bash
+drift qa reject <session> --revision 3 --comment "build 42 crashes on save"
+drift qa reject <session> --revision 3 --comment "..." --file crash.log --yes
+```
+
+## Exemptions
+
+**Exempt** records "no QA needed". The dialog has a **Scope** choice:
+
+- **Pull request** — pick one open Linked PR. The exemption survives pushes
+  until it is revoked.
+- **Ticket** — covers the PRs linked at that moment, and the completion comment
+  reads "QA not required: <reason>".
+
+A reason is required. A PR whose author is on your admin's exempt-authors list
+is exempt automatically while every commit's author is that bot; a human commit
+drops it back to pending.
+
+**Unexempt** in **Recently decided** revokes an exemption. Revoking a Ticket
+exemption also revokes every approval of that Ticket and moves it from the
+approved status back to the queue, so it re-enters QA.
+
+```bash
+drift qa exempt --pr acme/app#42 --reason "docs only"
+drift qa exempt --ticket PROJ-123 --reason "covered by the e2e suite"
+drift qa unexempt <exemption-id>
+```
+
+## Revocation and tracker moves
+
+**Revoke** on an approval in **Recently decided**, or `drift qa revoke
+--approval <id>`, withdraws a drift approval. The gate goes pending again; a
+Ticket still in the approved tracker status shows in **Ready for QA** with
+**Tested in Jira, not approved in drift**, and you can approve it again or move
+it back to the queue in the tracker. A push is different: the approval stays
+but no longer covers the head, so the gate reads "changed since QA approval"
+and the Ticket shows under **Re-check**.
+
+Moving a Ticket in the tracker also matters:
+
+- Moving it out of the approved status, or out of a Done-category status, to a
+  status outside both revokes the approval.
+- Approved → Done keeps the green. Queue ↔ upcoming moves and moves into the
+  rejected status revoke nothing.
+- drift's own moves never revoke. **Send to QA** from the approved status would
+  otherwise leave a green on a Ticket back in the queue, so it is refused while
+  the last-synced view still shows the Ticket in the queue, approved or Done;
+  retry after the next sync.
+
+A tracker-side approval without a drift verdict is flagged, not honoured: the
+card shows **Tested in Jira, not approved in drift**, no green is posted, and
+drift does not move the Ticket back. Approving in drift clears the flag; the
+move is then a no-op.
+
+If your approved status is itself a Done-category status, a manual move there
+without a drift approval shows `drift/qa` pending "ticket closed without QA"
+and never turns green. Approve in drift, or exempt the PR.
+
+### Carry-over
+
+**Carry-over** lists Tickets approved before the QA module existed and not yet
+complete. **Carry over** (or `drift qa carryover <key>`) records a green on
+their open Linked PRs at their current heads. The Ticket leaves the list once
+it is done.
+
+## The drift/qa status
+
+| State | Description | What to do |
+| ----- | ----------- | ---------- |
+| success | `QA passed on branch builds` | None. |
+| success | `QA exempt: <reason>` | None. |
+| failure | `QA rejected: <first line>` | Fix the problem and push; the new head needs a new session. |
+| pending | `QA testing in progress (<name>) — pushes redeploy QA's env` | Wait for the session to end, or start one. |
+| pending | `QA approved — recording in tracker (<key>)` | Wait; drift is writing the comment and status move. |
+| pending | `awaiting code review` | Get the PR review-approved. |
+| pending | `changed since QA approval` | The head moved; start a new session on the new revision. |
+| pending | `Awaiting QA: <key> (<status name>)` | The Ticket is in the queue; test it. |
+| pending | `waiting on <other ticket key>` | A shared PR also belongs to another Ticket that is not complete; finish that one too. |
+| pending | `ticket closed without QA` | The Ticket is in a Done-category status without a drift approval; approve or exempt. |
+| pending | `No ticket — add a key or exempt` | The PR carries no Ticket key and has no exemption; add the key or exempt the PR. |
+
+A PR linked to several Tickets turns green only when every one of them is
+approved or exempt. The full table, including how the status is posted and
+reconciled, is in [PR statuses](pr-statuses.md#drift-qa).
+
+## Permissions
+
+| Action | Role |
+| ------ | ---- |
+| View the queue, start a session, comment, link a PR, Send to QA, exempt, unexempt, revoke | `preview` and above |
+| Approve, reject, unlink, carry over | `qa` or `admin`, with the role confirmed at the moment of the action |
+| Acknowledge or close a session | The session owner, `qa` or `admin` |
+
+`qa` and `release` are separate roles and neither contains the other; `admin`
+holds both. See [Roles](../concepts/roles.md) for the full model.
+
+## CLI reference
+
+The CLI covers the same queue. Every command refuses on a deployment without
+the module.
+
+```bash
+drift qa list
+drift qa list --json section,key,status,prs
+drift qa show PROJ-123
+```
+
+`list` prints a `section` column: `ready`, `testing`, `recheck`, `upcoming`.
+A capped section ends with a `+N more` row; the machine formats carry the
+counts under `truncated`. The carry-over list and the last 14 days of verdicts
+travel as `carry_over` and `recently_decided`.
+
+`show` prints the Linked PRs, sessions, changes, approvals and exemptions.
+Machine output also carries `rejections`, `tracker_writes`, `failed_writes` and
+`partitions`; each session carries `events`, `verified` and `saw_change`.
+
+Session and Ticket actions:
+
+```bash
+drift qa ack  <session>    # acknowledge a redeploy
+drift qa end  <session>    # close without a verdict
+drift qa send PROJ-123     # move a rejected/upcoming Ticket back to the queue
+drift qa carryover PROJ-123
+drift qa comment PROJ-123 --body "..." [--file shot.png]
+drift qa health            # sync, outbox and tracker health
+```
 
 Commands that change a verdict or a grant, remove a link, or close a session
-without one, ask for confirmation on a terminal and refuse without `--yes`
-when the session is not interactive:
-`start`, `approve`, `reject`, `exempt`, `unexempt`, `revoke`, `unlink`,
-`send`, `end` and `carryover`. `link`, `comment` and `ack` do not.
+ask for confirmation on a terminal and refuse without `--yes` when the session
+is not interactive: `start`, `approve`, `reject`, `exempt`, `unexempt`,
+`revoke`, `unlink`, `send`, `end` and `carryover`. `link`, `comment` and `ack`
+do not.
 
-## Errors specific to QA
+## Troubleshooting
 
-| Response | Exit | Meaning |
-| -------- | ---- | ------- |
-| 409 with `data.revision` | 5 | The session moved to a newer revision. The CLI prints the new number and the re-check hint; re-read with `qa show` before deciding. |
-| 409 without `data.revision` | 5 | A state conflict (session not open, environment not running, revision not verified). Read `data.detail`; the same retry fails the same way. |
-| 413 | 1 | The request body exceeded the mount's 10 MB limit. Reduce `--file` sizes; the CLI already enforces 10 files and 7 MiB in total. |
-| 502 | 1 | The server could not confirm the approver's `qa` role with gatehouse. The message and detail are printed as the server wrote them; retrying immediately usually fails the same way. |
-| 403 | 1 | The credential's role does not permit the action. `qa.approve` actions need the `qa` (or `admin`) role; re-authenticating will not help. |
+**"Can't confirm your QA role right now"** — the server could not confirm your
+`qa` role with the service that assigns roles (HTTP 502). The verdict was not
+recorded, and retrying immediately usually fails the same way. Ask your admin
+to check the access service.
 
-See [Errors and exit codes](../reference/errors.md) for the full contract.
+**"revision N is now current; re-check with `drift qa show <key>` before
+deciding"** — the environment redeployed between reading and deciding. The CLI
+exits 5. Re-read the session and approve the revision you actually tested;
+never retry the old number.
+
+**"Generation N is not verified. Approve stays blocked until a verified
+revision arrives."** — the current deployment has not been verified. Wait for
+the next verified generation. The CLI refuses the same case with exit 5 and
+"QA revision N is not verified yet".
+
+**The CLI timed out** — the default per-request timeout is 30 seconds
+(`--timeout`). A verdict request that timed out may still have been recorded.
+Check `drift qa show <key>` before retrying; a retry of a recorded verdict
+fails because the session is no longer open.
+
+**A tracker write failed** — the card's **Tracker writes failed** block has
+**Retry**. The `drift/qa` status stays pending until the write lands.
+
+**The session never leaves Preparing** — no verified deployment has run every
+partition PR at its head. Check the environment's build and deployment; the
+owner, `qa` or an admin can **Close** the session.
+
+**`this server does not support "qa"`** — the module is not enabled on that
+deployment, so `/qa` is not found either. Ask your admin.
+
+**413 on a verdict** — the request body was too large. The limits are 10 files
+and 7 MiB in total; reduce `--file` sizes.
+
+See [Errors and exit codes](../reference/errors.md) for the CLI's error
+contract.
