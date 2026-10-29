@@ -53,11 +53,12 @@ Approvers see **Carry-over** above everything until the list is empty. It is
 rows like the sections: the key and summary, then one chip per pull request
 with the PR's title in the tooltip, and **Carry over** in the actions column,
 which records a green on the Ticket's current heads. It lists only the Tickets
-no row shows: a Ticket that is also in **Ready for QA** is acted on from that
-row, where an approver finds **Carry over** as its primary action — or
-**Review**, when the row has a warning. **Mine** never hides an approver's
-carry-over row, so the list never repeats a Ticket that has one. For everyone
-else that row says **Tested in Jira: an approver can carry it over**.
+no row shows — a Ticket a section's cap left out shows here: a Ticket that is
+also in **Ready for QA** is acted on from that row, where an approver finds
+**Carry over** as its primary action — or **Review**, when the row has a
+warning. **Mine** never hides an approver's carry-over row, so the list never
+repeats a Ticket that has one. For everyone else that row says **Tested in
+Jira: an approver can carry it over**.
 
 If a sync phase or a Ticket evaluation is failing, a **QA sync needs attention**
 strip appears above the sections; the strip names the failing phase and its
@@ -99,12 +100,13 @@ The meta line carries:
   each of them with its state words and full title. That chip adds the worst of
   those states as a word (`+N PRs · review pending`, `+N PRs · changes
   requested`), except when the worst is a pending gate, which it leaves silent,
-  or a passing one, where it shows the same green check as a single chip and no
-  word. An open, non-exempt PR awaiting review ranks above the other pending
-  states, so it takes one of the three chips first and `review pending` on the
-  `+N` chip appears only when worse states hide it. The row's detail keeps
-  every word — `pending`, and a closed PR's review state — so it is the place
-  to read everything.
+  or a passing one, where it shows a green check and no word — the chip's
+  accessible name still says the state. An open, non-exempt PR awaiting review
+  ranks above the other pending states and above a gate not reported, so it
+  takes one of the three chips first, and `review pending` on the `+N` chip
+  appears only when worse states hide it — a gate-less PR awaiting review
+  included. The row's detail keeps every word — `pending`, and a closed PR's
+  review state — so it is the place to read everything.
 - **A warning marker** — `⚠ n` when the row has any warning: an unacknowledged
   change, a failed tracker write, a PR merged before QA, a mixed approval or a
   partial exemption. Hovering or focusing the marker lists every warning in
@@ -114,13 +116,14 @@ The meta line carries:
   `Jira: <status>`, naming the tracker from your admin's profile, and shows the
   bare status for a tracker drift cannot name.
 - **`Tested in Jira`** when someone approved in the tracker without a drift
-  verdict: `Tested in Jira, not approved in drift` for an approver, whose
-  tooltip names what clears it — "Carry over to clear the gate" on a row the
-  Carry-over list holds, "Start testing to approve it in drift" when a
-  partition is free, and "Approve it in drift to clear the gate" when every
-  partition has a session — and `Tested in Jira: an approver can carry it over`
-  for everyone else. No green is posted. Waiting on code review is the per-PR
-  `review pending` chip; there is no row badge for it.
+  verdict. An approver reads `Tested in Jira, not approved in drift`, and its
+  tooltip names what clears the gate: "Carry over to clear the gate" on a row
+  the Carry-over list holds, "Start testing to approve it in drift" when a
+  partition is free, "Approve it in drift to clear the gate" when every
+  partition has a session, and no tooltip when the row has no session either.
+  Everyone else reads `Tested in Jira: an approver can carry it over`. No green
+  is posted. Waiting on code review is the per-PR `review pending` chip; there
+  is no row badge for it.
 - **The session owners** — at most two: the local part of the email with an
   initials avatar, the full address in the tooltip, then `+N` for the rest (all
   their addresses in its tooltip). `N sessions` follows when there is more than
