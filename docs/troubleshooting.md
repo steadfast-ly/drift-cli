@@ -130,7 +130,7 @@ The common gates:
   **Add Dependency**: `admin`.
 - Promote or cancel a promotion: `release`.
 - Approve, reject, remove a link, carry over: `qa` or `admin`.
-- Start a session, link a PR, comment, send to QA, exempt: `preview` or above.
+- Start testing, link a PR, comment, send to QA, exempt: `preview` or above.
 
 If a control you need is absent, ask your admin to check your role. The full
 matrix is in [Roles](concepts/roles.md).
@@ -151,14 +151,16 @@ within seconds; a missed delivery is picked up by the 10-minute reconcile.
 - A PR whose title or head branch carries a ticket key is linked
   automatically. **Link PR** is for a PR that carries no key.
 
-### Start session is missing
+### Start testing is missing
 
-**Start session** appears only when at least one partition of the Ticket's open
+**Start testing** appears only when at least one partition of the Ticket's open
 Linked PRs has no open session. If every partition already has one, close the
-existing session first, or use it.
+existing session first, or use it. When the row has a warning, or the Ticket
+has more than one session, the primary action is **Review** instead and
+**Start testing** moves into the row's `⋯` menu.
 
 A Ticket with no open Linked PRs has nothing to run, so no session can start.
 Add or link a PR, and check that the PR is still open and not merged.
 
-**Start session** also needs `preview` or above. A role below `preview` cannot
+**Start testing** also needs `preview` or above. A role below `preview` cannot
 open the **QA** page at all.

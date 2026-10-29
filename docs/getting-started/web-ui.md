@@ -38,7 +38,11 @@ role is too low -- the page itself refuses you.
 | **CLI Credentials** | Mint and revoke CLI tokens | Your own tokens: any signed-in user, capped at your current role. **Elevate for production**: `release`. **Offboarding (admin)**: `admin` |
 | **Stack Profile** | The estate description mounted on this install | `admin` |
 | **KPIs** | Weekly engineering KPIs per component; listed only when enabled | `preview` and above |
-| **QA** | Tickets ready for testing, linked PRs and verdicts; listed only when enabled | View: `preview` and above. Approve or reject: `qa` |
+| **QA** | The Ticket queue: one compact row per Ticket with its linked PRs, sessions and verdicts; listed only when enabled | View: `preview` and above. Approve or reject: `qa` |
+
+Requires drift 0.33 or later: the **QA** page's compact rows and section bar.
+Earlier versions show one large card per Ticket. See
+[Work the QA queue](../guides/qa.md).
 
 Below the navigation the sidebar shows your name, your email, a badge with
 your role, the running Drift version (`v...`), and any documentation links

@@ -38,7 +38,7 @@ release, and neither implies the other. Someone who needs both is `admin`.
 | Trigger an end-to-end run | `preview` | Web: **Run E2E** on an environment. CLI: `drift env e2e` |
 | Promote to `rc`; hotfix to `rc`; cancel an in-flight promotion | `release` | Web: **Releases**. CLI: `drift release promote rc`, `drift release promote hotfix`, `drift release cancel` |
 | Promote to `prd`; `prd` hotfix | `release` | Web: **Releases**, **Promote to Production**. CLI: `drift release promote prd`, `drift release promote prd hotfix` -- the CLI call also needs an elevated credential scoped to `promote:prd` |
-| **Start session**, **Comment**, **Send to QA**, **Exempt**, **Unexempt**, **Link PR**, **Revoke** | `preview` | Web: **QA**. CLI: `drift qa start`, `comment`, `send`, `exempt`, `unexempt`, `link`, `revoke` |
+| **Start testing**, **Comment**, **Send to QA**, **Exempt**, **Unexempt**, **Link PR**, **Revoke** | `preview` | Web: **QA**. CLI: `drift qa start`, `comment`, `send`, `exempt`, `unexempt`, `link`, `revoke` |
 | **Acknowledge** a change, **Close** a session | `preview` | Web: **QA**. CLI: `drift qa ack`, `end` |
 | **Approve**, **Reject**, **Unlink**, **Carry over** | `qa` | Web: **QA**. CLI: `drift qa approve`, `reject`, `unlink`, `carryover` |
 | Add, edit or delete a repository | `admin` | Web: **Repositories** |
