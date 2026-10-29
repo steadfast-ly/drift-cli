@@ -91,16 +91,16 @@ The meta line carries:
   into one chip that reports the weakest of its registrations.
   The chips show the worst states first — failure and error, then changes
   requested, then merged before QA, then the ringed states, then an open PR
-  awaiting review, then the other pending states, then success — and the rest
-  fold into one `+N PRs` chip whose tooltip lists every remaining PR with its
-  state words and full title. That chip adds the worst of those states as a
-  word (`+N PRs · review pending`, `+N PRs · changes requested`), except when
-  the worst is a pending gate or a passing one, which it leaves silent. An
-  open, non-exempt PR awaiting review ranks above the other pending states, so
-  it takes one of the three chips first and `review pending` on the `+N` chip
-  appears only when worse states hide it. The row's detail keeps every word —
-  `pending`, and a closed PR's review state — so it is the place to read
-  everything.
+  awaiting review, then other pending gates and a gate not reported, then
+  success. The remaining PRs fold into one `+N PRs` chip whose tooltip lists
+  each of them with its state words and full title. That chip adds the worst of
+  those states as a word (`+N PRs · review pending`, `+N PRs · changes
+  requested`), except when the worst is a pending gate or a passing one, which
+  it leaves silent. An open, non-exempt PR awaiting review ranks above the
+  other pending states, so it takes one of the three chips first and `review
+  pending` on the `+N` chip appears only when worse states hide it. The row's
+  detail keeps every word — `pending`, and a closed PR's review state — so it
+  is the place to read everything.
 - **A warning marker** — `⚠ n` when the row has any warning: an unacknowledged
   change, a failed tracker write, a PR merged before QA, a mixed approval or a
   partial exemption. Hovering or focusing the marker lists every warning in
