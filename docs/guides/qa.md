@@ -26,9 +26,10 @@ enabled the module; otherwise it is not found.
 The page is one list of compact rows split into sections. The section bar stays
 pinned under the page title and links each section with its count; a section the
 server capped adds `+N more` beside the count. An empty section is a single
-muted line rather than a heading and a paragraph — under **Mine** the heading
-stays visible and the line reads "None of yours", or "None of yours among the
-loaded tickets" while the server has capped the section.
+muted line rather than a heading and a paragraph. Under **Mine** the heading
+stays visible and the line reads "None of yours" — "None of yours among the
+loaded tickets" when that section itself is capped — and neither the bar nor a
+heading appends the cap's `+N more`, because the cap counts everyone's rows.
 
 | Section | What is in it |
 | ------- | ------------- |
@@ -39,9 +40,8 @@ loaded tickets" while the server has capped the section.
 | **Decided** | Approvals and exemptions from the last 14 days, collapsed by default. The bar's **Decided** entry always opens the section, even when the address already points at it. |
 
 The bar's **Mine** switch narrows every section to the Tickets you own a Test
-Session on. While the server has capped a section, a filtered count speaks only
-for the Tickets the page loaded, and the bar says so (`Mine: among the 24
-loaded tickets`).
+Session on. While the server has capped any section, the bar notes that the
+filter covers only the loaded Tickets (`Mine: among the 24 loaded tickets`).
 
 Approvers see **Carry-over** above everything until the list is empty; the
 **Carry over** button records a green on a Ticket's current heads. If a sync
@@ -75,7 +75,7 @@ The meta line carries:
   The chips show the worst states first — failure and error, then changes
   requested, then the ringed states, then pending, then success — and the rest
   fold into one `+N PRs · <worst state>` chip whose tooltip lists every
-  remaining PR with its state words.
+  remaining PR with its state words and full title.
 - **A warning marker** — `⚠ n` when the row has any warning: an unacknowledged
   change, a failed tracker write, a PR merged before QA, a mixed approval or a
   partial exemption. Hovering or focusing the marker lists every warning in
@@ -115,16 +115,18 @@ any other section shows no primary unless it has a warning or a free partition.
 
 No row opens itself: a row with warnings starts collapsed too. Its primary is
 **Review**, which opens the detail, and **Approve** and **Reject** on such a row
-exist only there — so an approver reads the warnings before acting.
-**Acknowledge** and **Close session** are not in a warning row's `⋯` either;
-they live in the detail's session block, next to the banner they act on.
+exist only there — so an approver reads the warnings before acting. **Close
+session** leaves a warning row's `⋯` for the same reason; it stays in the
+detail's session block.
 
 The `⋯` menu holds **Start testing** when it is not already the primary,
-**Acknowledge** and **Close session** (the session owner, `qa` or `admin`) on a
-row without warnings, **Comment**, **Send to QA**, **Exempt** and **Link PR**.
-Each dialog opens outside the menu: one Escape closes the dialog alone, and
-focus returns to the `⋯`. A refused **Start testing** from the menu reports in
-the row's own error line instead of vanishing with the menu.
+**Close session** (the session owner, `qa` or `admin`) on a row with a single
+session and no warnings, **Comment**, **Send to QA**, **Exempt** and **Link
+PR**. **Acknowledge** is never in the menu: it lives in the detail's session
+block, beside the banner it acts on. Each dialog opens outside the menu: one
+Escape closes the dialog alone, and focus returns to the `⋯`. A refused **Start
+testing** from the menu reports in the row's own error line instead of
+vanishing with the menu.
 
 **Send to QA** is offered only where the server accepts it: never from the
 project's queue or approved status, and never for a Ticket in a Done-category
@@ -137,21 +139,24 @@ as the marker's tooltip, each one scrolling to and focusing the block it names �
 and the detail then repeats the summary in full and carries:
 
 - **Each Linked PR, one line**: its short label, the title without the `[KEY] `
-  prefix, the gate word with its context (`drift/qa pending`) and its
-  description when that says more than "Awaiting QA", the review and `merged`
-  tokens, the aggregate badges — **Approved**, **Mixed approval**, **Changed
-  since approval**, **Merged before QA**, **Carried over** — `Exempt n of m:
-  <reason>` as text, and **Unlink** at the line's end for approvers.
+  prefix (wrapped, never truncated), the gate word with its context
+  (`drift/qa pending`) and its description when that says more than "Awaiting
+  QA", the review and `merged` tokens, the aggregate badges — **Approved**,
+  **Mixed approval**, **Changed since approval**, **Merged before QA**,
+  **Carried over** — `Exempt n of m: <reason>` as text, and **Unlink** at the
+  line's end for approvers.
 - **Each session**: **Preparing** or **Session open**, the owner, the PRs the
   session runs as folded chips, the environment link, `revision <n>` (with
   `(started at <n>)` when the start revision differs), **Changes not
-  acknowledged** while a change is outstanding, and `started <time> ago`. Each
-  session carries its own change banners and its own **Approve**, **Reject**,
+  acknowledged** while a change is outstanding, and `started <time> ago`. A PR
+  the row no longer lists appears there as `N unlisted PR(s)`. Each session
+  carries its own change banners and its own **Approve**, **Reject**,
   **Acknowledge** and **Close**.
 - **Partitions**, only when there are two or more, folded per pull request:
   `Needs 2 test sessions: ① acme/web#42, acme/api#7 — free · ② acme/web#9 —
-  jane.doe testing`. A session whose partition no longer exists gets a line of
-  its own.
+  jane.doe testing`. A PR the row no longer lists counts as `N unlisted PR(s)`
+  here too, and a session whose partition no longer exists gets a line of its
+  own.
 - **Tracker writes failed**, listing each write's attempts and last error, with
   **Retry**.
 - **`Completion: none yet`**, `pending`, `done` or `done (stale)`.
@@ -172,7 +177,10 @@ each row:
   grantor. Exemptions of one monorepo PR fold into a single row with a
   registration count, and a folded row takes its newest registration's place in
   the list. **Unexempt** on a folded row revokes only its active members and
-  reports a partial result inline (`2 of 4 revoked; 2 failed: …`).
+  reports a partial result inline (`2 of 4 revoked; 2 failed: …`). A folded row
+  keeps the audit trail: how many registrations are revoked (`3 of 4 revoked`)
+  sits beside the newest `Revoked by <name> · <ago>`, whose tooltip lists every
+  revoked member with its revoker and time.
 - A ticket-scope exemption shows the key, **Ticket exemption** and its reason;
   it never folds.
 - A bot's automatic exemptions collapse to one line per bot —
