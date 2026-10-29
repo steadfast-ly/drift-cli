@@ -25,8 +25,10 @@ enabled the module; otherwise it is not found.
 
 The page is one list of compact rows split into sections. The section bar stays
 pinned under the page title and links each section with its count; a section the
-server capped adds `+N more` beside the count, and an empty section is a single
-muted line rather than a heading and a paragraph.
+server capped adds `+N more` beside the count. An empty section is a single
+muted line rather than a heading and a paragraph — under **Mine** the heading
+stays visible and the line reads "None of yours", or "None of yours among the
+loaded tickets" while the server has capped the section.
 
 | Section | What is in it |
 | ------- | ------------- |
@@ -34,7 +36,7 @@ muted line rather than a heading and a paragraph.
 | **Re-check** | Tickets with an unrevoked approval whose pull request head has moved, where nothing covers the new head. |
 | **Ready for QA** | Tickets in the ready-for-QA status whose open Linked PRs are all review-approved or exempt, and Tickets in the approved status with no current drift completion (for example after an approval was revoked), oldest first. |
 | **Upcoming** | Tickets in the queue status still waiting on code review, and Tickets in the upcoming statuses. |
-| **Decided** | Approvals and exemptions from the last 14 days, collapsed by default. The bar's **Decided** entry opens the section even when the address already points at it. |
+| **Decided** | Approvals and exemptions from the last 14 days, collapsed by default. The bar's **Decided** entry always opens the section, even when the address already points at it. |
 
 The bar's **Mine** switch narrows every section to the Tickets you own a Test
 Session on. While the server has capped a section, a filtered count speaks only
@@ -51,26 +53,33 @@ and the QA verdicts posted on them."
 
 ## The Ticket row
 
-Each Ticket is one row: a chevron and the Ticket key (linked to the tracker),
-then the summary. The summary is truncated to keep the row on one line and
-shows its whole text in a tooltip; clicking it, like clicking the chevron,
-opens the detail.
+Each Ticket is one row of two lines. The first line is a chevron and the Ticket
+key (linked to the tracker, never split), then the summary, truncated to one
+line with its whole text in a tooltip; clicking the summary, like the chevron,
+opens the detail. The second line is the row's meta line: the PR chips, the
+warning marker, the tracker status, the owners, the times and the environment.
 
-To the right the row carries:
+The actions sit in a fixed column at the right of both lines, so the primary
+button and the `⋯` land at the same place on every row.
 
-- **One chip per Linked PR** — `acme/web#42`, or `web#42` when every PR on the
-  page shares one organisation. The chip shows the `drift/qa` state as a
-  coloured dot and its word (`pending`, `failure`, `error` or `not reported`),
-  or a green check when it passed; the review state as a green check when
-  approved, otherwise as words (`review pending` or `changes requested`); and
-  `merged` for a closed PR. A red ring means merged before QA; an amber ring
-  means a mixed approval, a partial exemption or a change since approval. A
-  monorepo PR folds into one chip that reports the weakest of its
-  registrations.
+The meta line carries:
+
+- **PR chips, at most three** — `acme/web#42`, or `web#42` when every PR on the
+  page shares one organisation. A chip shows the `drift/qa` state as a coloured
+  dot and its word (`pending`, `failure`, `error` or `not reported`), or a green
+  check when it passed; the review state as a green check when approved,
+  otherwise as words (`review pending` or `changes requested`); and `merged`
+  for a closed PR. A red ring means merged before QA; an amber ring means a
+  mixed approval, a partial exemption or a change since approval. A monorepo PR
+  folds into one chip that reports the weakest of its registrations.
+  The chips show the worst states first — failure and error, then changes
+  requested, then the ringed states, then pending, then success — and the rest
+  fold into one `+N PRs · <worst state>` chip whose tooltip lists every
+  remaining PR with its state words.
 - **A warning marker** — `⚠ n` when the row has any warning: an unacknowledged
   change, a failed tracker write, a PR merged before QA, a mixed approval or a
   partial exemption. Hovering or focusing the marker lists every warning in
-  full.
+  full. It counts every PR and every session, not only the chips shown.
 - **The tracker status** — only when it differs from the project's queue
   status, so a Ready for QA row does not repeat "Ready for QA".
 - **`Awaiting code review`** when an open Linked PR is neither review-approved
@@ -78,10 +87,13 @@ To the right the row carries:
   approved in the tracker without a drift verdict. The second badge's tooltip
   says "Tested in Jira, not approved in drift — approve here to clear the
   gate"; no green is posted.
-- **The session owners** — the local part of each owner's email, with the full
-  address in the tooltip, and `N sessions` when there is more than one.
+- **The session owners** — at most two: the local part of the email with an
+  initials avatar, the full address in the tooltip, then `+N` for the rest (all
+  their addresses in its tooltip). `N sessions` follows when there is more than
+  one.
 - **Times** — the oldest session's age (`8d ago`) and, for a Ticket that
   entered the queue, how long it has waited (`in queue 9d`).
+- **The environment** — the session's environment link, or `preparing env`.
 - **`1 of 2 partitions free`** while the Ticket has several partitions and one
   of them is still free.
 
@@ -94,21 +106,25 @@ same position on every row. The first rule that applies wins:
 
 | Primary | When |
 | ------- | ---- |
-| **Review** | The row has any warning — its detail opens automatically, so the approver reads the warning before acting — or the Ticket is In testing with more than one session, where the approver must pick one. |
+| **Review** | The row has any warning, or the Ticket is In testing with more than one session, where the approver must pick one. |
 | **Approve**, **Reject** | Exactly one open session, no warning, and the Ticket is In testing. Approvers only. |
 | **Start testing** | A partition has no session (see [Starting a test session](#starting-a-test-session)). |
 
 Otherwise a row in In testing gets **Review**, which opens the detail; a row in
 any other section shows no primary unless it has a warning or a free partition.
-The detail always carries **Approve** and **Reject** on an open session, so an
-approver can act there too.
+
+No row opens itself: a row with warnings starts collapsed too. Its primary is
+**Review**, which opens the detail, and **Approve** and **Reject** on such a row
+exist only there — so an approver reads the warnings before acting.
+**Acknowledge** and **Close session** are not in a warning row's `⋯` either;
+they live in the detail's session block, next to the banner they act on.
 
 The `⋯` menu holds **Start testing** when it is not already the primary,
-**Acknowledge** and **Close session** (the session owner, `qa` or `admin`),
-**Comment**, **Send to QA**, **Exempt** and **Link PR**. Each dialog opens
-outside the menu: one Escape closes the dialog alone, and focus returns to the
-`⋯`. A refused **Start testing** from the menu reports in the row's own error
-line instead of vanishing with the menu.
+**Acknowledge** and **Close session** (the session owner, `qa` or `admin`) on a
+row without warnings, **Comment**, **Send to QA**, **Exempt** and **Link PR**.
+Each dialog opens outside the menu: one Escape closes the dialog alone, and
+focus returns to the `⋯`. A refused **Start testing** from the menu reports in
+the row's own error line instead of vanishing with the menu.
 
 **Send to QA** is offered only where the server accepts it: never from the
 project's queue or approved status, and never for a Ticket in a Done-category
@@ -116,15 +132,16 @@ status.
 
 ## The row detail
 
-The detail repeats the summary in full, then carries:
+A row with warnings opens its detail with the warnings as text — the same items
+as the marker's tooltip, each one scrolling to and focusing the block it names —
+and the detail then repeats the summary in full and carries:
 
-- **Each Linked PR**: its full title (the Ticket key is stripped from the
-  front), the review state, `merged`, the gate badge `drift/qa: <state>` with
-  its description, and the aggregate badges — **Approved**, **Mixed
-  approval**, **Changed since approval**, **Merged before QA**,
-  **Exempt: <reason>** (with a registration count when the exemption covers
-  only part of a monorepo PR) and **Carried over**. Approvers also get
-  **Unlink**.
+- **Each Linked PR, one line**: its short label, the title without the `[KEY] `
+  prefix, the gate word with its context (`drift/qa pending`) and its
+  description when that says more than "Awaiting QA", the review and `merged`
+  tokens, the aggregate badges — **Approved**, **Mixed approval**, **Changed
+  since approval**, **Merged before QA**, **Carried over** — `Exempt n of m:
+  <reason>` as text, and **Unlink** at the line's end for approvers.
 - **Each session**: **Preparing** or **Session open**, the owner, the PRs the
   session runs as folded chips, the environment link, `revision <n>` (with
   `(started at <n>)` when the start revision differs), **Changes not
@@ -160,7 +177,11 @@ each row:
   it never folds.
 - A bot's automatic exemptions collapse to one line per bot —
   `dependabot[bot] — 11 PRs auto-exempt (every commit by the bot)` — with the
-  `auto:` audit prefix stripped from the name. Expand the line to see each PR.
+  `auto:` audit prefix stripped from the name; its PRs are ordered by
+  repository then PR number. Expand the line to see each PR.
+
+The approver's and the grantor's timestamps each open the absolute time in a
+tooltip on focus.
 
 ## How pull requests join a Ticket
 
