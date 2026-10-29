@@ -3,7 +3,7 @@
 **Requires:** the `preview` role to view the queue and start testing; `qa` or
 `admin` to approve, reject, unlink a pull request or carry a Ticket over.
 drift server 0.32.0 or later with the QA module enabled by your admin — the
-**/qa** page layout described here requires drift 0.33 or later; the
+**/qa** page as described here requires drift 0.33.1 or later; the
 `drift qa` commands need drift CLI 0.16.0.
 
 The QA module turns drift into the QA team's work queue. Tickets enter the
@@ -18,17 +18,21 @@ protection. drift never blocks a merge by itself.
 ## The /qa page
 
 Requires drift 0.33 or later: earlier versions showed one large card per
-Ticket instead of the rows described here.
+Ticket instead of the rows described here. 0.33.1 is the page described here —
+0.33.0 has the same rows, but tighter spacing, a `pending` word on every chip
+and no **Carry over** on a Ready row.
 
 Open **QA** in the sidebar. The page is available only when your admin has
 enabled the module; otherwise it is not found.
 
-The page is one list of compact rows split into sections. The section bar stays
-pinned under the page title and links each section with its count; a section the
-server capped adds `+N more` beside the count. An empty section is a single
-muted line rather than a heading and a paragraph. Under **Mine** the heading
-stays visible and the line reads "None of yours" — "None of yours among the
-loaded tickets" when that section itself is capped — and neither the bar nor a
+The page is one list of rows split into sections, spaced to read calmly rather
+than to fit one screen. The section bar stays pinned under the page title and
+links each section with its count; a section the server capped adds `+N more`
+beside the count. An empty section keeps its heading and puts one muted phrase
+beside it: "In testing — nobody right now", "Re-check — nothing to re-check",
+"Ready for QA — nothing ready for QA", "Upcoming — nothing upcoming". Under
+**Mine** the phrase reads "— none of yours", or "— none of yours among the
+loaded tickets" when that section itself is capped, and neither the bar nor a
 heading appends the cap's `+N more`, because the cap counts everyone's rows.
 
 | Section | What is in it |
@@ -43,10 +47,17 @@ The bar's **Mine** switch narrows every section to the Tickets you own a Test
 Session on. While the server has capped any section, the bar notes that the
 filter covers only the loaded Tickets (`Mine: among the 24 loaded tickets`).
 
-Approvers see **Carry-over** above everything until the list is empty; the
-**Carry over** button records a green on a Ticket's current heads. If a sync
-phase or a Ticket evaluation is failing, a **QA sync needs attention** strip
-appears above the sections; the strip names the failing phase and its error.
+Approvers see **Carry-over** above everything until the list is empty. It is
+rows like the sections: the key and summary, then one chip per pull request
+with the PR's title in the tooltip, and **Carry over** in the actions column,
+which records a green on the Ticket's current heads. It lists only the Tickets
+no section shows, so a Ticket that is also in **Ready for QA** is acted on from
+that row — an approver finds **Carry over** as its primary action. For everyone
+else that row says **Tested in Jira: an approver can carry it over**.
+
+If a sync phase or a Ticket evaluation is failing, a **QA sync needs attention**
+strip appears above the sections; the strip names the failing phase and its
+error.
 
 The page header reads "Tickets ready for testing, their linked pull requests
 and the QA verdicts posted on them."
@@ -54,10 +65,13 @@ and the QA verdicts posted on them."
 ## The Ticket row
 
 Each Ticket is one row of two lines. The first line is a chevron and the Ticket
-key (linked to the tracker, never split), then the summary, truncated to one
-line with its whole text in a tooltip; clicking the summary, like the chevron,
-opens the detail. The second line is the row's meta line: the PR chips, the
-warning marker, the tracker status, the owners, the times and the environment.
+key (linked to the tracker, never split), then the summary, in the row's main
+colour, truncated to one line with its whole text in a tooltip; clicking the
+summary, like the chevron, opens the detail. The second line is the row's meta
+line, in muted text, in two groups: the PR chips first, then the warning marker
+and the badges, then — when the row has anyone or anything to show — a `·` and
+the people and the time: the session owners, the ages, the environment and the
+session count.
 
 The actions sit in a fixed column at the right of both lines, so the primary
 button and the `⋯` land at the same place on every row.
@@ -65,37 +79,49 @@ button and the `⋯` land at the same place on every row.
 The meta line carries:
 
 - **PR chips, at most three** — `acme/web#42`, or `web#42` when every PR on the
-  page shares one organisation. A chip shows the `drift/qa` state as a coloured
-  dot and its word (`pending`, `failure`, `error` or `not reported`), or a green
-  check when it passed; the review state as a green check when approved,
-  otherwise as words (`review pending` or `changes requested`); and `merged`
-  for a closed PR. A red ring means merged before QA; an amber ring means a
-  mixed approval, a partial exemption or a change since approval. A monorepo PR
-  folds into one chip that reports the weakest of its registrations.
+  page shares one organisation. A chip says only what needs attention: the
+  `drift/qa` gate stays silent while it is pending (a screen reader still hears
+  `<gate> pending`), passed is a green check, and `failure` or `error` keeps
+  its red word; a gate drift has not reported reads `not reported` in muted
+  text. An approved review shows nothing, an open PR awaiting review says
+  `review pending`, one with changes asked says `changes requested`, and a
+  closed PR says `merged`. A red ring means merged before QA; an amber ring
+  means a mixed approval, a partial exemption or a change since approval. A
+  monorepo PR folds into one chip that reports the weakest of its
+  registrations.
   The chips show the worst states first — failure and error, then changes
-  requested, then the ringed states, then pending, then success — and the rest
-  fold into one `+N PRs · <worst state>` chip whose tooltip lists every
-  remaining PR with its state words and full title.
+  requested, then merged before QA, then the ringed states, then pending, then
+  success — and the rest fold into one `+N PRs` chip whose tooltip lists every
+  remaining PR with its state words and full title. That chip adds the worst of
+  those states as a word (`+N PRs · review pending`, `+N PRs · changes
+  requested`), except when the worst is a pending gate, which it leaves silent;
+  `review pending` outranks a pending gate, so a folded open, non-exempt PR
+  still awaiting review says so. The row's detail keeps every word, `pending`
+  included.
 - **A warning marker** — `⚠ n` when the row has any warning: an unacknowledged
   change, a failed tracker write, a PR merged before QA, a mixed approval or a
   partial exemption. Hovering or focusing the marker lists every warning in
   full. It counts every PR and every session, not only the chips shown.
 - **The tracker status** — only when it differs from the project's queue
-  status, so a Ready for QA row does not repeat "Ready for QA".
-- **`Awaiting code review`** when an open Linked PR is neither review-approved
-  nor exempt, and **`Tested in Jira, not approved in drift`** when someone
-  approved in the tracker without a drift verdict. The second badge's tooltip
-  says "Tested in Jira, not approved in drift — approve here to clear the
-  gate"; no green is posted.
+  status, so a Ready for QA row does not repeat "Ready for QA"; it reads
+  `Jira: <status>`, naming the tracker from your admin's profile, and shows the
+  bare status for a tracker drift cannot name.
+- **`Tested in Jira`** when someone approved in the tracker without a drift
+  verdict: `Tested in Jira, not approved in drift` for an approver, whose
+  tooltip says "Approve here to clear the gate", and `Tested in Jira: an
+  approver can carry it over` for everyone else. No green is posted. Waiting on
+  code review is the per-PR `review pending` chip; there is no row badge for
+  it.
 - **The session owners** — at most two: the local part of the email with an
   initials avatar, the full address in the tooltip, then `+N` for the rest (all
   their addresses in its tooltip). `N sessions` follows when there is more than
   one.
-- **Times** — the oldest session's age (`8d ago`) and, for a Ticket that
-  entered the queue, how long it has waited (`in queue 9d`).
+- **Times** — the oldest session's age (`8d ago`) and, while the Ticket sits in
+  its project's queue status, how long it has been there (`in queue 9d`); a row
+  in any other status shows no queue age.
 - **The environment** — the session's environment link, or `preparing env`.
-- **`1 of 2 partitions free`** while the Ticket has several partitions and one
-  of them is still free.
+- **The session count** — on a Ticket with several partitions: `needs 2 test
+  sessions` before any has started, `1 of 2 sessions running` once some have.
 
 Every tooltip on a row opens on keyboard focus as well as on hover.
 
@@ -108,10 +134,19 @@ same position on every row. The first rule that applies wins:
 | ------- | ---- |
 | **Review** | The row has any warning, or the Ticket is In testing with more than one session, where the approver must pick one. |
 | **Approve**, **Reject** | Exactly one open session, no warning, and the Ticket is In testing. Approvers only. |
+| **Carry over** | An approver's Ready for QA row whose Ticket is on the Carry-over list, when the row has no warning. |
 | **Start testing** | A partition has no session (see [Starting a test session](#starting-a-test-session)). |
 
 Otherwise a row in In testing gets **Review**, which opens the detail; a row in
-any other section shows no primary unless it has a warning or a free partition.
+any other section shows no primary unless it has a warning, a free partition,
+or is a Ready for QA row on the Carry-over list.
+
+**Start testing** is filled on a Ready for QA or Re-check row and outlined in
+**Upcoming**, where QA may start before code review; the behaviour is the same.
+A row the tracker approved but drift has not has no **Start testing** primary,
+because starting it would test what the tracker already tested: an approver
+carrying it over gets **Carry over** instead, and otherwise the row has no
+primary and **Start testing** stays in `⋯` for a deliberate retest.
 
 No row opens itself: a row with warnings starts collapsed too. Its primary is
 **Review**, which opens the detail, and **Approve** and **Reject** on such a row
@@ -120,10 +155,11 @@ session** leaves a warning row's `⋯` for the same reason; it stays in the
 detail's session block.
 
 The `⋯` menu holds **Start testing** when it is not already the primary,
-**Close session** (the session owner, `qa` or `admin`) on a row with a single
-session and no warnings, **Comment**, **Send to QA**, **Exempt** and **Link
-PR**. **Acknowledge** is never in the menu: it lives in the detail's session
-block, beside the banner it acts on, and only while a change is unacknowledged.
+**Carry over** when it is not, **Close session** (the session owner, `qa` or
+`admin`) on a row with a single session and no warnings, **Comment**, **Send to
+QA**, **Exempt** and **Link PR**. **Acknowledge** is never in the menu: it lives
+in the detail's session block, beside the banner it acts on, and only while a
+change is unacknowledged.
 Each dialog opens outside the menu: one Escape closes the dialog alone, and
 focus returns to the `⋯`. A refused **Start testing** from the menu reports in
 the row's own error line instead of vanishing with the menu.
@@ -403,11 +439,11 @@ drift qa unexempt <exemption-id>
 
 **Revoke** on an approval in **Decided**, or `drift qa revoke
 --approval <id>`, withdraws a drift approval. The gate goes pending again; a
-Ticket still in the approved tracker status shows in **Ready for QA** with
-**Tested in Jira, not approved in drift**, and you can approve it again or move
-it back to the queue in the tracker. A push is different: the approval stays
-but no longer covers the head, so the gate reads "changed since QA approval"
-and the Ticket shows under **Re-check**.
+Ticket still in the approved tracker status shows in **Ready for QA** with the
+**Tested in Jira** badge, and you can approve it again or move it back to the
+queue in the tracker. A push is different: the approval stays but no longer
+covers the head, so the gate reads "changed since QA approval" and the Ticket
+shows under **Re-check**.
 
 Moving a Ticket in the tracker also matters:
 
@@ -421,9 +457,10 @@ Moving a Ticket in the tracker also matters:
   retry after the next sync.
 
 A tracker-side approval without a drift verdict is flagged, not honoured: the
-row shows **Tested in Jira, not approved in drift**, no green is posted, and
-drift does not move the Ticket back. Approving in drift clears the flag; the
-move is then a no-op.
+row says **Tested in Jira, not approved in drift** to an approver and **Tested
+in Jira: an approver can carry it over** to everyone else, no green is posted,
+and drift does not move the Ticket back. Approving in drift clears the flag;
+the move is then a no-op.
 
 If your approved status is itself a Done-category status, a manual move there
 without a drift approval shows `drift/qa` pending "ticket closed without QA"
@@ -432,9 +469,17 @@ and never turns green. Approve in drift, or exempt the PR.
 ### Carry-over
 
 **Carry-over** lists Tickets approved before the QA module existed and not yet
-complete. **Carry over** (or `drift qa carryover <key>`) records a green on
-their open Linked PRs at their current heads. The Ticket leaves the list once
-it is done.
+complete, and only those no section shows: a Ticket that is also in **Ready for
+QA** or **Upcoming** is acted on from that row. **Carry over** (or `drift qa
+carryover <key>`) records a green on the Ticket's open Linked PRs at their
+current heads. The Ticket leaves the list once it is done.
+
+The list is rows, like the sections: the key and summary, one chip per pull
+request — a monorepo PR's registrations fold into one — with the PR's title in
+the tooltip, and **Carry over** at the right. The rows carry no gate or review
+state, so the chips are labels only. One line under the heading says what the
+list is for: "Tested in the tracker before drift QA was on. Carry over to turn
+their pull requests green."
 
 ## The drift/qa status
 
