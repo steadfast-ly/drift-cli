@@ -162,10 +162,10 @@ has more than one session, the primary action is **Review** instead and
 A Ticket with no open Linked PRs has nothing to run, so no session can start.
 Add or link a PR, and check that the PR is still open and not merged.
 
-A row the tracker approved but drift has not (the **Tested in Jira** badge) has
-no **Start testing** primary, because starting it would test what the tracker
-already tested: an approver carries it over instead, and everyone else finds
-**Start testing** in `⋯` for a deliberate retest.
+A Ready for QA row the tracker approved but drift has not (the **Tested in
+Jira** badge) has no **Start testing** primary, because starting it would test
+what the tracker already tested: an approver carries it over instead, and
+everyone else finds **Start testing** in `⋯` for a deliberate retest.
 
 **Start testing** also needs `preview` or above. A role below `preview` cannot
 open the **QA** page at all.

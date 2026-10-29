@@ -83,12 +83,12 @@ The meta line carries:
   `drift/qa` gate stays silent while it is pending (a screen reader still hears
   `<gate> pending`), passed is a green check, and `failure` or `error` keeps
   its red word; a gate drift has not reported reads `not reported` in muted
-  text. An approved review shows nothing, an open PR awaiting review says
-  `review pending`, one with changes asked says `changes requested`, and a
-  closed PR says `merged`. A red ring means merged before QA; an amber ring
-  means a mixed approval, a partial exemption or a change since approval. A
-  monorepo PR folds into one chip that reports the weakest of its
-  registrations.
+  text. An approved review shows nothing (a screen reader still hears `review
+  approved`), an open PR awaiting review says `review pending`, one with changes
+  asked says `changes requested`, and a closed PR shows `merged` and no review
+  word. A red ring means merged before QA; an amber ring means a mixed
+  approval, a partial exemption or a change since approval. A monorepo PR folds
+  into one chip that reports the weakest of its registrations.
   The chips show the worst states first — failure and error, then changes
   requested, then merged before QA, then the ringed states, then pending, then
   success — and the rest fold into one `+N PRs` chip whose tooltip lists every
@@ -96,8 +96,8 @@ The meta line carries:
   those states as a word (`+N PRs · review pending`, `+N PRs · changes
   requested`), except when the worst is a pending gate, which it leaves silent;
   `review pending` outranks a pending gate, so a folded open, non-exempt PR
-  still awaiting review says so. The row's detail keeps every word, `pending`
-  included.
+  still awaiting review says so. The row's detail keeps every word — `pending`,
+  and a closed PR's review state — so it is the place to read everything.
 - **A warning marker** — `⚠ n` when the row has any warning: an unacknowledged
   change, a failed tracker write, a PR merged before QA, a mixed approval or a
   partial exemption. Hovering or focusing the marker lists every warning in
@@ -120,8 +120,9 @@ The meta line carries:
   its project's queue status, how long it has been there (`in queue 9d`); a row
   in any other status shows no queue age.
 - **The environment** — the session's environment link, or `preparing env`.
-- **The session count** — on a Ticket with several partitions: `needs 2 test
-  sessions` before any has started, `1 of 2 sessions running` once some have.
+- **The session count** — on a Ticket with several partitions while one is
+  still free: `needs 2 test sessions` before any has started, `1 of 2 sessions
+  running` once some have.
 
 Every tooltip on a row opens on keyboard focus as well as on hover.
 
@@ -143,10 +144,11 @@ or is a Ready for QA row on the Carry-over list.
 
 **Start testing** is filled on a Ready for QA or Re-check row and outlined in
 **Upcoming**, where QA may start before code review; the behaviour is the same.
-A row the tracker approved but drift has not has no **Start testing** primary,
-because starting it would test what the tracker already tested: an approver
-carrying it over gets **Carry over** instead, and otherwise the row has no
-primary and **Start testing** stays in `⋯` for a deliberate retest.
+A Ready for QA row the tracker approved but drift has not has no **Start
+testing** primary, because starting it would test what the tracker already
+tested: an approver carrying it over gets **Carry over** instead, and otherwise
+the row has no primary and **Start testing** stays in `⋯` for a deliberate
+retest.
 
 No row opens itself: a row with warnings starts collapsed too. Its primary is
 **Review**, which opens the detail, and **Approve** and **Reject** on such a row
