@@ -51,9 +51,10 @@ Approvers see **Carry-over** above everything until the list is empty. It is
 rows like the sections: the key and summary, then one chip per pull request
 with the PR's title in the tooltip, and **Carry over** in the actions column,
 which records a green on the Ticket's current heads. It lists only the Tickets
-no section shows, so a Ticket that is also in **Ready for QA** is acted on from
-that row — an approver finds **Carry over** as its primary action. For everyone
-else that row says **Tested in Jira: an approver can carry it over**.
+no rendered row shows: a Ticket that is also in **Ready for QA** is acted on
+from that row, where an approver finds **Carry over** as its primary action, and
+under **Mine** a candidate whose row the filter hid stays in the list. For
+everyone else that row says **Tested in Jira: an approver can carry it over**.
 
 If a sync phase or a Ticket evaluation is failing, a **QA sync needs attention**
 strip appears above the sections; the strip names the failing phase and its
@@ -68,10 +69,9 @@ Each Ticket is one row of two lines. The first line is a chevron and the Ticket
 key (linked to the tracker, never split), then the summary, in the row's main
 colour, truncated to one line with its whole text in a tooltip; clicking the
 summary, like the chevron, opens the detail. The second line is the row's meta
-line, in muted text, in two groups: the PR chips first, then the warning marker
-and the badges, then — after a `·`, drawn only when both groups have something
-to show — the people and the time: the session owners, the ages, the
-environment and the session count.
+line, in muted text, in two groups separated by a wider gap: the PR chips
+first, then the warning marker and the badges, then the people and the time —
+the session owners, the ages, the environment and the session count.
 
 The actions sit in a fixed column at the right of both lines, so the primary
 button and the `⋯` land at the same place on every row.
@@ -90,14 +90,17 @@ The meta line carries:
   approval, a partial exemption or a change since approval. A monorepo PR folds
   into one chip that reports the weakest of its registrations.
   The chips show the worst states first — failure and error, then changes
-  requested, then merged before QA, then the ringed states, then pending, then
-  success — and the rest fold into one `+N PRs` chip whose tooltip lists every
-  remaining PR with its state words and full title. That chip adds the worst of
-  those states as a word (`+N PRs · review pending`, `+N PRs · changes
-  requested`), except when the worst is a pending gate, which it leaves silent;
-  `review pending` outranks a pending gate, so a folded open, non-exempt PR
-  still awaiting review says so. The row's detail keeps every word — `pending`,
-  and a closed PR's review state — so it is the place to read everything.
+  requested, then merged before QA, then the ringed states, then an open PR
+  awaiting review, then the other pending states, then success — and the rest
+  fold into one `+N PRs` chip whose tooltip lists every remaining PR with its
+  state words and full title. That chip adds the worst of those states as a
+  word (`+N PRs · review pending`, `+N PRs · changes requested`), except when
+  the worst is a pending gate or a passing one, which it leaves silent. An
+  open, non-exempt PR awaiting review ranks above the other pending states, so
+  it takes one of the three chips first and `review pending` on the `+N` chip
+  appears only when worse states hide it. The row's detail keeps every word —
+  `pending`, and a closed PR's review state — so it is the place to read
+  everything.
 - **A warning marker** — `⚠ n` when the row has any warning: an unacknowledged
   change, a failed tracker write, a PR merged before QA, a mixed approval or a
   partial exemption. Hovering or focusing the marker lists every warning in
@@ -108,10 +111,12 @@ The meta line carries:
   bare status for a tracker drift cannot name.
 - **`Tested in Jira`** when someone approved in the tracker without a drift
   verdict: `Tested in Jira, not approved in drift` for an approver, whose
-  tooltip says "Approve here to clear the gate", and `Tested in Jira: an
-  approver can carry it over` for everyone else. No green is posted. Waiting on
-  code review is the per-PR `review pending` chip; there is no row badge for
-  it.
+  tooltip names what clears it — "Carry over to clear the gate" on a row the
+  Carry-over list holds, "Start testing from ⋯ to approve it in drift" when a
+  partition is free, and "Approve it in drift to clear the gate" when every
+  partition has a session — and `Tested in Jira: an approver can carry it over`
+  for everyone else. No green is posted. Waiting on code review is the per-PR
+  `review pending` chip; there is no row badge for it.
 - **The session owners** — at most two: the local part of the email with an
   initials avatar, the full address in the tooltip, then `+N` for the rest (all
   their addresses in its tooltip). `N sessions` follows when there is more than
@@ -151,17 +156,18 @@ the row has no primary and **Start testing** stays in `⋯` for a deliberate
 retest.
 
 No row opens itself: a row with warnings starts collapsed too. Its primary is
-**Review**, which opens the detail, and **Approve** and **Reject** on such a row
-exist only there — so an approver reads the warnings before acting. **Close
-session** leaves a warning row's `⋯` for the same reason; it stays in the
-detail's session block.
+**Review**, which opens the detail, and **Approve**, **Reject** and **Carry
+over** on such a row exist only there — so an approver reads the warnings
+before acting. **Close session** leaves a warning row's `⋯` for the same
+reason; it stays in the detail's session block, and **Carry over** — which is
+approval-equivalent — sits under the detail's warnings.
 
 The `⋯` menu holds **Start testing** when it is not already the primary,
-**Carry over** when it is not, **Close session** (the session owner, `qa` or
-`admin`) on a row with a single session and no warnings, **Comment**, **Send to
-QA**, **Exempt** and **Link PR**. **Acknowledge** is never in the menu: it lives
-in the detail's session block, beside the banner it acts on, and only while a
-change is unacknowledged.
+**Carry over** when it is not the primary and the row has no warning, **Close
+session** (the session owner, `qa` or `admin`) on a row with a single session
+and no warnings, **Comment**, **Send to QA**, **Exempt** and **Link PR**.
+**Acknowledge** is never in the menu: it lives in the detail's session block,
+beside the banner it acts on, and only while a change is unacknowledged.
 Each dialog opens outside the menu: one Escape closes the dialog alone, and
 focus returns to the `⋯`. A refused **Start testing** from the menu reports in
 the row's own error line instead of vanishing with the menu.
@@ -174,7 +180,8 @@ status.
 
 A row with warnings opens its detail with the warnings as text — the same items
 as the marker's tooltip, each one scrolling to and focusing the block it names —
-and the detail then repeats the summary in full and carries:
+then, for an approver whose Ticket is on the Carry-over list, **Carry over**
+right under them. The detail then repeats the summary in full and carries:
 
 - **Each Linked PR, one line**: its short label, the title without the `[KEY] `
   prefix (wrapped, never truncated), the gate word with its context
@@ -471,8 +478,9 @@ and never turns green. Approve in drift, or exempt the PR.
 ### Carry-over
 
 **Carry-over** lists Tickets approved before the QA module existed and not yet
-complete, and only those no section shows: a Ticket that is also in **Ready for
-QA** or **Upcoming** is acted on from that row. **Carry over** (or `drift qa
+complete, and only those no rendered row shows — under **Mine** a candidate
+whose row the filter hid stays listed: a Ticket that is also in **Ready for QA**
+or **Upcoming** is acted on from that row. **Carry over** (or `drift qa
 carryover <key>`) records a green on the Ticket's open Linked PRs at their
 current heads. The Ticket leaves the list once it is done.
 
