@@ -44,17 +44,20 @@ heading appends the cap's `+N more`, because the cap counts everyone's rows.
 | **Decided** | Approvals and exemptions from the last 14 days, collapsed by default. The bar's **Decided** entry always opens the section, even when the address already points at it. |
 
 The bar's **Mine** switch narrows every section to the Tickets you own a Test
-Session on. While the server has capped any section, the bar notes that the
-filter covers only the loaded Tickets (`Mine: among the 24 loaded tickets`).
+Session on — and, for an approver, to the Tickets on the Carry-over list, whose
+approval no session stands in for. While the server has capped any section, the
+bar notes that the filter covers only the loaded Tickets (`Mine: among the 24
+loaded tickets`).
 
 Approvers see **Carry-over** above everything until the list is empty. It is
 rows like the sections: the key and summary, then one chip per pull request
 with the PR's title in the tooltip, and **Carry over** in the actions column,
 which records a green on the Ticket's current heads. It lists only the Tickets
-no rendered row shows: a Ticket that is also in **Ready for QA** is acted on
-from that row, where an approver finds **Carry over** as its primary action, and
-under **Mine** a candidate whose row the filter hid stays in the list. For
-everyone else that row says **Tested in Jira: an approver can carry it over**.
+no row shows: a Ticket that is also in **Ready for QA** is acted on from that
+row, where an approver finds **Carry over** as its primary action — or
+**Review**, when the row has a warning. **Mine** never hides an approver's
+carry-over row, so the list never repeats a Ticket that has one. For everyone
+else that row says **Tested in Jira: an approver can carry it over**.
 
 If a sync phase or a Ticket evaluation is failing, a **QA sync needs attention**
 strip appears above the sections; the strip names the failing phase and its
@@ -95,12 +98,13 @@ The meta line carries:
   success. The remaining PRs fold into one `+N PRs` chip whose tooltip lists
   each of them with its state words and full title. That chip adds the worst of
   those states as a word (`+N PRs · review pending`, `+N PRs · changes
-  requested`), except when the worst is a pending gate or a passing one, which
-  it leaves silent. An open, non-exempt PR awaiting review ranks above the
-  other pending states, so it takes one of the three chips first and `review
-  pending` on the `+N` chip appears only when worse states hide it. The row's
-  detail keeps every word — `pending`, and a closed PR's review state — so it
-  is the place to read everything.
+  requested`), except when the worst is a pending gate, which it leaves silent,
+  or a passing one, where it shows the same green check as a single chip and no
+  word. An open, non-exempt PR awaiting review ranks above the other pending
+  states, so it takes one of the three chips first and `review pending` on the
+  `+N` chip appears only when worse states hide it. The row's detail keeps
+  every word — `pending`, and a closed PR's review state — so it is the place
+  to read everything.
 - **A warning marker** — `⚠ n` when the row has any warning: an unacknowledged
   change, a failed tracker write, a PR merged before QA, a mixed approval or a
   partial exemption. Hovering or focusing the marker lists every warning in
@@ -112,7 +116,7 @@ The meta line carries:
 - **`Tested in Jira`** when someone approved in the tracker without a drift
   verdict: `Tested in Jira, not approved in drift` for an approver, whose
   tooltip names what clears it — "Carry over to clear the gate" on a row the
-  Carry-over list holds, "Start testing from ⋯ to approve it in drift" when a
+  Carry-over list holds, "Start testing to approve it in drift" when a
   partition is free, and "Approve it in drift to clear the gate" when every
   partition has a session — and `Tested in Jira: an approver can carry it over`
   for everyone else. No green is posted. Waiting on code review is the per-PR
@@ -478,11 +482,11 @@ and never turns green. Approve in drift, or exempt the PR.
 ### Carry-over
 
 **Carry-over** lists Tickets approved before the QA module existed and not yet
-complete, and only those no rendered row shows — under **Mine** a candidate
-whose row the filter hid stays listed: a Ticket that is also in **Ready for QA**
-or **Upcoming** is acted on from that row. **Carry over** (or `drift qa
-carryover <key>`) records a green on the Ticket's open Linked PRs at their
-current heads. The Ticket leaves the list once it is done.
+complete, and only those no row shows: a Ticket that is also in **Ready for QA**
+or **Upcoming** is acted on from that row, and **Mine** keeps an approver's
+carry-over row in its section rather than in this list. **Carry over** (or
+`drift qa carryover <key>`) records a green on the Ticket's open Linked PRs at
+their current heads. The Ticket leaves the list once it is done.
 
 The list is rows, like the sections: the key and summary, one chip per pull
 request — a monorepo PR's registrations fold into one — with the PR's title in
