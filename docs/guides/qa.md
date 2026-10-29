@@ -123,10 +123,10 @@ The `⋯` menu holds **Start testing** when it is not already the primary,
 **Close session** (the session owner, `qa` or `admin`) on a row with a single
 session and no warnings, **Comment**, **Send to QA**, **Exempt** and **Link
 PR**. **Acknowledge** is never in the menu: it lives in the detail's session
-block, beside the banner it acts on. Each dialog opens outside the menu: one
-Escape closes the dialog alone, and focus returns to the `⋯`. A refused **Start
-testing** from the menu reports in the row's own error line instead of
-vanishing with the menu.
+block, beside the banner it acts on, and only while a change is unacknowledged.
+Each dialog opens outside the menu: one Escape closes the dialog alone, and
+focus returns to the `⋯`. A refused **Start testing** from the menu reports in
+the row's own error line instead of vanishing with the menu.
 
 **Send to QA** is offered only where the server accepts it: never from the
 project's queue or approved status, and never for a Ticket in a Done-category
@@ -148,15 +148,16 @@ and the detail then repeats the summary in full and carries:
 - **Each session**: **Preparing** or **Session open**, the owner, the PRs the
   session runs as folded chips, the environment link, `revision <n>` (with
   `(started at <n>)` when the start revision differs), **Changes not
-  acknowledged** while a change is outstanding, and `started <time> ago`. A PR
-  the row no longer lists appears there as `N unlisted PR(s)`. Each session
-  carries its own change banners and its own **Approve**, **Reject**,
-  **Acknowledge** and **Close**.
+  acknowledged** while a change is outstanding, and `started <time> ago`. When
+  none of the session's PR ids resolve on the row, it says `N unlisted PR(s)`
+  instead of naming them. Each session carries its own change banners and its
+  own **Approve**, **Reject** and **Close**, plus **Acknowledge** while a
+  change is unacknowledged.
 - **Partitions**, only when there are two or more, folded per pull request:
   `Needs 2 test sessions: ① acme/web#42, acme/api#7 — free · ② acme/web#9 —
-  jane.doe testing`. A PR the row no longer lists counts as `N unlisted PR(s)`
-  here too, and a session whose partition no longer exists gets a line of its
-  own.
+  jane.doe testing`. A partition whose PRs are all unlisted shows `N unlisted
+  PR(s)` in their place, and a session whose partition no longer exists gets a
+  line of its own.
 - **Tracker writes failed**, listing each write's attempts and last error, with
   **Retry**.
 - **`Completion: none yet`**, `pending`, `done` or `done (stale)`.
@@ -178,9 +179,10 @@ each row:
   registration count, and a folded row takes its newest registration's place in
   the list. **Unexempt** on a folded row revokes only its active members and
   reports a partial result inline (`2 of 4 revoked; 2 failed: …`). A folded row
-  keeps the audit trail: how many registrations are revoked (`3 of 4 revoked`)
-  sits beside the newest `Revoked by <name> · <ago>`, whose tooltip lists every
-  revoked member with its revoker and time.
+  keeps the audit trail: it names the newest `Revoked by <name> · <ago>`, and
+  adds `n of m revoked` only while some registrations stay exempt — a fully
+  revoked row says nothing more. The tooltip on that newest revocation lists
+  every revoked member with its revoker and the absolute time.
 - A ticket-scope exemption shows the key, **Ticket exemption** and its reason;
   it never folds.
 - A bot's automatic exemptions collapse to one line per bot —
