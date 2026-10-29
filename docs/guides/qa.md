@@ -69,9 +69,9 @@ key (linked to the tracker, never split), then the summary, in the row's main
 colour, truncated to one line with its whole text in a tooltip; clicking the
 summary, like the chevron, opens the detail. The second line is the row's meta
 line, in muted text, in two groups: the PR chips first, then the warning marker
-and the badges, then — when the row has anyone or anything to show — a `·` and
-the people and the time: the session owners, the ages, the environment and the
-session count.
+and the badges, then — after a `·`, drawn only when both groups have something
+to show — the people and the time: the session owners, the ages, the
+environment and the session count.
 
 The actions sit in a fixed column at the right of both lines, so the primary
 button and the `⋯` land at the same place on every row.
@@ -478,10 +478,10 @@ current heads. The Ticket leaves the list once it is done.
 
 The list is rows, like the sections: the key and summary, one chip per pull
 request — a monorepo PR's registrations fold into one — with the PR's title in
-the tooltip, and **Carry over** at the right. The rows carry no gate or review
-state, so the chips are labels only. One line under the heading says what the
-list is for: "Tested in the tracker before drift QA was on. Carry over to turn
-their pull requests green."
+the same tooltip a row's chips use, and **Carry over** at the right. The rows
+carry no gate or review state, so the chips are labels only. One line under the
+heading says what the list is for: "Tested in the tracker before drift QA was
+on. Carry over to turn their pull requests green."
 
 ## The drift/qa status
 
