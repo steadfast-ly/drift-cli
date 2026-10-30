@@ -2590,7 +2590,7 @@ type ClientInterface interface {
 
 	// QaList List the QA queue
 	//
-	// The queue as the QA page's sections: Ready for QA (oldest entry first), In testing, Re-check (a Linked PR head moved since its approval), Upcoming (collapsed in the UI), Recently decided (14 days, approvals and exemptions) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
+	// The queue as the QA page's sections: In testing, Re-check (a Linked PR head moved since its approval), Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals and exemptions; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
 	//
 	// Corresponds with GET /qa (the `QaList` operationId).
 	QaList(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3419,7 +3419,7 @@ func (c *Client) EnvironmentsStatus(ctx context.Context, ref string, reqEditors 
 
 // QaList List the QA queue
 //
-// The queue as the QA page's sections: Ready for QA (oldest entry first), In testing, Re-check (a Linked PR head moved since its approval), Upcoming (collapsed in the UI), Recently decided (14 days, approvals and exemptions) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
+// The queue as the QA page's sections: In testing, Re-check (a Linked PR head moved since its approval), Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals and exemptions; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
 //
 // Corresponds with GET /qa (the `QaList` operationId).
 func (c *Client) QaList(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -6620,7 +6620,7 @@ type ClientWithResponsesInterface interface {
 
 	// QaListWithResponse List the QA queue
 	//
-	// The queue as the QA page's sections: Ready for QA (oldest entry first), In testing, Re-check (a Linked PR head moved since its approval), Upcoming (collapsed in the UI), Recently decided (14 days, approvals and exemptions) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
+	// The queue as the QA page's sections: In testing, Re-check (a Linked PR head moved since its approval), Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals and exemptions; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -12627,7 +12627,7 @@ func (c *ClientWithResponses) EnvironmentsStatusWithResponse(ctx context.Context
 
 // QaListWithResponse List the QA queue
 //
-// The queue as the QA page's sections: Ready for QA (oldest entry first), In testing, Re-check (a Linked PR head moved since its approval), Upcoming (collapsed in the UI), Recently decided (14 days, approvals and exemptions) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
+// The queue as the QA page's sections: In testing, Re-check (a Linked PR head moved since its approval), Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals and exemptions; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
 //
 // Returns a wrapper object for the known response body format(s).
 //
