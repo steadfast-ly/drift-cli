@@ -3015,6 +3015,12 @@
               "$ref": "#/components/schemas/QaTicketCard"
             }
           },
+          "noTicket": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaUnlinkedPullRequest"
+            }
+          },
           "truncated": {
             "type": "object",
             "properties": {
@@ -3034,6 +3040,11 @@
                 "maximum": 9007199254740991
               },
               "upcoming": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "noTicket": {
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991
@@ -3838,6 +3849,89 @@
           "sha",
           "evaluations",
           "gateTarget"
+        ]
+      },
+      "QaUnlinkedPullRequest": {
+        "type": "object",
+        "properties": {
+          "pullRequestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "blockedPullRequestIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "repositoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "forgeRepo": {
+            "type": "string"
+          },
+          "number": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "title": {
+            "type": "string"
+          },
+          "authorLogin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "headBranch": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "x-native-type": "date"
+          },
+          "registrations": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "blockedRegistrations": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "pullRequestId",
+          "blockedPullRequestIds",
+          "repositoryId",
+          "forgeRepo",
+          "number",
+          "title",
+          "authorLogin",
+          "headBranch",
+          "updatedAt",
+          "registrations",
+          "blockedRegistrations",
+          "url"
         ]
       },
       "QaCarryOverOutcome": {
@@ -8103,7 +8197,7 @@
       "get": {
         "operationId": "qa.list",
         "summary": "List the QA queue",
-        "description": "The queue as the QA page's sections: Ready for QA (oldest entry first), In testing, Re-check (a Linked PR head moved since its approval), Upcoming (collapsed in the UI), Recently decided (14 days, approvals and exemptions) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.",
+        "description": "The queue as the QA page's sections: In testing, Re-check (a Linked PR head moved since its approval), Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals and exemptions; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.",
         "tags": [
           "qa"
         ],

@@ -84,9 +84,13 @@ func newQaListCommand(app *App) *cobra.Command {
 			"session per Ticket.\n\n" +
 			"A section the server capped says how many it held back: a `+N more`\n" +
 			"row in the table, `truncated` in the machine formats.\n\n" +
+			"Under the sections, `No ticket` lists open pull requests with no live\n" +
+			"ticket link and no exemption; `drift qa exempt --pr` and\n" +
+			"`drift qa link` resolve them.\n\n" +
 			"The carry-over list (pre-rollout Tickets an approver has to decide)\n" +
 			"and the recently decided verdicts travel under `carry_over` and\n" +
-			"`recently_decided` in the machine formats.\n\n" +
+			"`recently_decided` in the machine formats, the No ticket section\n" +
+			"under `no_ticket`.\n\n" +
 			cliexit.Help,
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error { return runQaList(c.Context(), app) },
@@ -139,6 +143,16 @@ func runQaList(ctx context.Context, app *App) error {
 		}
 	}
 
+	noTicket := qaNoTicketItems(queue.NoTicket)
+	omittedNoTicket := 0
+	if queue.Truncated.NoTicket != nil {
+		omittedNoTicket = *queue.Truncated.NoTicket
+	}
+	noTicketRows := make([]map[string]any, 0, len(noTicket))
+	for _, p := range noTicket {
+		noTicketRows = append(noTicketRows, qaNoTicketPayload(p))
+	}
+
 	var carryOver []api.QaCarryOverCandidate
 	if queue.CarryOver != nil {
 		carryOver = *queue.CarryOver
@@ -156,17 +170,23 @@ func runQaList(ctx context.Context, app *App) error {
 		exemptions = append(exemptions, qaExemptionPayload(e))
 	}
 
+	empty := "The QA queue is empty."
+	if len(noTicket) > 0 {
+		empty = "No Tickets are in the QA queue."
+	}
 	doc := &output.Doc{
 		Columns:      cols,
 		Rows:         rows,
-		EmptyMessage: "The QA queue is empty.",
+		EmptyMessage: empty,
 		Extra: map[string]any{
 			"truncated": map[string]any{
-				"ready":    queue.Truncated.ReadyForQa,
-				"testing":  queue.Truncated.InTesting,
-				"recheck":  queue.Truncated.Recheck,
-				"upcoming": queue.Truncated.Upcoming,
+				"ready":     queue.Truncated.ReadyForQa,
+				"testing":   queue.Truncated.InTesting,
+				"recheck":   queue.Truncated.Recheck,
+				"upcoming":  queue.Truncated.Upcoming,
+				"no_ticket": omittedNoTicket,
 			},
+			"no_ticket":  noTicketRows,
 			"carry_over": carryRows,
 			"recently_decided": map[string]any{
 				"approvals":  approvals,
@@ -178,7 +198,13 @@ func runQaList(ctx context.Context, app *App) error {
 		return err
 	}
 
-	if (format != output.FormatTable && format != output.FormatWide) || len(carryOver) == 0 {
+	if format != output.FormatTable && format != output.FormatWide {
+		return nil
+	}
+	if err := writeQaNoTicket(app, noTicket, omittedNoTicket); err != nil {
+		return err
+	}
+	if len(carryOver) == 0 {
 		return nil
 	}
 	fmt.Fprintln(app.Stdout, "\nCARRY-OVER (approvers, until empty)")
@@ -252,6 +278,90 @@ func qaCarryOverPayload(c api.QaCarryOverCandidate) map[string]any {
 		"summary":       c.Summary,
 		"status":        c.StatusId,
 		"pull_requests": prs,
+	}
+}
+
+// qaNoTicketItems dereferences the section: a server older than 0.34 does not
+// send it, and an absent list is an empty one.
+func qaNoTicketItems(in *[]api.QaUnlinkedPullRequest) []api.QaUnlinkedPullRequest {
+	if in == nil {
+		return nil
+	}
+	return *in
+}
+
+// writeQaNoTicket prints the No ticket section under the Ticket sections. Its
+// rows are pull requests, not Tickets, so they carry no key, status or session
+// and are printed as their own table.
+func writeQaNoTicket(app *App, items []api.QaUnlinkedPullRequest, omitted int) error {
+	if len(items) == 0 {
+		return nil
+	}
+	fmt.Fprintln(app.Stdout, "\nNO TICKET (open pull requests with no live ticket link and no exemption)")
+	rows := make([]output.Row, 0, len(items)+1)
+	for _, p := range items {
+		rows = append(rows, qaNoTicketRow(p))
+	}
+	if omitted > 0 {
+		rows = append(rows, output.Row{"pr": fmt.Sprintf("+%d more", omitted)})
+	}
+	return app.Out.Write(&output.Doc{Columns: qaNoTicketColumns(), Rows: rows})
+}
+
+func qaNoTicketColumns() []output.Column {
+	return []output.Column{
+		{Name: "pr", Header: "PR"},
+		{Name: "title", Header: "Title"},
+		{Name: "author", Header: "Author"},
+		{Name: "updated", Header: "Updated"},
+		{Name: "registrations", Header: "Registrations"},
+	}
+}
+
+func qaNoTicketRow(p api.QaUnlinkedPullRequest) output.Row {
+	return output.Row{
+		"pr":            fmt.Sprintf("%s#%d", p.ForgeRepo, p.Number),
+		"title":         p.Title,
+		"author":        p.AuthorLogin,
+		"updated":       p.UpdatedAt,
+		"registrations": qaRegistrationsLabel(p),
+	}
+}
+
+// qaRegistrationsLabel says how much of a monorepo PR the section holds: a
+// partly linked PR has bare rows among linked ones. A single registration is
+// the ordinary case and needs no note.
+func qaRegistrationsLabel(p api.QaUnlinkedPullRequest) string {
+	switch {
+	case p.BlockedRegistrations < p.Registrations:
+		return fmt.Sprintf("%d of %d registrations", p.BlockedRegistrations, p.Registrations)
+	case p.Registrations > 1:
+		return fmt.Sprintf("%d registrations", p.Registrations)
+	default:
+		return ""
+	}
+}
+
+// qaBlockedPullRequestIDs names every bare registration, as the server
+// reported them, so a script can retry one by UUID.
+func qaBlockedPullRequestIDs(p api.QaUnlinkedPullRequest) []string {
+	return uuidStrings(p.BlockedPullRequestIds)
+}
+
+func qaNoTicketPayload(p api.QaUnlinkedPullRequest) map[string]any {
+	return map[string]any{
+		"pull_request_id":          p.PullRequestId.String(),
+		"blocked_pull_request_ids": qaBlockedPullRequestIDs(p),
+		"repository_id":            p.RepositoryId.String(),
+		"repo":                     p.ForgeRepo,
+		"number":                   p.Number,
+		"title":                    p.Title,
+		"author":                   p.AuthorLogin,
+		"head_branch":              p.HeadBranch,
+		"updated":                  p.UpdatedAt,
+		"registrations":            p.Registrations,
+		"blocked_registrations":    p.BlockedRegistrations,
+		"url":                      p.Url,
 	}
 }
 

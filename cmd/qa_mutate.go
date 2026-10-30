@@ -150,9 +150,10 @@ func newQaStartCommand(app *App) *cobra.Command {
 			"preview environment running every Linked PR's head.\n\n" +
 			"--prs picks a partition explicitly, as repo#n references to the\n" +
 			"Ticket's Linked PRs; repo#n names the forge PR and covers every one of\n" +
-			"its repository rows, while a UUID names exactly one row. Omitted, the\n" +
-			"server takes the first partition with no open session. --env reuses an\n" +
-			"existing environment instead of the server's choice.\n\n" +
+			"its repository rows the QA queue lists, while a UUID names exactly one\n" +
+			"row. Omitted, the server takes the first partition with no open\n" +
+			"session. --env reuses an existing environment instead of the server's\n" +
+			"choice.\n\n" +
 			"A rebuild of a developer's environment can happen under them, so the\n" +
 			"command confirms and takes --yes.\n\n" +
 			cliexit.Help,
@@ -725,6 +726,16 @@ func qaReportRows(app *App, total int, rows []qaRowResult) error {
 	return &first
 }
 
+// qaAppendKey records the Ticket a matched row was read from. A row from the
+// No ticket section has no Ticket, and an empty key would reach the unknown-row
+// hint as `drift qa show `.
+func qaAppendKey(keys []string, key string) []string {
+	if key == "" {
+		return keys
+	}
+	return qaAppendUnique(keys, key)
+}
+
 // qaAppendUnique is a union in the order the rows reported, so several rows
 // naming the same ticket do not repeat it.
 func qaAppendUnique(dst []string, values ...string) []string {
@@ -806,11 +817,15 @@ func newQaExemptCommand(app *App) *cobra.Command {
 		Long: "Record a \"no QA needed\" on a Linked PR or a whole Ticket, with a\n" +
 			"reason. A PR-scoped exemption survives pushes; a Ticket-scoped one\n" +
 			"covers the PRs linked at that moment.\n\n" +
-			"--pr resolves a repo#n reference against the QA queue; repo#n names the\n" +
-			"forge PR and covers every one of its repository rows. A PR that is no\n" +
-			"longer on a queued Ticket has to be named by its UUID instead. A UUID\n" +
-			"names exactly one repository row: it is the precise address, and the way\n" +
-			"to retry a single failed row.\n\n" +
+			"--pr resolves a repo#n reference against the QA queue. repo#n names\n" +
+			"the forge PR and covers every one of its repository rows the QA queue\n" +
+			"lists, including rows already linked to a Ticket. To act only on a No\n" +
+			"ticket PR's rows with no ticket, pass their UUIDs\n" +
+			"(`blocked_pull_request_ids` in `qa list -o json`). A PR the queue no\n" +
+			"longer shows has to be named by its UUID instead. A UUID names exactly\n" +
+			"one repository row: it is the precise address, and the way to retry a\n" +
+			"single failed row. A UUID acts on that registration as it is now,\n" +
+			"linked or not, so re-run `qa list` before exempting by UUID.\n\n" +
 			cliexit.Help,
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
@@ -844,30 +859,36 @@ func runQaExempt(ctx context.Context, app *App, prRef, ticketKey, reason string,
 	}
 
 	body := api.QaExemptJSONRequestBody{Reason: reason}
+	prScoped := prRef != ""
 	bodies := []api.QaExemptJSONRequestBody{}
+	refs := []qaRowRef{}
 	// cardKeys are the Tickets the row can be seen on, for the unknown-row
 	// hint. A ticket-scoped exemption names its Ticket; a PR one takes the
 	// Tickets whose queue cards carried the PR.
 	var cardKeys []string
 	summary := ""
-	if prRef != "" {
-		ids, label, keys, err := resolveQueuedPR(ctx, sess, prRef,
+	if prScoped {
+		res, err := resolveQueuedPR(ctx, sess, prRef,
 			", or use --ticket for a ticket-scoped exemption")
 		if err != nil {
 			return err
 		}
-		cardKeys = keys
+		cardKeys = res.Keys
 		body.Scope = api.QaExemptJSONBodyScopePr
-		for _, id := range ids {
+		// Every row is known from the one resolution, so the summary counts the
+		// whole run.
+		for _, id := range res.Ids {
 			b := body
 			b.PullRequestId = &id
 			bodies = append(bodies, b)
+			refs = append(refs, qaRowRef{Field: "pull_request_id", Value: id.String()})
 		}
-		summary = fmt.Sprintf("Exempt %s from QA: %s", label, reason) + qaRowsNote(len(ids))
+		summary = fmt.Sprintf("Exempt %s from QA: %s", res.Label, reason) + qaRowsNote(len(res.Ids))
 	} else {
 		body.Scope = api.QaExemptJSONBodyScopeTicket
 		body.TicketKey = &ticketKey
 		bodies = append(bodies, body)
+		refs = append(refs, qaExemptRowRef(body))
 		cardKeys = []string{ticketKey}
 		summary = fmt.Sprintf("Exempt every PR linked to %s from QA: %s", ticketKey, reason)
 	}
@@ -879,10 +900,6 @@ func runQaExempt(ctx context.Context, app *App, prRef, ticketKey, reason string,
 	// Every row is attempted: the server commits each on its own, so stopping at
 	// the first refusal would hide the rows that already hold an exemption. An
 	// interrupt is the one exception: nothing after it may be dispatched.
-	refs := make([]qaRowRef, len(bodies))
-	for i, b := range bodies {
-		refs[i] = qaExemptRowRef(b)
-	}
 	ctx, stopSignals := qaInterruptible(ctx)
 	defer stopSignals()
 	rows := make([]qaRowResult, 0, len(bodies))
@@ -890,9 +907,9 @@ func runQaExempt(ctx context.Context, app *App, prRef, ticketKey, reason string,
 	keys := make([]string, 0, len(bodies))
 	evals := make([][]api.QaCompletionEvaluation, 0, len(bodies))
 	var last *api.QaExemptionOutcome
-	for i, b := range bodies {
+	for i := 0; i < len(bodies); i++ {
 		ref := refs[i]
-		resp, err := sess.API.QaExemptWithResponse(ctx, b)
+		resp, err := sess.API.QaExemptWithResponse(ctx, bodies[i])
 		if err != nil {
 			rows = append(rows, qaUnknownRow(ref, err, sess.Resolved.Endpoint, cardKeys...))
 			if rest, stop := qaInterruptedRows(ctx, refs, i+1); stop {
@@ -1108,10 +1125,13 @@ func newQaLinkCommand(app *App) *cobra.Command {
 		Use:   "link <key> <repo#n>",
 		Short: "Link a pull request to a ticket by hand",
 		Long: "Link a pull request to a Ticket by hand. repo#n is resolved against\n" +
-			"the QA queue and names the forge PR, covering every one of its repository\n" +
-			"rows; a PR that is not on any queued Ticket has to be named by its UUID\n" +
-			"instead. A UUID names exactly one repository row: it is the precise\n" +
-			"address, and the way to retry a single failed row.\n\n" +
+			"the QA queue; repo#n names the forge PR, covering every one of its\n" +
+			"repository rows the QA queue lists, including rows already linked to a\n" +
+			"Ticket. To act only on a No ticket PR's rows with no ticket, pass their\n" +
+			"UUIDs (`blocked_pull_request_ids` in `qa list -o json`). A PR the queue\n" +
+			"does not show has to be named by its UUID instead. A UUID names exactly\n" +
+			"one repository row: it is the precise address, and the way to retry a\n" +
+			"single failed row.\n\n" +
 			"Links are sticky: a merged PR stays linked.\n\n" + cliexit.Help,
 		Args: exactArgs(2, "the ticket key and repo#n (or the PR's UUID)"),
 		RunE: func(c *cobra.Command, args []string) error {
@@ -1129,19 +1149,21 @@ func runQaLink(ctx context.Context, app *App, key, prRef string) error {
 	if err != nil {
 		return err
 	}
-	ids, label, _, err := resolveQueuedPR(ctx, sess, prRef, "")
+	res, err := resolveQueuedPR(ctx, sess, prRef, "")
 	if err != nil {
 		return err
 	}
+	label := res.Label
+	ids := res.Ids
 	// A link is per row, so a monorepo PR is linked once per registration, and
 	// every row is attempted: a refusal halfway through must not hide the rows
 	// that already linked. An interrupt is the one exception.
+	ctx, stopSignals := qaInterruptible(ctx)
+	defer stopSignals()
 	refs := make([]qaRowRef, len(ids))
 	for i, id := range ids {
 		refs[i] = qaRowRef{Field: "pull_request_id", Value: id.String()}
 	}
-	ctx, stopSignals := qaInterruptible(ctx)
-	defer stopSignals()
 	rows := make([]qaRowResult, 0, len(ids))
 	linked := make([]uuid.UUID, 0, len(ids))
 	results := make([]string, 0, len(ids))
@@ -1208,9 +1230,10 @@ func newQaUnlinkCommand(app *App) *cobra.Command {
 		Use:   "unlink <key> <repo#n>",
 		Short: "Remove a hand-made or discovered link",
 		Long: "Remove the link between a pull request and a Ticket. The PR must be\n" +
-			"linked to that Ticket. repo#n names the forge PR and covers every one of\n" +
-			"its repository rows; a UUID names exactly one repository row, the precise\n" +
-			"address and the way to retry a single failed row.\n\n" +
+			"linked to that Ticket. repo#n names the forge PR and covers every one\n" +
+			"of its repository rows the QA queue lists; a UUID names exactly one\n" +
+			"repository row, the precise address and the way to retry a single\n" +
+			"failed row.\n\n" +
 			"Requires the `qa` role and the server's `qa.approve` capability.\n\n" +
 			cliexit.Help,
 		Args: exactArgs(2, "the ticket key and repo#n (or the PR's UUID)"),
@@ -1619,27 +1642,40 @@ func qaCardRows(key string, in []api.QaPullRequestCard) []qaQueuePR {
 	return out
 }
 
+// qaPRResolution is one repo#n or UUID resolution: every row the command must
+// act on, in order, and the label and Tickets that name them.
+type qaPRResolution struct {
+	Ids   []uuid.UUID
+	Label string
+	Keys  []string
+}
+
 // resolveQueuedPR resolves repo#n against every PR on the QA queue, for the
-// commands that are not scoped to one Ticket (exempt, link). repo#n names the
-// forge PR and covers every repository row of it. A UUID names exactly one row
-// whether or not that row is still queued, so it is the precise address and the
-// retry target for a single row; no queue read is spent on it. `hint` is the
-// caller's advice for a repo#n that matched nothing, which differs between the
-// two commands. keys are the Tickets whose cards carried the matched rows.
-func resolveQueuedPR(ctx context.Context, sess *Session, ref, hint string) ([]uuid.UUID, string, []string, error) {
+// commands that are not scoped to one Ticket (exempt, link). That includes the
+// No ticket section, which is the only place an open PR with no ticket appears.
+// repo#n names the forge PR and covers every row the queue reports for it: a
+// No ticket item names all of its bare registrations, a Ticket card one row per
+// registration. A UUID names exactly one row whether or not that row is still
+// queued, so it is the precise address and the retry target for a single row,
+// and no queue read is spent on it. `hint` is the caller's advice for a repo#n
+// that matched nothing, which differs between the two commands. A No ticket
+// item names no rows when its blockedPullRequestIds is empty, and then the
+// reference is unresolvable rather than a no-op. Keys are the Tickets whose
+// cards carried the matched rows; a row from the No ticket section has none.
+func resolveQueuedPR(ctx context.Context, sess *Session, ref, hint string) (qaPRResolution, error) {
 	if id, err := uuid.Parse(strings.TrimSpace(ref)); err == nil {
-		return []uuid.UUID{id}, id.String(), nil, nil
+		return qaPRResolution{Ids: []uuid.UUID{id}, Label: id.String()}, nil
 	}
 	repo, number, err := parsePRRef(ref)
 	if err != nil {
-		return nil, "", nil, err
+		return qaPRResolution{}, err
 	}
 	resp, err := sess.API.QaListWithResponse(ctx)
 	if err != nil {
-		return nil, "", nil, client.Transport(err, sess.Resolved.Endpoint)
+		return qaPRResolution{}, client.Transport(err, sess.Resolved.Endpoint)
 	}
 	if resp.JSON200 == nil {
-		return nil, "", nil, client.Fail(resp, resp.Headers429)
+		return qaPRResolution{}, client.Fail(resp, resp.Headers429)
 	}
 	q := *resp.JSON200
 	all := make([]qaQueuePR, 0, 16)
@@ -1648,21 +1684,70 @@ func resolveQueuedPR(ctx context.Context, sess *Session, ref, hint string) ([]uu
 			all = append(all, qaCardRows(c.Key, c.PullRequests)...)
 		}
 	}
+	// The No ticket section holds the PRs no Ticket row shows, so they are
+	// resolvable here too. Its item names every bare registration.
+	for _, p := range qaNoTicketItems(q.NoTicket) {
+		all = append(all, qaQueuePR{PR: qaNoTicketCard(p), Blocked: qaBlockedIDs(p), NoTicket: true})
+	}
 	matches := qaMatchPRs(all, repo, number)
 	switch len(matches) {
 	case 0:
-		return nil, "", nil, usageErrorf(
+		return qaPRResolution{}, usageErrorf(
 			"no PR %s on the QA queue; pass its UUID instead%s", ref, hint)
 	case 1:
-		return matches[0].Ids, matches[0].Label, matches[0].Keys, nil
+		// A No ticket item is the only source of a match with no rows: its
+		// blockedPullRequestIds is empty, so there is nothing to act on.
+		if len(matches[0].Ids) == 0 {
+			return qaPRResolution{}, usageErrorf("No ticket item for %s names no rows", ref)
+		}
+		return qaPRResolution{
+			Ids:   matches[0].Ids,
+			Label: matches[0].Label,
+			Keys:  matches[0].Keys,
+		}, nil
 	}
-	return nil, "", nil, qaAmbiguousPR(ref, matches)
+	return qaPRResolution{}, qaAmbiguousPR(ref, matches)
 }
 
 // qaQueuePR is one PR row read from a Ticket's card, with that Ticket's key.
+// A row read from the No ticket section has no Ticket, so its Key is empty, and
+// carries every bare registration the section reports for the PR.
 type qaQueuePR struct {
-	Key string
-	PR  api.QaPullRequestCard
+	Key     string
+	PR      api.QaPullRequestCard
+	Blocked []uuid.UUID
+	// NoTicket marks a row the No ticket section reported. Such a row names its
+	// bare registrations, not one row, so it never falls back to the card's
+	// representative id.
+	NoTicket bool
+}
+
+// ids are every row the queue read named for the PR, in the server's order: a
+// No ticket item names all of its bare registrations, a Ticket card row only
+// itself.
+func (r qaQueuePR) ids() []uuid.UUID {
+	if r.NoTicket {
+		return r.Blocked
+	}
+	return []uuid.UUID{r.PR.PullRequestId}
+}
+
+// qaBlockedIDs is every bare registration a No ticket item reports, exactly as
+// the server sent it.
+func qaBlockedIDs(p api.QaUnlinkedPullRequest) []uuid.UUID {
+	return p.BlockedPullRequestIds
+}
+
+// qaNoTicketCard shapes a No ticket item as the card the resolver matches on.
+func qaNoTicketCard(p api.QaUnlinkedPullRequest) api.QaPullRequestCard {
+	return api.QaPullRequestCard{
+		PullRequestId: p.PullRequestId,
+		RepositoryId:  p.RepositoryId,
+		ForgeRepo:     p.ForgeRepo,
+		Number:        p.Number,
+		Title:         p.Title,
+		HeadBranch:    p.HeadBranch,
+	}
 }
 
 // qaPRMatch is one forge pull request. A monorepo registers each service as its
@@ -1735,19 +1820,21 @@ func qaMatchPRs(in []qaQueuePR, repo string, number int) []qaPRMatch {
 			index[key] = len(out)
 			out = append(out, qaPRMatch{
 				Label: qaPRLabel(p),
-				Ids:   []uuid.UUID{p.PullRequestId},
-				Keys:  qaAppendUnique(nil, row.Key),
+				Ids:   append([]uuid.UUID(nil), row.ids()...),
+				Keys:  qaAppendKey(nil, row.Key),
 			})
 			continue
 		}
-		duplicate := false
-		for _, id := range out[i].Ids {
-			duplicate = duplicate || id == p.PullRequestId
+		for _, id := range row.ids() {
+			duplicate := false
+			for _, have := range out[i].Ids {
+				duplicate = duplicate || have == id
+			}
+			if !duplicate {
+				out[i].Ids = append(out[i].Ids, id)
+			}
 		}
-		if !duplicate {
-			out[i].Ids = append(out[i].Ids, p.PullRequestId)
-		}
-		out[i].Keys = qaAppendUnique(out[i].Keys, row.Key)
+		out[i].Keys = qaAppendKey(out[i].Keys, row.Key)
 	}
 	return out
 }

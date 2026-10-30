@@ -84,7 +84,7 @@ row is the one posted:
 | `changed since QA approval` | A push after the approval moved the head; the approval does not cover the new code. | Get it re-approved in QA, or the approver can re-run the decision. |
 | `ticket closed without QA` | The ticket was moved to Done without a drift QA approval. | Have QA approve it in drift (move the ticket back to the QA queue first if it still needs testing), or exempt the PR if QA is not required. Reopening the ticket in the tracker alone does not clear it. |
 | `Awaiting QA: <ticket key> (<status name>)` | The ticket is queued for QA and waiting for a test session. | Wait for QA to start a session, or start one yourself if you have the role. |
-| `No ticket — add a key or exempt` | The pull request has no linked ticket and no exemption. | Put a ticket key in the PR title or head branch, link a ticket, or exempt the PR. |
+| `No ticket — add a key or exempt` | The pull request has no linked ticket and no exemption. | Put a ticket key in the PR title or head branch, link a ticket from the QA page's **No ticket** section (or `drift qa link PROJ-123 acme/web#42`), or exempt the PR there (or `drift qa exempt --pr acme/web#42 --reason "docs only"`). |
 
 Terminal descriptions:
 

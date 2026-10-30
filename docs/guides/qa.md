@@ -30,7 +30,8 @@ than to fit one screen. The section bar stays pinned under the page title and
 links each section with its count; a section the server capped adds `+N more`
 beside the count. An empty section keeps its heading and puts one muted phrase
 beside it: "In testing — nobody right now", "Re-check — nothing to re-check",
-"Ready for QA — nothing ready for QA", "Upcoming — nothing upcoming". Under
+"Ready for QA — nothing ready for QA", "Upcoming — nothing upcoming", "No
+ticket — every open pull request has a ticket or an exemption". Under
 **Mine** the phrase reads "— none of yours", or "— none of yours among the
 loaded tickets" when that section itself is capped, and neither the bar nor a
 heading appends the cap's `+N more`, because the cap counts everyone's rows.
@@ -41,6 +42,7 @@ heading appends the cap's `+N more`, because the cap counts everyone's rows.
 | **Re-check** | Tickets with an unrevoked approval whose pull request head has moved, where nothing covers the new head. |
 | **Ready for QA** | Tickets in the ready-for-QA status whose open Linked PRs are all review-approved or exempt, and Tickets in the approved status with no current drift completion (for example after an approval was revoked), oldest first. |
 | **Upcoming** | Tickets in the queue status still waiting on code review, and Tickets in the upcoming statuses. |
+| **No ticket** | Open pull requests with no live ticket link and no exemption. See [No ticket](#no-ticket). |
 | **Decided** | Approvals and exemptions from the last 14 days, collapsed by default. The bar's **Decided** entry always opens the section, even when the address already points at it. |
 
 The bar's **Mine** switch narrows every section to the Tickets you own a Test
@@ -273,7 +275,9 @@ drift qa unlink PROJ-123 acme/app#42
 ```
 
 `repo#n` names the forge PR, so on a monorepo it acts on every repository
-registration of that PR. Pass a row UUID to address exactly one registration.
+registration of that PR that the QA queue lists, including registrations
+already linked to a Ticket. Pass a row UUID to address exactly one
+registration.
 When a reference covers several rows, every row is attempted even if one
 fails, because the server commits each row on its own. `-o json` reports every
 row under `rows`, each with its `pull_request_id` and `outcome`:
@@ -296,6 +300,39 @@ says nothing about whether an `unknown` row committed. The table adds a
 failed row's. Retry the failed rows by UUID rather than re-running the
 `repo#n` command, which would repeat the rows that already succeeded. A
 partial exemption's ids are under `exemption_ids`.
+
+## No ticket
+
+**No ticket** sits under **Upcoming**: the open pull requests with no live
+ticket link and no exemption.
+One muted line under the heading says what it is: "Open pull requests with no
+live ticket link and no exemption. `drift/qa` stays pending until one is linked
+or the pull request is exempted." A row is the pull request — its `repo#n` chip,
+linked to the pull request, and the title — then the author, `updated 3d ago`,
+the head branch and, on a monorepo, `2 registrations` or `1 of 2 registrations`
+while some registrations are already linked. The section is capped and hedged
+like the others, and under **Mine** it says "No ticket — none of yours", because
+a GitHub login is not a drift user.
+
+Two actions clear a row. **Exempt** asks for a reason and records a
+pull-request exemption on every registration, so `drift/qa` turns green and the
+row leaves. **Link to ticket** in `⋯` takes a ticket key and links the pull
+request to it. The key must belong to a Ticket drift has synced: an untracked
+one answers "drift does not track PROJ-123. Only tickets of <project keys> that
+drift has synced can be linked."
+
+```bash
+drift qa exempt --pr acme/web#42 --reason "docs only"
+drift qa link PROJ-123 acme/web#42
+```
+
+Both resolve a `repo#n` that appears only in **No ticket**. `repo#n` covers
+every registration of the pull request the queue lists, including ones already
+linked to a Ticket. To act only on the item's bare registrations, pass the
+`blocked_pull_request_ids` from `drift qa list -o json`: each is linked or
+exempted in turn, and the run reports a result per row. A UUID acts on that
+registration as it is now, linked or not, so re-run `qa list` before
+exempting by UUID.
 
 ## Starting a test session
 
@@ -512,7 +549,7 @@ on. Carry over to turn their pull requests green."
 | pending | `Awaiting QA: <key> (<status name>)` | The Ticket is in the queue; test it. |
 | pending | `waiting on <other ticket key>` | A shared PR also belongs to another Ticket that is not complete; finish that one too. |
 | pending | `ticket closed without QA` | The Ticket is in a Done-category status without a drift approval; approve or exempt. |
-| pending | `No ticket — add a key or exempt` | The PR carries no Ticket key and has no exemption; add the key or exempt the PR. |
+| pending | `No ticket — add a key or exempt` | The PR carries no Ticket key and has no exemption; add the key, link it from the **No ticket** section, or exempt it there. |
 
 A PR linked to several Tickets turns green only when every one of them is
 approved or exempt. The full table, including how the status is posted and
@@ -540,10 +577,14 @@ drift qa list --json section,key,status,prs
 drift qa show PROJ-123
 ```
 
-`list` prints a `section` column: `ready`, `testing`, `recheck`, `upcoming`.
-A capped section ends with a `+N more` row; the machine formats carry the
-counts under `truncated`. The carry-over list and the last 14 days of verdicts
-travel as `carry_over` and `recently_decided`.
+`list` prints a `section` column: `ready`, `testing`, `recheck`, `upcoming`,
+then a **No ticket** table of the open pull requests with no live ticket link
+and no exemption (PR, title, author, updated). A capped section ends with a
+`+N more` row; the machine formats carry the counts under `truncated` and the
+No ticket rows under `no_ticket`, each row with its `pull_request_id` and the
+`blocked_pull_request_ids` it covers — every bare registration of a monorepo
+PR, the ids to retry one of them with. The carry-over list and the last 14 days
+of verdicts travel as `carry_over` and `recently_decided`.
 
 `show` prints the Linked PRs, sessions, changes, approvals and exemptions.
 Machine output also carries `rejections`, `tracker_writes`, `failed_writes` and

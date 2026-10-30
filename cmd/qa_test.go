@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/steadfast-ly/drift-cli/internal/api"
 	"github.com/steadfast-ly/drift-cli/internal/cliexit"
@@ -36,6 +37,11 @@ const (
 	qaPRID2   = "bbbbbbbb-0000-4000-8000-000000000009"
 	qaRepoID3 = "cccccccc-0000-4000-8000-000000000011"
 	qaPRID3   = "bbbbbbbb-0000-4000-8000-000000000012"
+	// The No ticket section's representative row, on a PR no Ticket links.
+	qaNoTicketPRID = "bbbbbbbb-0000-4000-8000-000000000013"
+	// The second registration of that PR, named alongside the first in the
+	// item's blockedPullRequestIds.
+	qaNoTicketPRID2 = "bbbbbbbb-0000-4000-8000-000000000014"
 )
 
 // qaServer is a fake drift with the QA module enabled: the queue reads, every
@@ -116,6 +122,29 @@ type qaServer struct {
 	sessionVerified  bool
 	// truncatedRecheck is the recheck section's omitted count on the queue.
 	truncatedRecheck int
+	// noTicket adds the No ticket section: an open PR no Ticket links.
+	noTicket bool
+	// noTicketRegistrations and noTicketBlocked shape that PR's registration
+	// counts, so a partly linked monorepo PR reads "1 of 2 registrations".
+	noTicketRegistrations int
+	noTicketBlocked       int
+	// truncatedNoTicket is the No ticket section's omitted count.
+	truncatedNoTicket int
+	// noTicketMonorepo makes the No ticket item a monorepo PR: one item naming
+	// both of its bare registrations.
+	noTicketMonorepo bool
+	// noTicketEmptyBlocked makes the No ticket item's blockedPullRequestIds
+	// empty: an item the section lists but that names no row.
+	noTicketEmptyBlocked bool
+	// partlyLinkedPR makes acme/widget#77 a monorepo PR whose first
+	// registration is linked to DT-1 and whose second is still bare: the card
+	// carries the linked row, the No ticket item the bare one.
+	partlyLinkedPR bool
+	// acted records the pullRequestIds link and exempt were called with.
+	acted []string
+	// legacyQueue serves a pre-0.34 queue: no noTicket and no
+	// truncated.noTicket, the shape a 0.33.1 server sends.
+	legacyQueue bool
 }
 
 const qaOtherPRID = "bbbbbbbb-0000-4000-8000-000000000099"
@@ -139,6 +168,20 @@ func (s *qaServer) body(op string) map[string]any {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.bodies[op]
+}
+
+// actedOn records a PR the CLI sent a link or an exemption for.
+func (s *qaServer) actedOn(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.acted = append(s.acted, id)
+}
+
+// actedIDs is what link and exempt were called with, in order.
+func (s *qaServer) actedIDs() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.acted...)
 }
 
 func (s *qaServer) seen(op string) int {
@@ -175,6 +218,9 @@ func newQaServer(t *testing.T) *qaServer {
 	}
 
 	mux.HandleFunc("/api/v1/qa", func(w http.ResponseWriter, _ *http.Request) {
+		s.mu.Lock()
+		s.calls = append(s.calls, "queue")
+		s.mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(s.queueJSON())
 	})
@@ -240,6 +286,9 @@ func newQaServer(t *testing.T) *qaServer {
 			body := s.body("exempt")
 			scope, gate := "ticket", any(nil)
 			if body["scope"] == "pr" {
+				if id, ok := body["pullRequestId"].(string); ok {
+					s.actedOn(id)
+				}
 				scope = "pr"
 				gate = map[string]any{
 					"forgeRepo": "acme/widget", "sha": "abcdef1234567890",
@@ -284,6 +333,9 @@ func newQaServer(t *testing.T) *qaServer {
 			result := "created"
 			if n-1 < len(results) {
 				result = results[n-1]
+			}
+			if id, ok := s.body("link")["pullRequestId"].(string); ok {
+				s.actedOn(id)
 			}
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(map[string]any{
@@ -493,6 +545,15 @@ func (s *qaServer) cardJSON(key, summary, category string) map[string]any {
 		other["repositoryId"] = qaRepoID3
 		prs = append(prs, other)
 	}
+	if s.partlyLinkedPR && key == "DT-1" {
+		other := qaPRCardJSON()
+		other["pullRequestId"] = qaNoTicketPRID
+		other["forgeRepo"] = "acme/widget"
+		other["number"] = 77
+		other["title"] = "Fix the flaky suite"
+		other["headBranch"] = "fix-flaky-suite"
+		prs = append(prs, other)
+	}
 	if s.prApprovedAtOtherHead {
 		prs[0]["approvedAtOtherHead"] = true
 	}
@@ -503,11 +564,30 @@ func (s *qaServer) cardJSON(key, summary, category string) map[string]any {
 	return c
 }
 
+func qaNoTicketJSON() map[string]any {
+	return map[string]any{
+		"pullRequestId": qaNoTicketPRID, "repositoryId": qaRepoID,
+		"blockedPullRequestIds": []string{qaNoTicketPRID},
+		"forgeRepo":             "acme/widget", "number": 77,
+		"title": "Fix the flaky suite", "authorLogin": "octo",
+		"headBranch": "fix-flaky-suite", "updatedAt": "2026-10-28T09:00:00Z",
+		"registrations": 1, "blockedRegistrations": 1,
+		"url": "https://github.com/acme/widget/pull/77",
+	}
+}
+
 func (s *qaServer) queueJSON() map[string]any {
 	s.mu.Lock()
 	sawChange, verified, truncated := s.sessionSawChange, s.sessionVerified, s.truncatedRecheck
+	noTicket, registrations, blocked := s.noTicket, s.noTicketRegistrations, s.noTicketBlocked
+	truncatedNoTicket, legacy := s.truncatedNoTicket, s.legacyQueue
+	monorepo, partly := s.noTicketMonorepo, s.partlyLinkedPR
+	emptyBlocked := s.noTicketEmptyBlocked
 	s.mu.Unlock()
-	return map[string]any{
+	truncatedCounts := map[string]any{
+		"readyForQa": 0, "inTesting": 0, "recheck": truncated, "upcoming": 0,
+	}
+	q := map[string]any{
 		"readyForQa": []map[string]any{s.cardJSON("DT-1", "Ship the widget", "ready")},
 		"inTesting": []map[string]any{{
 			"key": "DT-2", "summary": "Test the gadget", "projectKey": "DT",
@@ -526,11 +606,9 @@ func (s *qaServer) queueJSON() map[string]any {
 				"banners": []any{},
 			}},
 		}},
-		"recheck":  []any{},
-		"upcoming": []map[string]any{s.cardJSON("DT-3", "Awaiting review", "upcoming")},
-		"truncated": map[string]any{
-			"readyForQa": 0, "inTesting": 0, "recheck": truncated, "upcoming": 0,
-		},
+		"recheck":   []any{},
+		"upcoming":  []map[string]any{s.cardJSON("DT-3", "Awaiting review", "upcoming")},
+		"truncated": truncatedCounts,
 		"carryOver": []map[string]any{{
 			"ticketKey": "DT-0", "summary": "Pre-rollout work", "statusId": "10000",
 			"pullRequests": []map[string]any{{
@@ -548,6 +626,42 @@ func (s *qaServer) queueJSON() map[string]any {
 			"exemptions": []any{},
 		},
 	}
+	if legacy {
+		return q
+	}
+	items := []map[string]any{}
+	if noTicket {
+		item := qaNoTicketJSON()
+		if registrations > 0 {
+			item["registrations"] = registrations
+		}
+		if blocked > 0 {
+			item["blockedRegistrations"] = blocked
+		}
+		if emptyBlocked {
+			item["blockedPullRequestIds"] = []string{}
+		}
+		items = append(items, item)
+	}
+	if monorepo {
+		item := qaNoTicketJSON()
+		item["blockedPullRequestIds"] = []string{qaNoTicketPRID, qaNoTicketPRID2}
+		item["registrations"] = 2
+		item["blockedRegistrations"] = 2
+		items = append(items, item)
+	}
+	if partly {
+		item := qaNoTicketJSON()
+		item["pullRequestId"] = qaNoTicketPRID2
+		item["repositoryId"] = qaRepoID2
+		item["blockedPullRequestIds"] = []string{qaNoTicketPRID2}
+		item["registrations"] = 2
+		item["blockedRegistrations"] = 1
+		items = append(items, item)
+	}
+	q["noTicket"] = items
+	truncatedCounts["noTicket"] = truncatedNoTicket
+	return q
 }
 
 func qaSessionDetailJSON() map[string]any {
@@ -814,6 +928,309 @@ func TestQaListMarksTruncatedSections(t *testing.T) {
 		if strings.Contains(item.Key, "more") {
 			t.Fatalf("the table's marker leaked into the items: %+v", payload.Items)
 		}
+	}
+}
+
+// TestQaListNoTicketSection pins the section for open PRs no Ticket links: its
+// own table under the Ticket sections, the `+N more` row when the server capped
+// it, and the machine format's `no_ticket` / `truncated.no_ticket`.
+func TestQaListNoTicketSection(t *testing.T) {
+	srv := newQaServer(t)
+	srv.noTicket = true
+	srv.noTicketRegistrations = 2
+	srv.noTicketBlocked = 1
+	srv.truncatedNoTicket = 3
+	h := newQaHarness(t, srv)
+
+	out, errOut, code := h.run("qa", "list")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	updated := time.Date(2026, 10, 28, 9, 0, 0, 0, time.UTC).Local().Format("2006-01-02 15:04")
+	for _, want := range []string{"NO TICKET (open pull requests with no live ticket link and no exemption)",
+		"acme/widget#77", "Fix the flaky suite", "octo", updated, "1 of 2 registrations", "+3 more"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Index(out, "upcoming") > strings.Index(out, "NO TICKET") ||
+		strings.Index(out, "NO TICKET") > strings.Index(out, "CARRY-OVER") {
+		t.Fatalf("the No ticket table is not between the sections and CARRY-OVER:\n%s", out)
+	}
+
+	out, _, code = h.run("qa", "list", "-o", "json")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d", code)
+	}
+	var payload struct {
+		Items    []map[string]any `json:"items"`
+		NoTicket []struct {
+			PullRequestID string `json:"pull_request_id"`
+			RepositoryID  string `json:"repository_id"`
+			Repo          string `json:"repo"`
+			Number        int    `json:"number"`
+			Title         string `json:"title"`
+			Author        string `json:"author"`
+			HeadBranch    string `json:"head_branch"`
+			Updated       string `json:"updated"`
+			Registrations int    `json:"registrations"`
+			Blocked       int    `json:"blocked_registrations"`
+			URL           string `json:"url"`
+		} `json:"no_ticket"`
+		Truncated struct {
+			NoTicket int `json:"no_ticket"`
+		} `json:"truncated"`
+	}
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("not JSON: %s\n%s", err, out)
+	}
+	if len(payload.NoTicket) != 1 {
+		t.Fatalf("no_ticket = %+v, want one item", payload.NoTicket)
+	}
+	item := payload.NoTicket[0]
+	if item.PullRequestID != qaNoTicketPRID || item.RepositoryID != qaRepoID ||
+		item.Repo != "acme/widget" || item.Number != 77 || item.Title != "Fix the flaky suite" ||
+		item.Author != "octo" || item.HeadBranch != "fix-flaky-suite" ||
+		item.Updated != "2026-10-28T09:00:00Z" || item.Registrations != 2 || item.Blocked != 1 ||
+		item.URL != "https://github.com/acme/widget/pull/77" {
+		t.Fatalf("no_ticket[0] = %+v", item)
+	}
+	if payload.Truncated.NoTicket != 3 {
+		t.Fatalf("truncated.no_ticket = %d, want 3", payload.Truncated.NoTicket)
+	}
+	for _, row := range payload.Items {
+		if row["key"] == "acme/widget#77" {
+			t.Fatalf("the section leaked into items: %+v", row)
+		}
+	}
+}
+
+// TestQaListNoTicketBlockedIDs pins the payload's registration list: every
+// bare row the item covers, as the server sent it, so a script can retry one by
+// UUID.
+func TestQaListNoTicketBlockedIDs(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(*qaServer)
+		want  []string
+	}{
+		{"declared", func(s *qaServer) { s.noTicket = true }, []string{qaNoTicketPRID}},
+		{"every registration", func(s *qaServer) { s.noTicketMonorepo = true },
+			[]string{qaNoTicketPRID, qaNoTicketPRID2}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := newQaServer(t)
+			tc.setup(srv)
+			h := newQaHarness(t, srv)
+
+			out, errOut, code := h.run("qa", "list", "-o", "json")
+			if code != cliexit.OK {
+				t.Fatalf("exit %d\n%s", code, errOut)
+			}
+			var payload struct {
+				NoTicket []struct {
+					BlockedPullRequestIDs []string `json:"blocked_pull_request_ids"`
+				} `json:"no_ticket"`
+			}
+			if err := json.Unmarshal([]byte(out), &payload); err != nil {
+				t.Fatalf("not JSON: %s\n%s", err, out)
+			}
+			if len(payload.NoTicket) != 1 {
+				t.Fatalf("no_ticket = %+v, want one item", payload.NoTicket)
+			}
+			if got := payload.NoTicket[0].BlockedPullRequestIDs; !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("blocked_pull_request_ids = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestQaListLegacyQueue pins a pre-0.34 payload: a server that sends neither
+// noTicket nor truncated.noTicket decodes to an empty section, renders as
+// before, and leaves resolution unchanged for a PR the queue does not list.
+func TestQaListLegacyQueue(t *testing.T) {
+	srv := newQaServer(t)
+	srv.legacyQueue = true
+	h := newQaHarness(t, srv)
+
+	out, errOut, code := h.run("qa", "list")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	if strings.Contains(out, "NO TICKET") {
+		t.Fatalf("a server without the section grew one:\n%s", out)
+	}
+	for _, want := range []string{"DT-1", "DT-3", "CARRY-OVER"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("missing %q:\n%s", want, out)
+		}
+	}
+
+	out, _, code = h.run("qa", "list", "-o", "json")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d", code)
+	}
+	var payload struct {
+		NoTicket  []any `json:"no_ticket"`
+		Truncated struct {
+			NoTicket int `json:"no_ticket"`
+		} `json:"truncated"`
+	}
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("not JSON: %s\n%s", err, out)
+	}
+	if len(payload.NoTicket) != 0 || payload.Truncated.NoTicket != 0 {
+		t.Fatalf("no_ticket = %v, truncated.no_ticket = %d, want both empty",
+			payload.NoTicket, payload.Truncated.NoTicket)
+	}
+
+	_, errOut, code = h.run("qa", "exempt", "--pr", "acme/widget#77", "--reason", "docs only", "--yes")
+	if code != cliexit.Usage {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.Usage, errOut)
+	}
+	if !strings.Contains(errOut, "no PR acme/widget#77 on the QA queue") {
+		t.Fatalf("the not-found message changed:\n%s", errOut)
+	}
+	if n := srv.seen("exempt"); n != 0 {
+		t.Fatalf("%d exempt request(s) sent for an unresolved PR", n)
+	}
+}
+
+// TestQaResolvesNoTicketPR pins that repo#n resolution sees the No ticket
+// section: exempt and link reach a PR no Ticket links, through the item's bare
+// registration ids.
+func TestQaResolvesNoTicketPR(t *testing.T) {
+	t.Run("exempt", func(t *testing.T) {
+		srv := newQaServer(t)
+		srv.noTicket = true
+		h := newQaHarness(t, srv)
+
+		_, errOut, code := h.run("qa", "exempt", "--pr", "acme/widget#77", "--reason", "docs only", "--yes")
+		if code != cliexit.OK {
+			t.Fatalf("exit %d\n%s", code, errOut)
+		}
+		body := srv.body("exempt")
+		if body["scope"] != "pr" || body["pullRequestId"] != qaNoTicketPRID {
+			t.Fatalf("exempt body = %v, want the item's pullRequestId", body)
+		}
+	})
+
+	t.Run("link", func(t *testing.T) {
+		srv := newQaServer(t)
+		srv.noTicket = true
+		h := newQaHarness(t, srv)
+
+		_, errOut, code := h.run("qa", "link", "DT-1", "acme/widget#77")
+		if code != cliexit.OK {
+			t.Fatalf("exit %d\n%s", code, errOut)
+		}
+		body := srv.body("link")
+		if body["ticketKey"] != "DT-1" || body["pullRequestId"] != qaNoTicketPRID {
+			t.Fatalf("link body = %v", body)
+		}
+	})
+}
+
+// TestQaNoTicketItemWithNoRows pins that a No ticket item naming no
+// registrations is unresolvable: repo#n stops at the usage/not-found exit
+// instead of resolving to zero rows and sending nothing.
+func TestQaNoTicketItemWithNoRows(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+		op   string
+	}{
+		{"exempt", []string{"qa", "exempt", "--pr", "acme/widget#77", "--reason", "docs only", "--yes"}, "exempt"},
+		{"link", []string{"qa", "link", "DT-1", "acme/widget#77"}, "link"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := newQaServer(t)
+			srv.noTicket = true
+			srv.noTicketEmptyBlocked = true
+			h := newQaHarness(t, srv)
+
+			_, errOut, code := h.run(tc.args...)
+			if code != cliexit.Usage {
+				t.Fatalf("exit %d, want %d\n%s", code, cliexit.Usage, errOut)
+			}
+			if !strings.Contains(errOut, "No ticket item for acme/widget#77 names no rows") {
+				t.Fatalf("wrong message:\n%s", errOut)
+			}
+			if n := srv.seen(tc.op); n != 0 {
+				t.Fatalf("%d %s call(s) sent for an item naming no rows", n, tc.op)
+			}
+		})
+	}
+}
+
+// TestQaResolvesEveryNoTicketRegistration pins the monorepo case: the item
+// names both bare registrations, so link and exempt send each id once, in
+// order, from a single queue read.
+func TestQaResolvesEveryNoTicketRegistration(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+		op   string
+	}{
+		{"link", []string{"qa", "link", "DT-1", "acme/widget#77", "-o", "json"}, "link"},
+		{"exempt", []string{"qa", "exempt", "--pr", "acme/widget#77", "--reason", "docs only", "--yes", "-o", "json"}, "exempt"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := newQaServer(t)
+			srv.noTicketMonorepo = true
+			h := newQaHarness(t, srv)
+
+			out, errOut, code := h.run(tc.args...)
+			if code != cliexit.OK {
+				t.Fatalf("exit %d\n%s", code, errOut)
+			}
+			if n := srv.seen(tc.op); n != 2 {
+				t.Fatalf("%d %s call(s), want one per registration:\n%s", n, tc.op, out)
+			}
+			if want := []string{qaNoTicketPRID, qaNoTicketPRID2}; !reflect.DeepEqual(srv.actedIDs(), want) {
+				t.Fatalf("acted on %v, want %v", srv.actedIDs(), want)
+			}
+			if n := srv.seen("queue"); n != 1 {
+				t.Fatalf("%d queue read(s), want one for both registrations", n)
+			}
+			var payload struct {
+				Rows []struct {
+					Outcome string `json:"outcome"`
+				} `json:"rows"`
+			}
+			if err := json.Unmarshal([]byte(out), &payload); err != nil {
+				t.Fatalf("not JSON: %s\n%s", err, out)
+			}
+			if len(payload.Rows) != 2 {
+				t.Fatalf("rows = %d, want one per registration:\n%s", len(payload.Rows), out)
+			}
+			for _, r := range payload.Rows {
+				if r.Outcome != "ok" {
+					t.Fatalf("row outcome = %q, want ok:\n%s", r.Outcome, out)
+				}
+			}
+		})
+	}
+}
+
+// TestQaExemptPartlyLinkedPR pins the forge-PR contract on a monorepo PR whose
+// second registration is still bare: exempt --pr covers the card's linked row
+// first, then the No ticket item's bare ids, in that order.
+func TestQaExemptPartlyLinkedPR(t *testing.T) {
+	srv := newQaServer(t)
+	srv.partlyLinkedPR = true
+	h := newQaHarness(t, srv)
+
+	_, errOut, code := h.run("qa", "exempt", "--pr", "acme/widget#77", "--reason", "docs only", "--yes")
+	if code != cliexit.OK {
+		t.Fatalf("exit %d\n%s", code, errOut)
+	}
+	want := []string{qaNoTicketPRID, qaNoTicketPRID2}
+	if got := srv.actedIDs(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("acted on %v, want the card's linked row then the item's bare id, %v", got, want)
 	}
 }
 

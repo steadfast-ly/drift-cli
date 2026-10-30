@@ -13,7 +13,8 @@ Everything below shows the same environments, releases and verdicts.
 `https://drift.example.com`). Sign in through your organisation's SSO. The
 sidebar carries **Previews**, **Releases**, **Repositories**, **Audit Log**,
 **CLI Credentials** and **Stack Profile**; **KPIs** and **QA** appear when your
-admin enables those modules.
+admin enables those modules. The version line at the foot of the sidebar
+carries a **Docs** link to this site.
 
 **The `drift` CLI**, for the terminal and for CI. It has the same authority as
 your web session and nothing more; production promotion from the CLI

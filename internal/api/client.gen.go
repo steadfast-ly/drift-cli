@@ -1580,19 +1580,21 @@ type QaPullRequestCardReviewState string
 
 // QaQueue defines model for QaQueue.
 type QaQueue struct {
-	CarryOver       *[]QaCarryOverCandidate `json:"carryOver,omitempty"`
-	InTesting       []QaTicketCard          `json:"inTesting"`
-	ReadyForQa      []QaTicketCard          `json:"readyForQa"`
+	CarryOver       *[]QaCarryOverCandidate  `json:"carryOver,omitempty"`
+	InTesting       []QaTicketCard           `json:"inTesting"`
+	NoTicket        *[]QaUnlinkedPullRequest `json:"noTicket,omitempty"`
+	ReadyForQa      []QaTicketCard           `json:"readyForQa"`
 	RecentlyDecided struct {
 		Approvals  []QaApprovalDetail  `json:"approvals"`
 		Exemptions []QaExemptionDetail `json:"exemptions"`
 	} `json:"recentlyDecided"`
 	Recheck   []QaTicketCard `json:"recheck"`
 	Truncated struct {
-		InTesting  int `json:"inTesting"`
-		ReadyForQa int `json:"readyForQa"`
-		Recheck    int `json:"recheck"`
-		Upcoming   int `json:"upcoming"`
+		InTesting  int  `json:"inTesting"`
+		NoTicket   *int `json:"noTicket,omitempty"`
+		ReadyForQa int  `json:"readyForQa"`
+		Recheck    int  `json:"recheck"`
+		Upcoming   int  `json:"upcoming"`
 	} `json:"truncated"`
 	Upcoming []QaTicketCard `json:"upcoming"`
 }
@@ -1856,6 +1858,22 @@ type QaUnlinkOutcome struct {
 	GateTarget  QaGateTarget             `json:"gateTarget"`
 	Sha         string                   `json:"sha"`
 	TicketKey   string                   `json:"ticketKey"`
+}
+
+// QaUnlinkedPullRequest defines model for QaUnlinkedPullRequest.
+type QaUnlinkedPullRequest struct {
+	AuthorLogin           *string              `json:"authorLogin"`
+	BlockedPullRequestIds []openapi_types.UUID `json:"blockedPullRequestIds"`
+	BlockedRegistrations  int                  `json:"blockedRegistrations"`
+	ForgeRepo             string               `json:"forgeRepo"`
+	HeadBranch            string               `json:"headBranch"`
+	Number                int                  `json:"number"`
+	PullRequestId         openapi_types.UUID   `json:"pullRequestId"`
+	Registrations         int                  `json:"registrations"`
+	RepositoryId          openapi_types.UUID   `json:"repositoryId"`
+	Title                 string               `json:"title"`
+	UpdatedAt             time.Time            `json:"updatedAt"`
+	Url                   *string              `json:"url"`
 }
 
 // QaVerdictPullRequest defines model for QaVerdictPullRequest.
@@ -2590,7 +2608,7 @@ type ClientInterface interface {
 
 	// QaList List the QA queue
 	//
-	// The queue as the QA page's sections: Ready for QA (oldest entry first), In testing, Re-check (a Linked PR head moved since its approval), Upcoming (collapsed in the UI), Recently decided (14 days, approvals and exemptions) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
+	// The queue as the QA page's sections: In testing, Re-check (a Linked PR head moved since its approval), Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals and exemptions; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
 	//
 	// Corresponds with GET /qa (the `QaList` operationId).
 	QaList(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3419,7 +3437,7 @@ func (c *Client) EnvironmentsStatus(ctx context.Context, ref string, reqEditors 
 
 // QaList List the QA queue
 //
-// The queue as the QA page's sections: Ready for QA (oldest entry first), In testing, Re-check (a Linked PR head moved since its approval), Upcoming (collapsed in the UI), Recently decided (14 days, approvals and exemptions) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
+// The queue as the QA page's sections: In testing, Re-check (a Linked PR head moved since its approval), Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals and exemptions; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
 //
 // Corresponds with GET /qa (the `QaList` operationId).
 func (c *Client) QaList(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -6620,7 +6638,7 @@ type ClientWithResponsesInterface interface {
 
 	// QaListWithResponse List the QA queue
 	//
-	// The queue as the QA page's sections: Ready for QA (oldest entry first), In testing, Re-check (a Linked PR head moved since its approval), Upcoming (collapsed in the UI), Recently decided (14 days, approvals and exemptions) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
+	// The queue as the QA page's sections: In testing, Re-check (a Linked PR head moved since its approval), Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals and exemptions; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -12627,7 +12645,7 @@ func (c *ClientWithResponses) EnvironmentsStatusWithResponse(ctx context.Context
 
 // QaListWithResponse List the QA queue
 //
-// The queue as the QA page's sections: Ready for QA (oldest entry first), In testing, Re-check (a Linked PR head moved since its approval), Upcoming (collapsed in the UI), Recently decided (14 days, approvals and exemptions) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
+// The queue as the QA page's sections: In testing, Re-check (a Linked PR head moved since its approval), Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals and exemptions; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
 //
 // Returns a wrapper object for the known response body format(s).
 //
