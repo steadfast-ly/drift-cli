@@ -337,8 +337,13 @@ exempting by UUID.
 ## Starting a test session
 
 Click **Start testing**. drift reuses an environment already running the
-partition's branches, or creates one:
+partition, or creates one:
 
+- A monorepo pull request's registrations act as one unit, and a partition
+  never splits one. An environment runs the pull request when any of its
+  services runs the PR's head branch — the others may stay on the default
+  branch — and a deployment covers it when every service on that branch is at
+  the PR's head commit. Approving covers every registration.
 - A reused environment is woken if it is sleeping, and rebuilt if its commits
   are behind the PR heads. That can rebuild a developer's environment under
   them; the dialog says so.
@@ -348,6 +353,23 @@ partition's branches, or creates one:
   **Start testing <key>** dialog lets you pick a **Partition** and optionally a
   **Reuse environment** ("Let drift choose" by default). Otherwise the button
   starts the first free partition directly.
+
+The **Reuse environment** list holds the Ticket's own environments, plus
+environments created without a Ticket that already run one of the Ticket's open
+Linked PRs' branches on that PR's repository. An environment tagged to another
+Ticket is never offered, and **Let drift choose** still reuses only an
+environment tagged to this Ticket.
+
+An option the selected partition does not run stays listed, disabled, and names
+what it misses: `my-env (running) — doesn't run acme/app#42`. Changing the
+partition resets a selection that no longer runs it.
+
+If a pull request's registrations disagree on the head, the dialog says
+`acme/app#42: its repository rows disagree on the head; retry after the next
+sync` and disables **Start testing**. The server refuses the same way on the
+page and from the CLI, before it touches any environment. An environment you
+name that misses a PR is refused with `Environment my-env does not run
+acme/app#42 (feature/x)`.
 
 With no open Linked PRs there is nothing to test, so the row has no **Start
 testing** action and its detail says "No linked PR yet — link one or test in
@@ -366,13 +388,14 @@ environment; pass `--yes` in scripts.
 ### Preparing and open
 
 The session's block in the detail shows **Preparing** until a verified
-deployment runs every partition PR at its current head. That revision is the
-**start revision**, and the row then shows **Session open**, the owner, the
-environment link, `revision <n>` (with the start revision when it differs),
-the PRs it runs and `started <time> ago`. A push during **Preparing** waits
-for a deployment at the new head; a failed build can leave the session
-preparing indefinitely, in which case the owner, `qa` or an admin can
-**Close** it.
+deployment covers every pull request in the partition: one of its services runs
+the PR's head branch and every service on that branch is at the head commit.
+That revision is the **start revision**, and the row then shows **Session
+open**, the owner, the environment link, `revision <n>` (with the start
+revision when it differs), the PRs it runs and `started <time> ago`. A push
+during **Preparing** waits for a deployment at the new head; a failed build can
+leave the session preparing indefinitely, in which case the owner, `qa` or an
+admin can **Close** it.
 
 ### Pushes during a session
 
@@ -413,9 +436,10 @@ redeployed while the dialog was open, the server refuses and the dialog
 re-renders with the new revision and the changes since; review them and
 submit again.
 
-An approval covers the partition PRs whose deployed commit equals the PR head.
-Other PRs in the partition are listed as uncovered — usually because their head
-moved and has not deployed yet — and the tracker comment names what remains.
+An approval covers the partition PRs deployed at the PR head — on a monorepo,
+every service on the PR's branch must be at the head commit. Other PRs in the
+partition are listed as uncovered — usually because their head moved and has
+not deployed yet — and the tracker comment names what remains.
 With several partitions, approve each session; the Ticket completes only when
 every open Linked PR is approved, exempt or carried over.
 
