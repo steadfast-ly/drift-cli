@@ -1652,21 +1652,29 @@ type QaSendOutcome struct {
 
 // QaSessionCard defines model for QaSessionCard.
 type QaSessionCard struct {
-	CurrentGeneration         *int                    `json:"currentGeneration"`
-	CurrentGenerationVerified bool                    `json:"currentGenerationVerified"`
-	EndReason                 *QaSessionCardEndReason `json:"endReason"`
-	EndedAt                   *time.Time              `json:"endedAt"`
-	EnvironmentId             *openapi_types.UUID     `json:"environmentId"`
-	EnvironmentSlug           *string                 `json:"environmentSlug"`
-	Id                        openapi_types.UUID      `json:"id"`
-	Owner                     *string                 `json:"owner"`
-	PullRequestIds            []openapi_types.UUID    `json:"pullRequestIds"`
-	SawChange                 bool                    `json:"sawChange"`
-	StartGeneration           *int                    `json:"startGeneration"`
-	StartedAt                 time.Time               `json:"startedAt"`
-	State                     QaSessionCardState      `json:"state"`
-	TicketKey                 string                  `json:"ticketKey"`
-	UnacknowledgedChange      bool                    `json:"unacknowledgedChange"`
+	CurrentGeneration         *int `json:"currentGeneration"`
+	CurrentGenerationVerified bool `json:"currentGenerationVerified"`
+	CurrentServices           *[]struct {
+		Behind      []string  `json:"behind"`
+		ForgeRepo   string    `json:"forgeRepo"`
+		NotDeployed *[]string `json:"notDeployed,omitempty"`
+		NotOnBranch []string  `json:"notOnBranch"`
+		Number      int       `json:"number"`
+		RanBranch   []string  `json:"ranBranch"`
+	} `json:"currentServices,omitempty"`
+	EndReason            *QaSessionCardEndReason `json:"endReason"`
+	EndedAt              *time.Time              `json:"endedAt"`
+	EnvironmentId        *openapi_types.UUID     `json:"environmentId"`
+	EnvironmentSlug      *string                 `json:"environmentSlug"`
+	Id                   openapi_types.UUID      `json:"id"`
+	Owner                *string                 `json:"owner"`
+	PullRequestIds       []openapi_types.UUID    `json:"pullRequestIds"`
+	SawChange            bool                    `json:"sawChange"`
+	StartGeneration      *int                    `json:"startGeneration"`
+	StartedAt            time.Time               `json:"startedAt"`
+	State                QaSessionCardState      `json:"state"`
+	TicketKey            string                  `json:"ticketKey"`
+	UnacknowledgedChange bool                    `json:"unacknowledgedChange"`
 }
 
 // QaSessionCardEndReason defines model for QaSessionCard.EndReason.
@@ -1677,22 +1685,30 @@ type QaSessionCardState string
 
 // QaSessionDetail defines model for QaSessionDetail.
 type QaSessionDetail struct {
-	CurrentGeneration         *int                      `json:"currentGeneration"`
-	CurrentGenerationVerified bool                      `json:"currentGenerationVerified"`
-	EndReason                 *QaSessionDetailEndReason `json:"endReason"`
-	EndedAt                   *time.Time                `json:"endedAt"`
-	EnvironmentId             *openapi_types.UUID       `json:"environmentId"`
-	EnvironmentSlug           *string                   `json:"environmentSlug"`
-	Events                    []QaSessionEvent          `json:"events"`
-	Id                        openapi_types.UUID        `json:"id"`
-	Owner                     *string                   `json:"owner"`
-	PullRequestIds            []openapi_types.UUID      `json:"pullRequestIds"`
-	SawChange                 bool                      `json:"sawChange"`
-	StartGeneration           *int                      `json:"startGeneration"`
-	StartedAt                 time.Time                 `json:"startedAt"`
-	State                     QaSessionDetailState      `json:"state"`
-	TicketKey                 string                    `json:"ticketKey"`
-	UnacknowledgedChange      bool                      `json:"unacknowledgedChange"`
+	CurrentGeneration         *int `json:"currentGeneration"`
+	CurrentGenerationVerified bool `json:"currentGenerationVerified"`
+	CurrentServices           *[]struct {
+		Behind      []string  `json:"behind"`
+		ForgeRepo   string    `json:"forgeRepo"`
+		NotDeployed *[]string `json:"notDeployed,omitempty"`
+		NotOnBranch []string  `json:"notOnBranch"`
+		Number      int       `json:"number"`
+		RanBranch   []string  `json:"ranBranch"`
+	} `json:"currentServices,omitempty"`
+	EndReason            *QaSessionDetailEndReason `json:"endReason"`
+	EndedAt              *time.Time                `json:"endedAt"`
+	EnvironmentId        *openapi_types.UUID       `json:"environmentId"`
+	EnvironmentSlug      *string                   `json:"environmentSlug"`
+	Events               []QaSessionEvent          `json:"events"`
+	Id                   openapi_types.UUID        `json:"id"`
+	Owner                *string                   `json:"owner"`
+	PullRequestIds       []openapi_types.UUID      `json:"pullRequestIds"`
+	SawChange            bool                      `json:"sawChange"`
+	StartGeneration      *int                      `json:"startGeneration"`
+	StartedAt            time.Time                 `json:"startedAt"`
+	State                QaSessionDetailState      `json:"state"`
+	TicketKey            string                    `json:"ticketKey"`
+	UnacknowledgedChange bool                      `json:"unacknowledgedChange"`
 }
 
 // QaSessionDetailEndReason defines model for QaSessionDetail.EndReason.
@@ -1757,22 +1773,30 @@ type QaTicketCard struct {
 				RepositoryId openapi_types.UUID `json:"repositoryId"`
 			} `json:"services"`
 		} `json:"banners"`
-		ChangeCount               int                                  `json:"changeCount"`
-		CurrentGeneration         *int                                 `json:"currentGeneration"`
-		CurrentGenerationVerified bool                                 `json:"currentGenerationVerified"`
-		EndReason                 *QaTicketCardActiveSessionsEndReason `json:"endReason"`
-		EndedAt                   *time.Time                           `json:"endedAt"`
-		EnvironmentId             *openapi_types.UUID                  `json:"environmentId"`
-		EnvironmentSlug           *string                              `json:"environmentSlug"`
-		Id                        openapi_types.UUID                   `json:"id"`
-		Owner                     *string                              `json:"owner"`
-		PullRequestIds            []openapi_types.UUID                 `json:"pullRequestIds"`
-		SawChange                 bool                                 `json:"sawChange"`
-		StartGeneration           *int                                 `json:"startGeneration"`
-		StartedAt                 time.Time                            `json:"startedAt"`
-		State                     QaTicketCardActiveSessionsState      `json:"state"`
-		TicketKey                 string                               `json:"ticketKey"`
-		UnacknowledgedChange      bool                                 `json:"unacknowledgedChange"`
+		ChangeCount               int  `json:"changeCount"`
+		CurrentGeneration         *int `json:"currentGeneration"`
+		CurrentGenerationVerified bool `json:"currentGenerationVerified"`
+		CurrentServices           *[]struct {
+			Behind      []string  `json:"behind"`
+			ForgeRepo   string    `json:"forgeRepo"`
+			NotDeployed *[]string `json:"notDeployed,omitempty"`
+			NotOnBranch []string  `json:"notOnBranch"`
+			Number      int       `json:"number"`
+			RanBranch   []string  `json:"ranBranch"`
+		} `json:"currentServices,omitempty"`
+		EndReason            *QaTicketCardActiveSessionsEndReason `json:"endReason"`
+		EndedAt              *time.Time                           `json:"endedAt"`
+		EnvironmentId        *openapi_types.UUID                  `json:"environmentId"`
+		EnvironmentSlug      *string                              `json:"environmentSlug"`
+		Id                   openapi_types.UUID                   `json:"id"`
+		Owner                *string                              `json:"owner"`
+		PullRequestIds       []openapi_types.UUID                 `json:"pullRequestIds"`
+		SawChange            bool                                 `json:"sawChange"`
+		StartGeneration      *int                                 `json:"startGeneration"`
+		StartedAt            time.Time                            `json:"startedAt"`
+		State                QaTicketCardActiveSessionsState      `json:"state"`
+		TicketKey            string                               `json:"ticketKey"`
+		UnacknowledgedChange bool                                 `json:"unacknowledgedChange"`
 	} `json:"activeSessions"`
 	Completion *struct {
 		Current bool                        `json:"current"`
@@ -1781,7 +1805,11 @@ type QaTicketCard struct {
 	} `json:"completion"`
 	EnteredQueueAt *time.Time `json:"enteredQueueAt"`
 	Environments   []struct {
-		Id     openapi_types.UUID             `json:"id"`
+		Id    openapi_types.UUID `json:"id"`
+		Repos *[]struct {
+			Branch       string             `json:"branch"`
+			RepositoryId openapi_types.UUID `json:"repositoryId"`
+		} `json:"repos,omitempty"`
 		Slug   string                         `json:"slug"`
 		Status QaTicketCardEnvironmentsStatus `json:"status"`
 	} `json:"environments"`

@@ -1667,6 +1667,53 @@
           "currentGenerationVerified": {
             "type": "boolean"
           },
+          "currentServices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "forgeRepo": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "ranBranch": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "behind": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "notOnBranch": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "notDeployed": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "forgeRepo",
+                "number",
+                "ranBranch",
+                "behind",
+                "notOnBranch"
+              ]
+            }
+          },
           "sawChange": {
             "type": "boolean"
           },
@@ -1901,6 +1948,53 @@
           },
           "currentGenerationVerified": {
             "type": "boolean"
+          },
+          "currentServices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "forgeRepo": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "ranBranch": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "behind": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "notOnBranch": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "notDeployed": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "forgeRepo",
+                "number",
+                "ranBranch",
+                "behind",
+                "notOnBranch"
+              ]
+            }
           },
           "sawChange": {
             "type": "boolean"
@@ -2202,6 +2296,53 @@
                 "currentGenerationVerified": {
                   "type": "boolean"
                 },
+                "currentServices": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "forgeRepo": {
+                        "type": "string"
+                      },
+                      "number": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "ranBranch": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "behind": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "notOnBranch": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "notDeployed": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "forgeRepo",
+                      "number",
+                      "ranBranch",
+                      "behind",
+                      "notOnBranch"
+                    ]
+                  }
+                },
                 "sawChange": {
                   "type": "boolean"
                 },
@@ -2370,6 +2511,25 @@
                     "canceled"
                   ],
                   "type": "string"
+                },
+                "repos": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "repositoryId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "branch": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "repositoryId",
+                      "branch"
+                    ]
+                  }
                 }
               },
               "required": [
