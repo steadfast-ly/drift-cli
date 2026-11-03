@@ -344,9 +344,8 @@ partition, or creates one:
   services runs the PR's head branch — the others may stay on the default
   branch — and a deployment covers it when every service on that branch is at
   the PR's head commit. Approving covers every registration.
-- A reused environment is woken if it is sleeping, and rebuilt if its commits
-  are behind the PR heads. That can rebuild a developer's environment under
-  them; the dialog says so.
+- A reused environment is woken if it is sleeping. Taking it over rebuilds the
+  services that are behind the PR heads; the dialog says so.
 - A new environment is named after the Ticket in lowercase: `<key>`, then
   `qa-<key>`, `qa-<key>-2`, and so on.
 - When the Ticket has several partitions or existing environments, the
@@ -354,11 +353,16 @@ partition, or creates one:
   **Reuse environment** ("Let drift choose" by default). Otherwise the button
   starts the first free partition directly.
 
-The **Reuse environment** list holds the Ticket's own environments, plus
-environments created without a Ticket that already run one of the Ticket's open
-Linked PRs' branches on that PR's repository. An environment tagged to another
-Ticket is never offered, and **Let drift choose** still reuses only an
-environment tagged to this Ticket.
+The **Reuse environment** list holds the Ticket's environments, plus every
+environment already running one of the Ticket's open Linked PRs' branches on
+that PR's repository — including environments tagged to another Ticket. An
+environment has no owner, so anyone may take one over.
+
+**Let drift choose** reuses an environment tagged to this Ticket that runs the
+partition. Failing that, it reuses the oldest untagged environment that runs the
+partition, is running or sleeping, and has no other Ticket's test session. With
+none, it creates an environment. It never picks an environment tagged to
+another Ticket on its own: choose one from the list to take it over.
 
 An option the selected partition does not run stays listed, disabled, and names
 what it misses: `my-env (running) — doesn't run acme/app#42`. Changing the
@@ -382,8 +386,8 @@ drift qa start PROJ-123 --prs acme/app#42,acme/api#7
 drift qa start PROJ-123 --env my-env
 ```
 
-The command asks for confirmation because it may rebuild a developer's
-environment; pass `--yes` in scripts.
+The command asks for confirmation because starting may rebuild an existing
+environment's services; pass `--yes` in scripts.
 
 ### Preparing and open
 
@@ -440,6 +444,11 @@ An approval covers the partition PRs deployed at the PR head — on a monorepo,
 every service on the PR's branch must be at the head commit. Other PRs in the
 partition are listed as uncovered — usually because their head moved and has
 not deployed yet — and the tracker comment names what remains.
+
+For a pull request whose repository is registered as several services, the
+**Approve** dialog and the tracker comment list which services ran the PR's
+branch at the head and which did not — on another branch, or not deployed.
+Approving still covers every registration.
 With several partitions, approve each session; the Ticket completes only when
 every open Linked PR is approved, exempt or carried over.
 
