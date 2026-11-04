@@ -342,21 +342,23 @@ partition, or creates one:
 - A monorepo pull request's registrations act as one unit, and a partition
   never splits one. An environment runs the pull request when any of its
   services runs the PR's head branch — the others may stay on the default
-  branch — and a deployment covers it when every service on that branch is at
-  the PR's head commit. Approving covers every registration.
+  branch — and a deployment covers it when every service on that branch
+  carries a commit containing the PR's head. Approving covers every
+  registration.
 - A reused environment is woken if it is sleeping. Taking it over rebuilds the
   services that are behind the PR heads; the dialog says so.
 - A new environment is named after the Ticket in lowercase: `<key>`, then
   `qa-<key>`, `qa-<key>-2`, and so on.
-- When the Ticket has several partitions or existing environments, the
-  **Start testing <key>** dialog lets you pick a **Partition** and optionally a
-  **Reuse environment** ("Let drift choose" by default). Otherwise the button
-  starts the first free partition directly.
+- **Start testing** always opens a dialog, which asks the server what it may
+  offer: you pick a **Partition** and optionally a **Reuse environment** ("Let
+  drift choose" by default). The dialog can name the stack behind a partition
+  and the environment that is not to-spec for it, which the page cannot work
+  out on its own.
 
 The **Reuse environment** list holds the Ticket's environments, plus every
-environment already running one of the Ticket's open Linked PRs' branches on
-that PR's repository — including environments tagged to another Ticket. An
-environment has no owner, so anyone may take one over.
+seatable environment already running a repository of one of the Ticket's open
+Linked PRs, whatever its branch — including environments tagged to another
+Ticket. An environment has no owner, so anyone may take one over.
 
 **Let drift choose** reuses an environment tagged to this Ticket that runs the
 partition. Failing that, it reuses the oldest untagged environment that runs the
@@ -389,17 +391,50 @@ drift qa start PROJ-123 --env my-env
 The command asks for confirmation because starting may rebuild an existing
 environment's services; pass `--yes` in scripts.
 
+### Stacked pull requests
+
+Two or more pull requests of one repository on one Ticket can be a **stack**
+when each sits on top of the one below it. The top pull request either targets
+the lower one's branch, or was branched from it and its commits contain the
+lower head. drift server 0.36.0 or later is needed for stacks; on an older
+server each pull request needs its own session, as before.
+
+A stack is tested as one partition, on the **top's** branch: the environment
+runs the top's build, which carries the commits below it, and one approval
+covers every pull request in the stack. When a Ticket needs more than one
+session, its partitions list a stack as one entry — `① acme/app#12 ⟶
+acme/app#13` — and a lower pull request's chip says `stacked on #13`.
+
+The **Reuse environment** list can offer an environment tagged to another
+Ticket when its deployed commit already contains the pull request you are
+testing. Taking it is fine: the environment is shared, the verdict is not.
+Approve on this Ticket's own session, against its own criteria. The option says
+so: `env follows acme/app#13 (PROJ-124); pushes to acme/app#12 do not deploy
+here` — a push to `acme/app#12` does not redeploy that environment, only a
+rebase of `acme/app#13` does.
+
+To test a lower pull request on its own, start it alone; drift builds an
+environment on that pull request's branch. Ending the top's session does not do
+this by itself.
+
+```bash
+drift qa start PROJ-123 --prs acme/app#12
+```
+
 ### Preparing and open
 
 The session's block in the detail shows **Preparing** until a verified
-deployment covers every pull request in the partition: one of its services runs
-the PR's head branch and every service on that branch is at the head commit.
-That revision is the **start revision**, and the row then shows **Session
-open**, the owner, the environment link, `revision <n>` (with the start
-revision when it differs), the PRs it runs and `started <time> ago`. A push
-during **Preparing** waits for a deployment at the new head; a failed build can
-leave the session preparing indefinitely, in which case the owner, `qa` or an
-admin can **Close** it.
+deployment covers the pull requests in the partition: one of its services runs
+a pull request's head branch (or a branch above it in its stack), and every
+service of that branch carries a commit containing the head. For a stack only
+the top is required: its build carries the commits below it, so the session
+opens as soon as the top is deployed, and a lower pull request may still be
+listed uncovered. That revision is the **start revision**, and the row then
+shows **Session open**, the owner, the environment link, `revision <n>` (with
+the start revision when it differs), the PRs it runs and `started <time> ago`.
+A push during **Preparing** waits for a deployment at the new head; a failed
+build can leave the session preparing indefinitely, in which case the owner,
+`qa` or an admin can **Close** it.
 
 ### Pushes during a session
 
@@ -410,6 +445,13 @@ Every new deployment appends a change to the session:
 - **Migration source changed** — the migrations job may have run.
 - **Revision not verified** — the deployment has not been verified yet, and
   "Approve stays blocked until this revision, or a later one, is verified."
+
+A push to a lower pull request of a stack does not move it out of the stack and
+does not rebuild the environment, which runs the top's branch: the pull request
+is listed as not covered — "`acme/app#12` is ahead of this build — rebase
+`acme/app#13` and it redeploys here, or test `acme/app#12` on its own after
+this session" — until the top is rebased and redeployed. A push to the top is
+an ordinary change: it appends a **Redeployed** event like any other.
 
 The session shows **Changes not acknowledged** while changes are outstanding.
 **Acknowledge** clears that flag without approving anything. It does not clear
@@ -438,12 +480,28 @@ revision <n> of <environment> to the Linked PRs it runs." It offers:
 The submit button reads **Approve revision <n>**. If the environment
 redeployed while the dialog was open, the server refuses and the dialog
 re-renders with the new revision and the changes since; review them and
-submit again.
+submit again. The dialog also binds the pull request heads and the covered set
+it listed, so a head that moved or a coverage change while it was open refuses
+the same way and refreshes the dialog.
 
-An approval covers the partition PRs deployed at the PR head — on a monorepo,
-every service on the PR's branch must be at the head commit. Other PRs in the
-partition are listed as uncovered — usually because their head moved and has
-not deployed yet — and the tracker comment names what remains.
+An approval covers the partition PRs the deployed build carries — on a
+monorepo, every service on the PR's branch must carry a commit containing the
+head. Other PRs in the partition are listed as uncovered — usually because
+their head moved and has not deployed yet — and the tracker comment names what
+remains.
+
+In a stack, a lower pull request is covered when the top's build contains its
+head: the dialog lists it as `covered through acme/app#13`, and the approval
+line of the tracker comment writes `acme/app#12@a1b2c3d4e5f6 through
+acme/app#13`. A lower pull request whose head is not in the build stays
+uncovered and says why — `not covered: acme/app#12 is ahead of this build —
+rebase acme/app#13 and it redeploys here, or test acme/app#12 on its own after
+this session` — or `not covered: stack check pending` while drift has not yet
+been able to check the commits. Nothing is covered across Tickets: a shared
+environment gives another Ticket a place to test, not a verdict.
+
+That heads-and-coverage fence belongs to the page's dialog. `drift qa approve`
+sends the revision alone, so it keeps the generation fence only.
 
 For a pull request whose repository is registered as several services, the
 **Approve** dialog and the tracker comment list which services ran the PR's
@@ -568,17 +626,32 @@ carry no gate or review state, so the chips are labels only. One line under the
 heading says what the list is for: "Tested in the tracker before drift QA was
 on. Carry over to turn their pull requests green."
 
+**Carry over on a pull request row** is the stack case, and it is a different
+action from the list above. When a stack is merged top-down, a lower pull
+request's new head can hold exactly the code QA tested in the top's build. When
+drift can see that the two commits have the same tree, an approver finds
+**Carry over** beside **Unlink** on that pull request's row in the detail, and
+its dialog reads "`acme/app#12`'s head has the same code as approval
+`1a2b3c4d` (`acme/app#13` at `d4e5f6a`). Nothing carries until you confirm."
+Nothing carries without the click; the tracker comment records "Carried over:
+`acme/app#12`@`a1b2c3d4e5f6` — same code as tested in approval `1a2b3c4d` — by
+`<name>`", and revoking or rejecting that approval withdraws the carry it
+granted. A tree drift has not checked yet refuses with a message ending
+"— stack check pending" instead of carrying.
+
 ## The drift/qa status
 
 | State | Description | What to do |
 | ----- | ----------- | ---------- |
 | success | `QA passed on branch builds` | None. |
+| success | `QA passed on branch builds (through <repo>#n)` | None; the pull request is covered by the build of the stack's top. |
 | success | `QA exempt: <reason>` | None. |
 | failure | `QA rejected: <first line>` | Fix the problem and push; the new head needs a new session. |
 | pending | `QA testing in progress (<name>) — pushes redeploy QA's env` | Wait for the session to end, or start one. |
 | pending | `QA approved — recording in tracker (<key>)` | Wait; drift is writing the comment and status move. |
 | pending | `awaiting code review` | Get the PR review-approved. |
 | pending | `changed since QA approval` | The head moved; start a new session on the new revision. |
+| pending | `pending — stacked on <repo>#n` | The pull request is stacked on the one above it; test the stack in one session, or this pull request on its own. |
 | pending | `Awaiting QA: <key> (<status name>)` | The Ticket is in the queue; test it. |
 | pending | `waiting on <other ticket key>` | A shared PR also belongs to another Ticket that is not complete; finish that one too. |
 | pending | `ticket closed without QA` | The Ticket is in a Done-category status without a drift approval; approve or exempt. |
@@ -621,7 +694,11 @@ of verdicts travel as `carry_over` and `recently_decided`.
 
 `show` prints the Linked PRs, sessions, changes, approvals and exemptions.
 Machine output also carries `rejections`, `tracker_writes`, `failed_writes` and
-`partitions`; each session carries `events`, `verified` and `saw_change`.
+`partitions`; each session carries `events`, `verified` and `saw_change`. A
+partition's machine form lists its pull request ids only — the stack grouping,
+the `stacked on` chip and the per-pull-request coverage listing are on the
+**/qa** page — and `qa approve` sends the revision alone, so the
+heads-and-coverage fence is the page dialog's.
 
 Session and Ticket actions:
 
@@ -665,9 +742,10 @@ fails because the session is no longer open.
 **A tracker write failed** — the row's **Tracker writes failed** block has
 **Retry**. The `drift/qa` status stays pending until the write lands.
 
-**The session never leaves Preparing** — no verified deployment has run every
-partition PR at its head. Check the environment's build and deployment; the
-owner, `qa` or an admin can **Close** the session.
+**The session never leaves Preparing** — no verified deployment has carried
+the head of every partition PR (for a stack, the top's build carries the rest).
+Check the environment's build and deployment; the owner, `qa` or an admin can
+**Close** the session.
 
 **`this server does not support "qa"`** — the module is not enabled on that
 deployment, so `/qa` is not found either. Ask your admin.

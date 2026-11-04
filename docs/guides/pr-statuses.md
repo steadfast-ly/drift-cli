@@ -84,6 +84,7 @@ row is the one posted:
 | `changed since QA approval` | A push after the approval moved the head; the approval does not cover the new code. | Get it re-approved in QA, or the approver can re-run the decision. |
 | `ticket closed without QA` | The ticket was moved to Done without a drift QA approval. | Have QA approve it in drift (move the ticket back to the QA queue first if it still needs testing), or exempt the PR if QA is not required. Reopening the ticket in the tracker alone does not clear it. |
 | `Awaiting QA: <ticket key> (<status name>)` | The ticket is queued for QA and waiting for a test session. | Wait for QA to start a session, or start one yourself if you have the role. |
+| `pending — stacked on <repo>#n` | The pull request is stacked on the one above it in its repository, and QA tests the stack in one session on that top's build. | Wait for the stack's session, or start this pull request on its own. |
 | `No ticket — add a key or exempt` | The pull request has no linked ticket and no exemption. | Put a ticket key in the PR title or head branch, link a ticket from the QA page's **No ticket** section (or `drift qa link PROJ-123 acme/web#42`), or exempt the PR there (or `drift qa exempt --pr acme/web#42 --reason "docs only"`). |
 
 Terminal descriptions:
@@ -92,6 +93,7 @@ Terminal descriptions:
 | ----------- | ------- | ----------- |
 | `QA rejected: <first line of the rejection comment>` | QA rejected the code at this commit; the rest of the rejection comment is on the QA page. | Read the full comment on the QA page, fix, push, and send it back to QA. |
 | `QA passed on branch builds` | Every covered pull request at this commit is green. | Nothing. |
+| `QA passed on branch builds (through <repo>#n)` | The pull request was covered by the build of the stack's top, not by a build of its own branch. | Nothing. |
 | `QA exempt: <reason>` | The pull request's only coverage is an exemption, and this is its reason. | Nothing, unless the exemption no longer applies. |
 
 Like `drift/e2e`, the QA description is clipped to GitHub's 140-character limit
