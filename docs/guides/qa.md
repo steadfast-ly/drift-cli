@@ -356,9 +356,10 @@ partition, or creates one:
   out on its own.
 
 The **Reuse environment** list holds the Ticket's environments, plus every
-seatable environment already running a repository of one of the Ticket's open
-Linked PRs, whatever its branch — including environments tagged to another
-Ticket. An environment has no owner, so anyone may take one over.
+seatable environment that can seat the chosen partition — including one tagged
+to another Ticket whose build already contains the pull request. An environment
+that cannot seat it is not offered unless the Ticket owns it; an environment has
+no owner, so anyone may take one over.
 
 **Let drift choose** reuses an environment tagged to this Ticket that runs the
 partition. Failing that, it reuses the oldest untagged environment that runs the
@@ -366,9 +367,9 @@ partition, is running or sleeping, and has no other Ticket's test session. With
 none, it creates an environment. It never picks an environment tagged to
 another Ticket on its own: choose one from the list to take it over.
 
-An option the selected partition does not run stays listed, disabled, and names
-what it misses: `my-env (running) — doesn't run acme/app#42`. Changing the
-partition resets a selection that no longer runs it.
+An environment the Ticket owns but the selected partition does not run stays
+listed, disabled, and names what it misses: `my-env (running) — doesn't run
+acme/app#42`. Changing the partition resets a selection that no longer runs it.
 
 If a pull request's registrations disagree on the head, the dialog says
 `acme/app#42: its repository rows disagree on the head; retry after the next
@@ -432,9 +433,10 @@ opens as soon as the top is deployed, and a lower pull request may still be
 listed uncovered. That revision is the **start revision**, and the row then
 shows **Session open**, the owner, the environment link, `revision <n>` (with
 the start revision when it differs), the PRs it runs and `started <time> ago`.
-A push during **Preparing** waits for a deployment at the new head; a failed
-build can leave the session preparing indefinitely, in which case the owner,
-`qa` or an admin can **Close** it.
+A push during **Preparing** waits for a deployment that covers the units the
+session requires, even when the push regroups the stack; a failed build can
+leave the session preparing indefinitely, in which case the owner, `qa` or an
+admin can **Close** it.
 
 ### Pushes during a session
 
@@ -482,7 +484,9 @@ redeployed while the dialog was open, the server refuses and the dialog
 re-renders with the new revision and the changes since; review them and
 submit again. The dialog also binds the pull request heads and the covered set
 it listed, so a head that moved or a coverage change while it was open refuses
-the same way and refreshes the dialog.
+the same way: the refusal carries the current per-pull-request listing, the
+dialog shows it with "The listing changed. Review it above, then submit again."
+and Approve stays enabled for the next submit.
 
 An approval covers the partition PRs the deployed build carries — on a
 monorepo, every service on the PR's branch must carry a commit containing the
@@ -651,7 +655,7 @@ granted. A tree drift has not checked yet refuses with a message ending
 | pending | `QA approved — recording in tracker (<key>)` | Wait; drift is writing the comment and status move. |
 | pending | `awaiting code review` | Get the PR review-approved. |
 | pending | `changed since QA approval` | The head moved; start a new session on the new revision. |
-| pending | `pending — stacked on <repo>#n` | The pull request is stacked on the one above it; test the stack in one session, or this pull request on its own. |
+| pending | `pending — stacked on <repo>#n; Awaiting QA: <key> (<status name>)` | The pull request is stacked on the one above it; test the stack in one session, or this pull request on its own. The ticket and its status follow the stack position. |
 | pending | `Awaiting QA: <key> (<status name>)` | The Ticket is in the queue; test it. |
 | pending | `waiting on <other ticket key>` | A shared PR also belongs to another Ticket that is not complete; finish that one too. |
 | pending | `ticket closed without QA` | The Ticket is in a Done-category status without a drift approval; approve or exempt. |

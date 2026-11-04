@@ -56,11 +56,18 @@ each URN to the appropriate exit code and hint.
 ## QA verdicts
 
 `drift qa approve` and `drift qa reject` bind the session revision they were
-shown. Three responses are specific to that surface:
+shown. Four responses are specific to that surface:
 
 - **409 with `data.revision`** -- the environment redeployed since the
   revision was read. The CLI prints the new revision and tells you to
   re-check with `drift qa show`; do not retry the old number.
+- **409 with `data.generation`, `data.heads`, `data.covered` and
+  `data.coverage`** -- a client that fenced the pull request heads and the
+  covered set it listed gets the current generation and the full
+  per-pull-request coverage listing (`pullRequestId`, `label`, `headSha`,
+  `covered`, `reason`, `throughLabel`), with `heads` and `covered` beside it
+  for the older fence. `coverage` is absent on a server older than the stack
+  support; the page dialog shows the listing and stays submittable.
 - **413** -- the request body exceeded the mount's 10 MB limit. The CLI
   already enforces the server's attachment caps (at most 10 files, 7 MiB of
   decoded bytes in total), so a 413 means something outside `--file` grew the
