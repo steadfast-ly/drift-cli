@@ -69,6 +69,92 @@
                 "type": "integer",
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991
+              },
+              "generation": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "heads": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "pullRequestId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "sha": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pullRequestId",
+                    "sha"
+                  ]
+                }
+              },
+              "covered": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "coverage": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "pullRequestId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "headSha": {
+                      "type": "string"
+                    },
+                    "covered": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "enum": [
+                            "pending",
+                            "behind",
+                            "ahead",
+                            "not run"
+                          ],
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "throughLabel": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "pullRequestId",
+                    "label",
+                    "headSha",
+                    "covered",
+                    "reason",
+                    "throughLabel"
+                  ]
+                }
               }
             },
             "required": [
@@ -1441,6 +1527,50 @@
           "headSha": {
             "type": "string"
           },
+          "baseBranch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stackedOn": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "number": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "label",
+                  "number"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stackCarryOver": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QaStackCarryOver"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "isOpen": {
             "type": "boolean"
           },
@@ -1545,6 +1675,7 @@
           "title",
           "headBranch",
           "headSha",
+          "baseBranch",
           "isOpen",
           "mergedAt",
           "mergeHeadSha",
@@ -1666,6 +1797,108 @@
           },
           "currentGenerationVerified": {
             "type": "boolean"
+          },
+          "currentServices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "forgeRepo": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "ranBranch": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "behind": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "notOnBranch": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "notDeployed": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "forgeRepo",
+                "number",
+                "ranBranch",
+                "behind",
+                "notOnBranch"
+              ]
+            }
+          },
+          "coverage": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pullRequestId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "headSha": {
+                  "type": "string"
+                },
+                "covered": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "pending",
+                        "behind",
+                        "ahead",
+                        "not run"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "throughLabel": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "pullRequestId",
+                "label",
+                "headSha",
+                "covered",
+                "reason",
+                "throughLabel"
+              ]
+            }
           },
           "sawChange": {
             "type": "boolean"
@@ -1902,6 +2135,108 @@
           "currentGenerationVerified": {
             "type": "boolean"
           },
+          "currentServices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "forgeRepo": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "ranBranch": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "behind": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "notOnBranch": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "notDeployed": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "forgeRepo",
+                "number",
+                "ranBranch",
+                "behind",
+                "notOnBranch"
+              ]
+            }
+          },
+          "coverage": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pullRequestId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "headSha": {
+                  "type": "string"
+                },
+                "covered": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "pending",
+                        "behind",
+                        "ahead",
+                        "not run"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "throughLabel": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "pullRequestId",
+                "label",
+                "headSha",
+                "covered",
+                "reason",
+                "throughLabel"
+              ]
+            }
+          },
           "sawChange": {
             "type": "boolean"
           },
@@ -2014,11 +2349,212 @@
                 "type": "null"
               }
             ]
+          },
+          "stacks": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
           }
         },
         "required": [
           "pullRequestIds",
           "sessionId"
+        ]
+      },
+      "QaStartEnvironmentOption": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "requested",
+              "building",
+              "build_failed",
+              "deploying",
+              "running",
+              "sleeping",
+              "waking",
+              "deploy_failed",
+              "destroying",
+              "destroyed",
+              "canceled"
+            ],
+            "type": "string"
+          },
+          "eligible": {
+            "type": "boolean"
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reason": {
+            "enum": [
+              "pending",
+              "missing"
+            ],
+            "type": "string"
+          },
+          "followsLabel": {
+            "type": "string"
+          },
+          "followsTicketKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "status",
+          "eligible",
+          "missing"
+        ]
+      },
+      "QaStartPartition": {
+        "type": "object",
+        "properties": {
+          "pullRequestIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "stackLabel": {
+            "type": "string"
+          },
+          "inconsistent": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "environments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaStartEnvironmentOption"
+            }
+          }
+        },
+        "required": [
+          "pullRequestIds",
+          "stackLabel",
+          "inconsistent",
+          "environments"
+        ]
+      },
+      "QaStartOptions": {
+        "type": "object",
+        "properties": {
+          "ticketKey": {
+            "type": "string"
+          },
+          "partitions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaStartPartition"
+            }
+          }
+        },
+        "required": [
+          "ticketKey",
+          "partitions"
+        ]
+      },
+      "QaStackCarryOver": {
+        "type": "object",
+        "properties": {
+          "approvalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "throughLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sha": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "approvalId",
+          "throughLabel",
+          "sha"
+        ]
+      },
+      "QaStackCarryOverOutcome": {
+        "type": "object",
+        "properties": {
+          "ticketKey": {
+            "type": "string"
+          },
+          "pullRequestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sha": {
+            "type": "string"
+          },
+          "approvalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "carried": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pullRequestId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "sha": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "pullRequestId",
+                "sha"
+              ]
+            }
+          },
+          "evaluations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QaCompletionEvaluation"
+            }
+          },
+          "gateTarget": {
+            "$ref": "#/components/schemas/QaGateTarget"
+          }
+        },
+        "required": [
+          "ticketKey",
+          "pullRequestId",
+          "sha",
+          "approvalId",
+          "carried",
+          "evaluations",
+          "gateTarget"
         ]
       },
       "QaTicketCard": {
@@ -2202,6 +2738,108 @@
                 "currentGenerationVerified": {
                   "type": "boolean"
                 },
+                "currentServices": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "forgeRepo": {
+                        "type": "string"
+                      },
+                      "number": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "ranBranch": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "behind": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "notOnBranch": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "notDeployed": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "forgeRepo",
+                      "number",
+                      "ranBranch",
+                      "behind",
+                      "notOnBranch"
+                    ]
+                  }
+                },
+                "coverage": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "pullRequestId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "headSha": {
+                        "type": "string"
+                      },
+                      "covered": {
+                        "type": "boolean"
+                      },
+                      "reason": {
+                        "anyOf": [
+                          {
+                            "enum": [
+                              "pending",
+                              "behind",
+                              "ahead",
+                              "not run"
+                            ],
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "throughLabel": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "pullRequestId",
+                      "label",
+                      "headSha",
+                      "covered",
+                      "reason",
+                      "throughLabel"
+                    ]
+                  }
+                },
                 "sawChange": {
                   "type": "boolean"
                 },
@@ -2370,6 +3008,25 @@
                     "canceled"
                   ],
                   "type": "string"
+                },
+                "repos": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "repositoryId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "branch": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "repositoryId",
+                      "branch"
+                    ]
+                  }
                 }
               },
               "required": [
@@ -2384,6 +3041,9 @@
             "items": {
               "$ref": "#/components/schemas/QaPartition"
             }
+          },
+          "stackCheckPending": {
+            "type": "boolean"
           },
           "completion": {
             "anyOf": [
@@ -2663,6 +3323,106 @@
           "comment",
           "at",
           "pullRequests"
+        ]
+      },
+      "QaDecidedRejection": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rejectedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comment": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "x-native-type": "date"
+          },
+          "pullRequests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pullRequestId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "forgeRepo": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "sha": {
+                  "type": "string"
+                },
+                "retiredAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "date-time",
+                      "x-native-type": "date"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "retiredReason": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "new-head",
+                        "exempted",
+                        "approved"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "pullRequestId",
+                "forgeRepo",
+                "number",
+                "sha",
+                "retiredAt",
+                "retiredReason"
+              ]
+            }
+          },
+          "ticketKey": {
+            "type": "string"
+          },
+          "sendable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "rejectedBy",
+          "comment",
+          "at",
+          "pullRequests",
+          "ticketKey",
+          "sendable"
         ]
       },
       "QaExemptionDetail": {
@@ -3070,6 +3830,12 @@
                 "type": "array",
                 "items": {
                   "$ref": "#/components/schemas/QaExemptionDetail"
+                }
+              },
+              "rejections": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/QaDecidedRejection"
                 }
               }
             },
@@ -8197,7 +8963,7 @@
       "get": {
         "operationId": "qa.list",
         "summary": "List the QA queue",
-        "description": "The queue as the QA page's sections: In testing, Re-check (a Linked PR head moved since its approval), Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals and exemptions; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.",
+        "description": "The queue as the QA page's sections: In testing, Re-check (a Linked PR head moved since its approval), Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals, rejections and exemptions, plus the latest rejection of every still-rejected Ticket the window does not list, under its own cap; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.",
         "tags": [
           "qa"
         ],
@@ -8424,6 +9190,120 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/QaHealth"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa/tickets/{key}/start-options": {
+      "get": {
+        "operationId": "qa.startOptions",
+        "summary": "Get a QA ticket's start options",
+        "description": "The Ticket's free partitions — those no active session holds — and, per partition, every environment that may seat it with `eligible`, the `missing` unit labels, the reason it cannot (`pending` when a relation is still unknown, `missing` otherwise) and, when it is to-spec only through containment, the `followsLabel` PR and its Ticket. Runs a bounded relation refresh (20 lookups, skipped within 60 s of the last one for the same Ticket), which also stops after 5 s or at the first failed lookup, leaving the rest `pending` (`stack check pending` in the dialog).",
+        "tags": [
+          "qa"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaStartOptions"
                 }
               }
             }
@@ -8956,6 +9836,36 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 9007199254740991
+                  },
+                  "shownHeads": {
+                    "type": "array",
+                    "maxItems": 50,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "pullRequestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "sha": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        }
+                      },
+                      "required": [
+                        "pullRequestId",
+                        "sha"
+                      ]
+                    }
+                  },
+                  "shownCovered": {
+                    "type": "array",
+                    "maxItems": 50,
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
                   },
                   "retested": {
                     "type": "boolean"
@@ -10436,6 +11346,178 @@
           },
           "409": {
             "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Always present on a 429.",
+                "required": true,
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "500",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "502",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "503",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/qa/tickets/{key}/pull-requests/{pullRequestId}/carry-over": {
+      "post": {
+        "operationId": "qa.carryOverPullRequest",
+        "summary": "Carry a pull request over from an approval",
+        "description": "Only for an uncovered Linked PR whose head has the same tree as a commit an unrevoked approval's deployment ran for that repository. Every registration row of the forge PR is carried in one call. Records a carry-over bound to that approval, so revoking or rejecting it withdraws the carry. A closed PR, a different tree, an uncached tree (stack check pending) or an already-covered PR is a 409; a PR not linked to the Ticket is a 404.",
+        "tags": [
+          "qa"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "pullRequestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "approvalId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "approvalId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QaStackCarryOverOutcome"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "403",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
             "content": {
               "application/json": {
                 "schema": {
