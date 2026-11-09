@@ -69,7 +69,7 @@ drift release cancel <promotion-id>   Fail a stuck promotion (--reason <text>, -
 drift repo list              List repositories
 drift repo branches <id>     List a repository's recent branches
 
-drift qa list                List the QA queue (ready, testing, recheck, upcoming)
+drift qa list                List the QA queue (ready, testing, upcoming)
 drift qa show <key>          Show a ticket: linked PRs, sessions, verdicts
 drift qa health              QA sync, outbox and tracker health (operators)
 drift qa start <key>         Start a session (--prs repo#n,... | --env <slug>)
@@ -275,7 +275,7 @@ on failure.
 
 ```bash
 # What is ready, in machine form. A capped section's omitted count is under
-# `truncated` (`ready`, `testing`, `recheck`, `upcoming`); the table prints
+# `truncated` (`ready`, `testing`, `upcoming`); the table prints
 # the same as a `+N more` row under that section.
 drift qa list --json section,key,status,prs
 drift qa list -o json | jq .truncated

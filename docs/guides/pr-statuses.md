@@ -69,8 +69,8 @@ every one of those pull requests to be green.
 
 The status is recomputed when pull request activity changes it (a push, a
 review, opening or closing the PR) and whenever a QA decision or tracker change
-affects the PR. A push makes a new head commit, which starts without an
-approval; an old commit's green status is history.
+affects the PR. A push makes a new head commit, and an unrevoked approval
+stands across pushes, so it covers every later head until revoked or rejected.
 
 Pending descriptions appear in this order of precedence -- the first matching
 row is the one posted:
@@ -81,7 +81,6 @@ row is the one posted:
 | `QA approved — recording in tracker (<ticket key>)` | QA approved, and drift is writing the approval to your tracker. | Wait. If it is stuck, open the QA page and use **Retry** on the failed tracker write. |
 | `QA testing in progress (<name>) — pushes redeploy QA's env` | A QA session is open and the named person owns it. Pushing to a linked PR rebuilds that session's environment. | Wait for the verdict, or coordinate with the session owner before pushing. |
 | `awaiting code review` | The pull request has not been approved by a reviewer yet. | Get a code review and approval. |
-| `changed since QA approval` | A push after the approval moved the head; the approval does not cover the new code. | Get it re-approved in QA, or the approver can re-run the decision. |
 | `ticket closed without QA` | The ticket was moved to Done without a drift QA approval. | Have QA approve it in drift (move the ticket back to the QA queue first if it still needs testing), or exempt the PR if QA is not required. Reopening the ticket in the tracker alone does not clear it. |
 | `Awaiting QA: <ticket key> (<status name>)` | The ticket is queued for QA and waiting for a test session. | Wait for QA to start a session, or start one yourself if you have the role. |
 | `pending — stacked on <repo>#n; Awaiting QA: <ticket key> (<status name>)` | The pull request is stacked on the one above it in its repository, and QA tests the stack in one session on that top's build. The ticket and its status follow the stack position. | Wait for the stack's session, or start this pull request on its own. |

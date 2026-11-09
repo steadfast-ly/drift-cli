@@ -18,6 +18,30 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for ApiProblemDataCoverageReason.
+const (
+	ApiProblemDataCoverageReasonAhead   ApiProblemDataCoverageReason = "ahead"
+	ApiProblemDataCoverageReasonBehind  ApiProblemDataCoverageReason = "behind"
+	ApiProblemDataCoverageReasonNotRun  ApiProblemDataCoverageReason = "not run"
+	ApiProblemDataCoverageReasonPending ApiProblemDataCoverageReason = "pending"
+)
+
+// Valid indicates whether the value is a known member of the ApiProblemDataCoverageReason enum.
+func (e ApiProblemDataCoverageReason) Valid() bool {
+	switch e {
+	case ApiProblemDataCoverageReasonAhead:
+		return true
+	case ApiProblemDataCoverageReasonBehind:
+		return true
+	case ApiProblemDataCoverageReasonNotRun:
+		return true
+	case ApiProblemDataCoverageReasonPending:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CredentialIdentityScopes.
 const (
 	CredentialIdentityScopesPromotePrd CredentialIdentityScopes = "promote:prd"
@@ -339,6 +363,27 @@ func (e QaCompletionState) Valid() bool {
 	}
 }
 
+// Defines values for QaDecidedRejectionPullRequestsRetiredReason.
+const (
+	QaDecidedRejectionPullRequestsRetiredReasonApproved QaDecidedRejectionPullRequestsRetiredReason = "approved"
+	QaDecidedRejectionPullRequestsRetiredReasonExempted QaDecidedRejectionPullRequestsRetiredReason = "exempted"
+	QaDecidedRejectionPullRequestsRetiredReasonNewHead  QaDecidedRejectionPullRequestsRetiredReason = "new-head"
+)
+
+// Valid indicates whether the value is a known member of the QaDecidedRejectionPullRequestsRetiredReason enum.
+func (e QaDecidedRejectionPullRequestsRetiredReason) Valid() bool {
+	switch e {
+	case QaDecidedRejectionPullRequestsRetiredReasonApproved:
+		return true
+	case QaDecidedRejectionPullRequestsRetiredReasonExempted:
+		return true
+	case QaDecidedRejectionPullRequestsRetiredReasonNewHead:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for QaExemptionDetailScope.
 const (
 	QaExemptionDetailScopePr     QaExemptionDetailScope = "pr"
@@ -501,6 +546,30 @@ func (e QaRejectionDetailPullRequestsRetiredReason) Valid() bool {
 	}
 }
 
+// Defines values for QaSessionCardCoverageReason.
+const (
+	QaSessionCardCoverageReasonAhead   QaSessionCardCoverageReason = "ahead"
+	QaSessionCardCoverageReasonBehind  QaSessionCardCoverageReason = "behind"
+	QaSessionCardCoverageReasonNotRun  QaSessionCardCoverageReason = "not run"
+	QaSessionCardCoverageReasonPending QaSessionCardCoverageReason = "pending"
+)
+
+// Valid indicates whether the value is a known member of the QaSessionCardCoverageReason enum.
+func (e QaSessionCardCoverageReason) Valid() bool {
+	switch e {
+	case QaSessionCardCoverageReasonAhead:
+		return true
+	case QaSessionCardCoverageReasonBehind:
+		return true
+	case QaSessionCardCoverageReasonNotRun:
+		return true
+	case QaSessionCardCoverageReasonPending:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for QaSessionCardEndReason.
 const (
 	QaSessionCardEndReasonApproved  QaSessionCardEndReason = "approved"
@@ -543,6 +612,30 @@ func (e QaSessionCardState) Valid() bool {
 	case QaSessionCardStateOpen:
 		return true
 	case QaSessionCardStatePreparing:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaSessionDetailCoverageReason.
+const (
+	QaSessionDetailCoverageReasonAhead   QaSessionDetailCoverageReason = "ahead"
+	QaSessionDetailCoverageReasonBehind  QaSessionDetailCoverageReason = "behind"
+	QaSessionDetailCoverageReasonNotRun  QaSessionDetailCoverageReason = "not run"
+	QaSessionDetailCoverageReasonPending QaSessionDetailCoverageReason = "pending"
+)
+
+// Valid indicates whether the value is a known member of the QaSessionDetailCoverageReason enum.
+func (e QaSessionDetailCoverageReason) Valid() bool {
+	switch e {
+	case QaSessionDetailCoverageReasonAhead:
+		return true
+	case QaSessionDetailCoverageReasonBehind:
+		return true
+	case QaSessionDetailCoverageReasonNotRun:
+		return true
+	case QaSessionDetailCoverageReasonPending:
 		return true
 	default:
 		return false
@@ -669,6 +762,69 @@ func (e QaSessionViewSessionState) Valid() bool {
 	}
 }
 
+// Defines values for QaStartEnvironmentOptionReason.
+const (
+	QaStartEnvironmentOptionReasonMissing QaStartEnvironmentOptionReason = "missing"
+	QaStartEnvironmentOptionReasonPending QaStartEnvironmentOptionReason = "pending"
+)
+
+// Valid indicates whether the value is a known member of the QaStartEnvironmentOptionReason enum.
+func (e QaStartEnvironmentOptionReason) Valid() bool {
+	switch e {
+	case QaStartEnvironmentOptionReasonMissing:
+		return true
+	case QaStartEnvironmentOptionReasonPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaStartEnvironmentOptionStatus.
+const (
+	QaStartEnvironmentOptionStatusBuildFailed  QaStartEnvironmentOptionStatus = "build_failed"
+	QaStartEnvironmentOptionStatusBuilding     QaStartEnvironmentOptionStatus = "building"
+	QaStartEnvironmentOptionStatusCanceled     QaStartEnvironmentOptionStatus = "canceled"
+	QaStartEnvironmentOptionStatusDeployFailed QaStartEnvironmentOptionStatus = "deploy_failed"
+	QaStartEnvironmentOptionStatusDeploying    QaStartEnvironmentOptionStatus = "deploying"
+	QaStartEnvironmentOptionStatusDestroyed    QaStartEnvironmentOptionStatus = "destroyed"
+	QaStartEnvironmentOptionStatusDestroying   QaStartEnvironmentOptionStatus = "destroying"
+	QaStartEnvironmentOptionStatusRequested    QaStartEnvironmentOptionStatus = "requested"
+	QaStartEnvironmentOptionStatusRunning      QaStartEnvironmentOptionStatus = "running"
+	QaStartEnvironmentOptionStatusSleeping     QaStartEnvironmentOptionStatus = "sleeping"
+	QaStartEnvironmentOptionStatusWaking       QaStartEnvironmentOptionStatus = "waking"
+)
+
+// Valid indicates whether the value is a known member of the QaStartEnvironmentOptionStatus enum.
+func (e QaStartEnvironmentOptionStatus) Valid() bool {
+	switch e {
+	case QaStartEnvironmentOptionStatusBuildFailed:
+		return true
+	case QaStartEnvironmentOptionStatusBuilding:
+		return true
+	case QaStartEnvironmentOptionStatusCanceled:
+		return true
+	case QaStartEnvironmentOptionStatusDeployFailed:
+		return true
+	case QaStartEnvironmentOptionStatusDeploying:
+		return true
+	case QaStartEnvironmentOptionStatusDestroyed:
+		return true
+	case QaStartEnvironmentOptionStatusDestroying:
+		return true
+	case QaStartEnvironmentOptionStatusRequested:
+		return true
+	case QaStartEnvironmentOptionStatusRunning:
+		return true
+	case QaStartEnvironmentOptionStatusSleeping:
+		return true
+	case QaStartEnvironmentOptionStatusWaking:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for QaTicketCardActiveSessionsBannersKind.
 const (
 	QaTicketCardActiveSessionsBannersKindAcknowledged           QaTicketCardActiveSessionsBannersKind = "acknowledged"
@@ -687,6 +843,30 @@ func (e QaTicketCardActiveSessionsBannersKind) Valid() bool {
 	case QaTicketCardActiveSessionsBannersKindRedeploy:
 		return true
 	case QaTicketCardActiveSessionsBannersKindUnverified:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QaTicketCardActiveSessionsCoverageReason.
+const (
+	QaTicketCardActiveSessionsCoverageReasonAhead   QaTicketCardActiveSessionsCoverageReason = "ahead"
+	QaTicketCardActiveSessionsCoverageReasonBehind  QaTicketCardActiveSessionsCoverageReason = "behind"
+	QaTicketCardActiveSessionsCoverageReasonNotRun  QaTicketCardActiveSessionsCoverageReason = "not run"
+	QaTicketCardActiveSessionsCoverageReasonPending QaTicketCardActiveSessionsCoverageReason = "pending"
+)
+
+// Valid indicates whether the value is a known member of the QaTicketCardActiveSessionsCoverageReason enum.
+func (e QaTicketCardActiveSessionsCoverageReason) Valid() bool {
+	switch e {
+	case QaTicketCardActiveSessionsCoverageReasonAhead:
+		return true
+	case QaTicketCardActiveSessionsCoverageReasonBehind:
+		return true
+	case QaTicketCardActiveSessionsCoverageReasonNotRun:
+		return true
+	case QaTicketCardActiveSessionsCoverageReasonPending:
 		return true
 	default:
 		return false
@@ -1114,8 +1294,22 @@ type ActivePromotions struct {
 type ApiProblem struct {
 	Code string `json:"code"`
 	Data *struct {
-		Detail   *string `json:"detail,omitempty"`
-		Event    *string `json:"event,omitempty"`
+		Coverage *[]struct {
+			Covered       bool                          `json:"covered"`
+			HeadSha       string                        `json:"headSha"`
+			Label         string                        `json:"label"`
+			PullRequestId openapi_types.UUID            `json:"pullRequestId"`
+			Reason        *ApiProblemDataCoverageReason `json:"reason"`
+			ThroughLabel  *string                       `json:"throughLabel"`
+		} `json:"coverage,omitempty"`
+		Covered    *[]openapi_types.UUID `json:"covered,omitempty"`
+		Detail     *string               `json:"detail,omitempty"`
+		Event      *string               `json:"event,omitempty"`
+		Generation *int                  `json:"generation,omitempty"`
+		Heads      *[]struct {
+			PullRequestId openapi_types.UUID `json:"pullRequestId"`
+			Sha           string             `json:"sha"`
+		} `json:"heads,omitempty"`
 		Revision *int    `json:"revision,omitempty"`
 		State    *string `json:"state,omitempty"`
 		Type     string  `json:"type"`
@@ -1124,6 +1318,9 @@ type ApiProblem struct {
 	Message string `json:"message"`
 	Status  int    `json:"status"`
 }
+
+// ApiProblemDataCoverageReason defines model for ApiProblem.Data.Coverage.Reason.
+type ApiProblemDataCoverageReason string
 
 // ApplicationGroup defines model for ApplicationGroup.
 type ApplicationGroup struct {
@@ -1444,6 +1641,27 @@ type QaCompletionEvaluation struct {
 	TicketKey   string        `json:"ticketKey"`
 }
 
+// QaDecidedRejection defines model for QaDecidedRejection.
+type QaDecidedRejection struct {
+	At           time.Time          `json:"at"`
+	Comment      string             `json:"comment"`
+	Id           openapi_types.UUID `json:"id"`
+	PullRequests []struct {
+		ForgeRepo     string                                       `json:"forgeRepo"`
+		Number        int                                          `json:"number"`
+		PullRequestId openapi_types.UUID                           `json:"pullRequestId"`
+		RetiredAt     *time.Time                                   `json:"retiredAt"`
+		RetiredReason *QaDecidedRejectionPullRequestsRetiredReason `json:"retiredReason"`
+		Sha           string                                       `json:"sha"`
+	} `json:"pullRequests"`
+	RejectedBy *string `json:"rejectedBy"`
+	Sendable   bool    `json:"sendable"`
+	TicketKey  string  `json:"ticketKey"`
+}
+
+// QaDecidedRejectionPullRequestsRetiredReason defines model for QaDecidedRejection.PullRequests.RetiredReason.
+type QaDecidedRejectionPullRequestsRetiredReason string
+
 // QaDeploymentService defines model for QaDeploymentService.
 type QaDeploymentService struct {
 	Branch       string             `json:"branch"`
@@ -1542,18 +1760,20 @@ type QaLinkOutcomeResult string
 
 // QaPartition defines model for QaPartition.
 type QaPartition struct {
-	PullRequestIds []openapi_types.UUID `json:"pullRequestIds"`
-	SessionId      *openapi_types.UUID  `json:"sessionId"`
+	PullRequestIds []openapi_types.UUID    `json:"pullRequestIds"`
+	SessionId      *openapi_types.UUID     `json:"sessionId"`
+	Stacks         *[][]openapi_types.UUID `json:"stacks,omitempty"`
 }
 
 // QaPullRequestCard defines model for QaPullRequestCard.
 type QaPullRequestCard struct {
-	ApprovedAtHead      bool    `json:"approvedAtHead"`
-	ApprovedAtOtherHead bool    `json:"approvedAtOtherHead"`
-	CarriedAtHead       bool    `json:"carriedAtHead"`
-	ExemptReason        *string `json:"exemptReason"`
-	ForgeRepo           string  `json:"forgeRepo"`
-	Gate                *struct {
+	// ApprovedAtHead An unrevoked approval from this Ticket covers the PR at its head; approvals stand across pushes (ADR-0028).
+	ApprovedAtHead bool    `json:"approvedAtHead"`
+	BaseBranch     *string `json:"baseBranch"`
+	CarriedAtHead  bool    `json:"carriedAtHead"`
+	ExemptReason   *string `json:"exemptReason"`
+	ForgeRepo      string  `json:"forgeRepo"`
+	Gate           *struct {
 		Description string                     `json:"description"`
 		State       QaPullRequestCardGateState `json:"state"`
 		TargetUrl   *string                    `json:"targetUrl"`
@@ -1568,8 +1788,13 @@ type QaPullRequestCard struct {
 	PullRequestId  openapi_types.UUID           `json:"pullRequestId"`
 	RepositoryId   openapi_types.UUID           `json:"repositoryId"`
 	ReviewState    QaPullRequestCardReviewState `json:"reviewState"`
-	Title          string                       `json:"title"`
-	Url            string                       `json:"url"`
+	StackCarryOver *QaStackCarryOver            `json:"stackCarryOver,omitempty"`
+	StackedOn      *struct {
+		Label  string `json:"label"`
+		Number int    `json:"number"`
+	} `json:"stackedOn,omitempty"`
+	Title string `json:"title"`
+	Url   string `json:"url"`
 }
 
 // QaPullRequestCardGateState defines model for QaPullRequestCard.Gate.State.
@@ -1585,15 +1810,14 @@ type QaQueue struct {
 	NoTicket        *[]QaUnlinkedPullRequest `json:"noTicket,omitempty"`
 	ReadyForQa      []QaTicketCard           `json:"readyForQa"`
 	RecentlyDecided struct {
-		Approvals  []QaApprovalDetail  `json:"approvals"`
-		Exemptions []QaExemptionDetail `json:"exemptions"`
+		Approvals  []QaApprovalDetail    `json:"approvals"`
+		Exemptions []QaExemptionDetail   `json:"exemptions"`
+		Rejections *[]QaDecidedRejection `json:"rejections,omitempty"`
 	} `json:"recentlyDecided"`
-	Recheck   []QaTicketCard `json:"recheck"`
 	Truncated struct {
 		InTesting  int  `json:"inTesting"`
 		NoTicket   *int `json:"noTicket,omitempty"`
 		ReadyForQa int  `json:"readyForQa"`
-		Recheck    int  `json:"recheck"`
 		Upcoming   int  `json:"upcoming"`
 	} `json:"truncated"`
 	Upcoming []QaTicketCard `json:"upcoming"`
@@ -1652,22 +1876,41 @@ type QaSendOutcome struct {
 
 // QaSessionCard defines model for QaSessionCard.
 type QaSessionCard struct {
-	CurrentGeneration         *int                    `json:"currentGeneration"`
-	CurrentGenerationVerified bool                    `json:"currentGenerationVerified"`
-	EndReason                 *QaSessionCardEndReason `json:"endReason"`
-	EndedAt                   *time.Time              `json:"endedAt"`
-	EnvironmentId             *openapi_types.UUID     `json:"environmentId"`
-	EnvironmentSlug           *string                 `json:"environmentSlug"`
-	Id                        openapi_types.UUID      `json:"id"`
-	Owner                     *string                 `json:"owner"`
-	PullRequestIds            []openapi_types.UUID    `json:"pullRequestIds"`
-	SawChange                 bool                    `json:"sawChange"`
-	StartGeneration           *int                    `json:"startGeneration"`
-	StartedAt                 time.Time               `json:"startedAt"`
-	State                     QaSessionCardState      `json:"state"`
-	TicketKey                 string                  `json:"ticketKey"`
-	UnacknowledgedChange      bool                    `json:"unacknowledgedChange"`
+	Coverage *[]struct {
+		Covered       bool                         `json:"covered"`
+		HeadSha       string                       `json:"headSha"`
+		Label         string                       `json:"label"`
+		PullRequestId openapi_types.UUID           `json:"pullRequestId"`
+		Reason        *QaSessionCardCoverageReason `json:"reason"`
+		ThroughLabel  *string                      `json:"throughLabel"`
+	} `json:"coverage,omitempty"`
+	CurrentGeneration         *int `json:"currentGeneration"`
+	CurrentGenerationVerified bool `json:"currentGenerationVerified"`
+	CurrentServices           *[]struct {
+		Behind      []string  `json:"behind"`
+		ForgeRepo   string    `json:"forgeRepo"`
+		NotDeployed *[]string `json:"notDeployed,omitempty"`
+		NotOnBranch []string  `json:"notOnBranch"`
+		Number      int       `json:"number"`
+		RanBranch   []string  `json:"ranBranch"`
+	} `json:"currentServices,omitempty"`
+	EndReason            *QaSessionCardEndReason `json:"endReason"`
+	EndedAt              *time.Time              `json:"endedAt"`
+	EnvironmentId        *openapi_types.UUID     `json:"environmentId"`
+	EnvironmentSlug      *string                 `json:"environmentSlug"`
+	Id                   openapi_types.UUID      `json:"id"`
+	Owner                *string                 `json:"owner"`
+	PullRequestIds       []openapi_types.UUID    `json:"pullRequestIds"`
+	SawChange            bool                    `json:"sawChange"`
+	StartGeneration      *int                    `json:"startGeneration"`
+	StartedAt            time.Time               `json:"startedAt"`
+	State                QaSessionCardState      `json:"state"`
+	TicketKey            string                  `json:"ticketKey"`
+	UnacknowledgedChange bool                    `json:"unacknowledgedChange"`
 }
+
+// QaSessionCardCoverageReason defines model for QaSessionCard.Coverage.Reason.
+type QaSessionCardCoverageReason string
 
 // QaSessionCardEndReason defines model for QaSessionCard.EndReason.
 type QaSessionCardEndReason string
@@ -1677,23 +1920,42 @@ type QaSessionCardState string
 
 // QaSessionDetail defines model for QaSessionDetail.
 type QaSessionDetail struct {
-	CurrentGeneration         *int                      `json:"currentGeneration"`
-	CurrentGenerationVerified bool                      `json:"currentGenerationVerified"`
-	EndReason                 *QaSessionDetailEndReason `json:"endReason"`
-	EndedAt                   *time.Time                `json:"endedAt"`
-	EnvironmentId             *openapi_types.UUID       `json:"environmentId"`
-	EnvironmentSlug           *string                   `json:"environmentSlug"`
-	Events                    []QaSessionEvent          `json:"events"`
-	Id                        openapi_types.UUID        `json:"id"`
-	Owner                     *string                   `json:"owner"`
-	PullRequestIds            []openapi_types.UUID      `json:"pullRequestIds"`
-	SawChange                 bool                      `json:"sawChange"`
-	StartGeneration           *int                      `json:"startGeneration"`
-	StartedAt                 time.Time                 `json:"startedAt"`
-	State                     QaSessionDetailState      `json:"state"`
-	TicketKey                 string                    `json:"ticketKey"`
-	UnacknowledgedChange      bool                      `json:"unacknowledgedChange"`
+	Coverage *[]struct {
+		Covered       bool                           `json:"covered"`
+		HeadSha       string                         `json:"headSha"`
+		Label         string                         `json:"label"`
+		PullRequestId openapi_types.UUID             `json:"pullRequestId"`
+		Reason        *QaSessionDetailCoverageReason `json:"reason"`
+		ThroughLabel  *string                        `json:"throughLabel"`
+	} `json:"coverage,omitempty"`
+	CurrentGeneration         *int `json:"currentGeneration"`
+	CurrentGenerationVerified bool `json:"currentGenerationVerified"`
+	CurrentServices           *[]struct {
+		Behind      []string  `json:"behind"`
+		ForgeRepo   string    `json:"forgeRepo"`
+		NotDeployed *[]string `json:"notDeployed,omitempty"`
+		NotOnBranch []string  `json:"notOnBranch"`
+		Number      int       `json:"number"`
+		RanBranch   []string  `json:"ranBranch"`
+	} `json:"currentServices,omitempty"`
+	EndReason            *QaSessionDetailEndReason `json:"endReason"`
+	EndedAt              *time.Time                `json:"endedAt"`
+	EnvironmentId        *openapi_types.UUID       `json:"environmentId"`
+	EnvironmentSlug      *string                   `json:"environmentSlug"`
+	Events               []QaSessionEvent          `json:"events"`
+	Id                   openapi_types.UUID        `json:"id"`
+	Owner                *string                   `json:"owner"`
+	PullRequestIds       []openapi_types.UUID      `json:"pullRequestIds"`
+	SawChange            bool                      `json:"sawChange"`
+	StartGeneration      *int                      `json:"startGeneration"`
+	StartedAt            time.Time                 `json:"startedAt"`
+	State                QaSessionDetailState      `json:"state"`
+	TicketKey            string                    `json:"ticketKey"`
+	UnacknowledgedChange bool                      `json:"unacknowledgedChange"`
 }
+
+// QaSessionDetailCoverageReason defines model for QaSessionDetail.Coverage.Reason.
+type QaSessionDetailCoverageReason string
 
 // QaSessionDetailEndReason defines model for QaSessionDetail.EndReason.
 type QaSessionDetailEndReason string
@@ -1740,6 +2002,59 @@ type QaSessionViewSessionEndReason string
 // QaSessionViewSessionState defines model for QaSessionView.Session.State.
 type QaSessionViewSessionState string
 
+// QaStackCarryOver defines model for QaStackCarryOver.
+type QaStackCarryOver struct {
+	ApprovalId   openapi_types.UUID `json:"approvalId"`
+	Sha          string             `json:"sha"`
+	ThroughLabel *string            `json:"throughLabel"`
+}
+
+// QaStackCarryOverOutcome defines model for QaStackCarryOverOutcome.
+type QaStackCarryOverOutcome struct {
+	ApprovalId openapi_types.UUID `json:"approvalId"`
+	Carried    []struct {
+		PullRequestId openapi_types.UUID `json:"pullRequestId"`
+		Sha           string             `json:"sha"`
+	} `json:"carried"`
+	Evaluations   []QaCompletionEvaluation `json:"evaluations"`
+	GateTarget    QaGateTarget             `json:"gateTarget"`
+	PullRequestId openapi_types.UUID       `json:"pullRequestId"`
+	Sha           string                   `json:"sha"`
+	TicketKey     string                   `json:"ticketKey"`
+}
+
+// QaStartEnvironmentOption defines model for QaStartEnvironmentOption.
+type QaStartEnvironmentOption struct {
+	Eligible         bool                            `json:"eligible"`
+	FollowsLabel     *string                         `json:"followsLabel,omitempty"`
+	FollowsTicketKey *string                         `json:"followsTicketKey,omitempty"`
+	Id               openapi_types.UUID              `json:"id"`
+	Missing          []string                        `json:"missing"`
+	Reason           *QaStartEnvironmentOptionReason `json:"reason,omitempty"`
+	Slug             string                          `json:"slug"`
+	Status           QaStartEnvironmentOptionStatus  `json:"status"`
+}
+
+// QaStartEnvironmentOptionReason defines model for QaStartEnvironmentOption.Reason.
+type QaStartEnvironmentOptionReason string
+
+// QaStartEnvironmentOptionStatus defines model for QaStartEnvironmentOption.Status.
+type QaStartEnvironmentOptionStatus string
+
+// QaStartOptions defines model for QaStartOptions.
+type QaStartOptions struct {
+	Partitions []QaStartPartition `json:"partitions"`
+	TicketKey  string             `json:"ticketKey"`
+}
+
+// QaStartPartition defines model for QaStartPartition.
+type QaStartPartition struct {
+	Environments   []QaStartEnvironmentOption `json:"environments"`
+	Inconsistent   []string                   `json:"inconsistent"`
+	PullRequestIds []openapi_types.UUID       `json:"pullRequestIds"`
+	StackLabel     string                     `json:"stackLabel"`
+}
+
 // QaTicketCard defines model for QaTicketCard.
 type QaTicketCard struct {
 	ActiveSessions []struct {
@@ -1757,22 +2072,38 @@ type QaTicketCard struct {
 				RepositoryId openapi_types.UUID `json:"repositoryId"`
 			} `json:"services"`
 		} `json:"banners"`
-		ChangeCount               int                                  `json:"changeCount"`
-		CurrentGeneration         *int                                 `json:"currentGeneration"`
-		CurrentGenerationVerified bool                                 `json:"currentGenerationVerified"`
-		EndReason                 *QaTicketCardActiveSessionsEndReason `json:"endReason"`
-		EndedAt                   *time.Time                           `json:"endedAt"`
-		EnvironmentId             *openapi_types.UUID                  `json:"environmentId"`
-		EnvironmentSlug           *string                              `json:"environmentSlug"`
-		Id                        openapi_types.UUID                   `json:"id"`
-		Owner                     *string                              `json:"owner"`
-		PullRequestIds            []openapi_types.UUID                 `json:"pullRequestIds"`
-		SawChange                 bool                                 `json:"sawChange"`
-		StartGeneration           *int                                 `json:"startGeneration"`
-		StartedAt                 time.Time                            `json:"startedAt"`
-		State                     QaTicketCardActiveSessionsState      `json:"state"`
-		TicketKey                 string                               `json:"ticketKey"`
-		UnacknowledgedChange      bool                                 `json:"unacknowledgedChange"`
+		ChangeCount int `json:"changeCount"`
+		Coverage    *[]struct {
+			Covered       bool                                      `json:"covered"`
+			HeadSha       string                                    `json:"headSha"`
+			Label         string                                    `json:"label"`
+			PullRequestId openapi_types.UUID                        `json:"pullRequestId"`
+			Reason        *QaTicketCardActiveSessionsCoverageReason `json:"reason"`
+			ThroughLabel  *string                                   `json:"throughLabel"`
+		} `json:"coverage,omitempty"`
+		CurrentGeneration         *int `json:"currentGeneration"`
+		CurrentGenerationVerified bool `json:"currentGenerationVerified"`
+		CurrentServices           *[]struct {
+			Behind      []string  `json:"behind"`
+			ForgeRepo   string    `json:"forgeRepo"`
+			NotDeployed *[]string `json:"notDeployed,omitempty"`
+			NotOnBranch []string  `json:"notOnBranch"`
+			Number      int       `json:"number"`
+			RanBranch   []string  `json:"ranBranch"`
+		} `json:"currentServices,omitempty"`
+		EndReason            *QaTicketCardActiveSessionsEndReason `json:"endReason"`
+		EndedAt              *time.Time                           `json:"endedAt"`
+		EnvironmentId        *openapi_types.UUID                  `json:"environmentId"`
+		EnvironmentSlug      *string                              `json:"environmentSlug"`
+		Id                   openapi_types.UUID                   `json:"id"`
+		Owner                *string                              `json:"owner"`
+		PullRequestIds       []openapi_types.UUID                 `json:"pullRequestIds"`
+		SawChange            bool                                 `json:"sawChange"`
+		StartGeneration      *int                                 `json:"startGeneration"`
+		StartedAt            time.Time                            `json:"startedAt"`
+		State                QaTicketCardActiveSessionsState      `json:"state"`
+		TicketKey            string                               `json:"ticketKey"`
+		UnacknowledgedChange bool                                 `json:"unacknowledgedChange"`
 	} `json:"activeSessions"`
 	Completion *struct {
 		Current bool                        `json:"current"`
@@ -1781,7 +2112,11 @@ type QaTicketCard struct {
 	} `json:"completion"`
 	EnteredQueueAt *time.Time `json:"enteredQueueAt"`
 	Environments   []struct {
-		Id     openapi_types.UUID             `json:"id"`
+		Id    openapi_types.UUID `json:"id"`
+		Repos *[]struct {
+			Branch       string             `json:"branch"`
+			RepositoryId openapi_types.UUID `json:"repositoryId"`
+		} `json:"repos,omitempty"`
 		Slug   string                         `json:"slug"`
 		Status QaTicketCardEnvironmentsStatus `json:"status"`
 	} `json:"environments"`
@@ -1791,6 +2126,7 @@ type QaTicketCard struct {
 	Partitions                   []QaPartition              `json:"partitions"`
 	ProjectKey                   string                     `json:"projectKey"`
 	PullRequests                 []QaPullRequestCard        `json:"pullRequests"`
+	StackCheckPending            *bool                      `json:"stackCheckPending,omitempty"`
 	StatusCategory               QaTicketCardStatusCategory `json:"statusCategory"`
 	StatusId                     string                     `json:"statusId"`
 	StatusName                   *string                    `json:"statusName"`
@@ -1801,6 +2137,9 @@ type QaTicketCard struct {
 
 // QaTicketCardActiveSessionsBannersKind defines model for QaTicketCard.ActiveSessions.Banners.Kind.
 type QaTicketCardActiveSessionsBannersKind string
+
+// QaTicketCardActiveSessionsCoverageReason defines model for QaTicketCard.ActiveSessions.Coverage.Reason.
+type QaTicketCardActiveSessionsCoverageReason string
 
 // QaTicketCardActiveSessionsEndReason defines model for QaTicketCard.ActiveSessions.EndReason.
 type QaTicketCardActiveSessionsEndReason string
@@ -2106,10 +2445,15 @@ type QaApproveJSONBody struct {
 		Data        string `json:"data"`
 		Filename    string `json:"filename"`
 	} `json:"files,omitempty"`
-	NoRetestReason  *string `json:"noRetestReason,omitempty"`
-	Note            *string `json:"note,omitempty"`
-	Retested        bool    `json:"retested"`
-	ShownGeneration int     `json:"shownGeneration"`
+	NoRetestReason  *string               `json:"noRetestReason,omitempty"`
+	Note            *string               `json:"note,omitempty"`
+	Retested        bool                  `json:"retested"`
+	ShownCovered    *[]openapi_types.UUID `json:"shownCovered,omitempty"`
+	ShownGeneration int                   `json:"shownGeneration"`
+	ShownHeads      *[]struct {
+		PullRequestId openapi_types.UUID `json:"pullRequestId"`
+		Sha           string             `json:"sha"`
+	} `json:"shownHeads,omitempty"`
 }
 
 // QaRejectJSONBody defines parameters for QaReject.
@@ -2131,6 +2475,11 @@ type QaCommentJSONBody struct {
 		Data        string `json:"data"`
 		Filename    string `json:"filename"`
 	} `json:"files,omitempty"`
+}
+
+// QaCarryOverPullRequestJSONBody defines parameters for QaCarryOverPullRequest.
+type QaCarryOverPullRequestJSONBody struct {
+	ApprovalId openapi_types.UUID `json:"approvalId"`
 }
 
 // QaStartJSONBody defines parameters for QaStart.
@@ -2231,6 +2580,9 @@ type QaRejectJSONRequestBody QaRejectJSONBody
 
 // QaCommentJSONRequestBody defines body for QaComment for application/json ContentType.
 type QaCommentJSONRequestBody QaCommentJSONBody
+
+// QaCarryOverPullRequestJSONRequestBody defines body for QaCarryOverPullRequest for application/json ContentType.
+type QaCarryOverPullRequestJSONRequestBody QaCarryOverPullRequestJSONBody
 
 // QaStartJSONRequestBody defines body for QaStart for application/json ContentType.
 type QaStartJSONRequestBody QaStartJSONBody
@@ -2608,7 +2960,7 @@ type ClientInterface interface {
 
 	// QaList List the QA queue
 	//
-	// The queue as the QA page's sections: In testing, Re-check (a Linked PR head moved since its approval), Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals and exemptions; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
+	// The queue as the QA page's sections: In testing, Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals, rejections and exemptions, plus the latest rejection of every still-rejected Ticket the window does not list, under its own cap; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
 	//
 	// Corresponds with GET /qa (the `QaList` operationId).
 	QaList(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -2781,6 +3133,24 @@ type ClientInterface interface {
 	// Corresponds with POST /qa/tickets/{key}/comments (the `QaComment` operationId).
 	QaComment(ctx context.Context, key string, body QaCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// QaCarryOverPullRequestWithBody Carry a pull request over from an approval
+	//
+	// Only for an uncovered Linked PR whose head has the same tree as a commit an unrevoked approval's deployment ran for that repository. Every registration row of the forge PR is carried in one call. Records a carry-over bound to that approval, so revoking or rejecting it withdraws the carry. A closed PR, a different tree, an uncached tree (stack check pending) or an already-covered PR is a 409; a PR not linked to the Ticket is a 404.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /qa/tickets/{key}/pull-requests/{pullRequestId}/carry-over (the `QaCarryOverPullRequest` operationId).
+	QaCarryOverPullRequestWithBody(ctx context.Context, key string, pullRequestId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaCarryOverPullRequest Carry a pull request over from an approval
+	//
+	// Only for an uncovered Linked PR whose head has the same tree as a commit an unrevoked approval's deployment ran for that repository. Every registration row of the forge PR is carried in one call. Records a carry-over bound to that approval, so revoking or rejecting it withdraws the carry. A closed PR, a different tree, an uncached tree (stack check pending) or an already-covered PR is a 409; a PR not linked to the Ticket is a 404.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /qa/tickets/{key}/pull-requests/{pullRequestId}/carry-over (the `QaCarryOverPullRequest` operationId).
+	QaCarryOverPullRequest(ctx context.Context, key string, pullRequestId openapi_types.UUID, body QaCarryOverPullRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// QaSend Send a ticket to QA
 	//
 	// Queues the move back to the project's queue status. Refused as a 409 when drift's last-synced view already has the Ticket in the queue, approved or Done — retry after the next sync.
@@ -2805,6 +3175,13 @@ type ClientInterface interface {
 	//
 	// Corresponds with POST /qa/tickets/{key}/sessions (the `QaStart` operationId).
 	QaStart(ctx context.Context, key string, body QaStartJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// QaStartOptions Get a QA ticket's start options
+	//
+	// The Ticket's free partitions — those no active session holds — and, per partition, every environment that may seat it with `eligible`, the `missing` unit labels, the reason it cannot (`pending` when a relation is still unknown, `missing` otherwise) and, when it is to-spec only through containment, the `followsLabel` PR and its Ticket. Runs a bounded relation refresh (20 lookups, skipped within 60 s of the last one for the same Ticket), which also stops after 5 s or at the first failed lookup, leaving the rest `pending` (`stack check pending` in the dialog).
+	//
+	// Corresponds with GET /qa/tickets/{key}/start-options (the `QaStartOptions` operationId).
+	QaStartOptions(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// QaRetryTrackerWrite Retry a failed tracker write
 	//
@@ -3437,7 +3814,7 @@ func (c *Client) EnvironmentsStatus(ctx context.Context, ref string, reqEditors 
 
 // QaList List the QA queue
 //
-// The queue as the QA page's sections: In testing, Re-check (a Linked PR head moved since its approval), Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals and exemptions; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
+// The queue as the QA page's sections: In testing, Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals, rejections and exemptions, plus the latest rejection of every still-rejected Ticket the window does not list, under its own cap; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
 //
 // Corresponds with GET /qa (the `QaList` operationId).
 func (c *Client) QaList(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -3820,6 +4197,44 @@ func (c *Client) QaComment(ctx context.Context, key string, body QaCommentJSONRe
 	return c.Client.Do(req)
 }
 
+// QaCarryOverPullRequestWithBody Carry a pull request over from an approval
+//
+// Only for an uncovered Linked PR whose head has the same tree as a commit an unrevoked approval's deployment ran for that repository. Every registration row of the forge PR is carried in one call. Records a carry-over bound to that approval, so revoking or rejecting it withdraws the carry. A closed PR, a different tree, an uncached tree (stack check pending) or an already-covered PR is a 409; a PR not linked to the Ticket is a 404.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /qa/tickets/{key}/pull-requests/{pullRequestId}/carry-over (the `QaCarryOverPullRequest` operationId).
+func (c *Client) QaCarryOverPullRequestWithBody(ctx context.Context, key string, pullRequestId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaCarryOverPullRequestRequestWithBody(c.Server, key, pullRequestId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaCarryOverPullRequest Carry a pull request over from an approval
+//
+// Only for an uncovered Linked PR whose head has the same tree as a commit an unrevoked approval's deployment ran for that repository. Every registration row of the forge PR is carried in one call. Records a carry-over bound to that approval, so revoking or rejecting it withdraws the carry. A closed PR, a different tree, an uncached tree (stack check pending) or an already-covered PR is a 409; a PR not linked to the Ticket is a 404.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /qa/tickets/{key}/pull-requests/{pullRequestId}/carry-over (the `QaCarryOverPullRequest` operationId).
+func (c *Client) QaCarryOverPullRequest(ctx context.Context, key string, pullRequestId openapi_types.UUID, body QaCarryOverPullRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaCarryOverPullRequestRequest(c.Server, key, pullRequestId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // QaSend Send a ticket to QA
 //
 // Queues the move back to the project's queue status. Refused as a 409 when drift's last-synced view already has the Ticket in the queue, approved or Done — retry after the next sync.
@@ -3865,6 +4280,23 @@ func (c *Client) QaStartWithBody(ctx context.Context, key string, contentType st
 // Corresponds with POST /qa/tickets/{key}/sessions (the `QaStart` operationId).
 func (c *Client) QaStart(ctx context.Context, key string, body QaStartJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewQaStartRequest(c.Server, key, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// QaStartOptions Get a QA ticket's start options
+//
+// The Ticket's free partitions — those no active session holds — and, per partition, every environment that may seat it with `eligible`, the `missing` unit labels, the reason it cannot (`pending` when a relation is still unknown, `missing` otherwise) and, when it is to-spec only through containment, the `followsLabel` PR and its Ticket. Runs a bounded relation refresh (20 lookups, skipped within 60 s of the last one for the same Ticket), which also stops after 5 s or at the first failed lookup, leaving the rest `pending` (`stack check pending` in the dialog).
+//
+// Corresponds with GET /qa/tickets/{key}/start-options (the `QaStartOptions` operationId).
+func (c *Client) QaStartOptions(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewQaStartOptionsRequest(c.Server, key)
 	if err != nil {
 		return nil, err
 	}
@@ -5720,6 +6152,60 @@ func NewQaCommentRequestWithBody(server string, key string, contentType string, 
 	return req, nil
 }
 
+// NewQaCarryOverPullRequestRequest calls the generic QaCarryOverPullRequest builder with application/json body
+func NewQaCarryOverPullRequestRequest(server string, key string, pullRequestId openapi_types.UUID, body QaCarryOverPullRequestJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewQaCarryOverPullRequestRequestWithBody(server, key, pullRequestId, "application/json", bodyReader)
+}
+
+// NewQaCarryOverPullRequestRequestWithBody constructs an http.Request for the QaCarryOverPullRequest method, with any body, and a specified content type
+func NewQaCarryOverPullRequestRequestWithBody(server string, key string, pullRequestId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "key", key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "pullRequestId", pullRequestId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa/tickets/%s/pull-requests/%s/carry-over", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewQaSendRequest constructs an http.Request for the QaSend method
 func NewQaSendRequest(server string, key string) (*http.Request, error) {
 	var err error
@@ -5797,6 +6283,40 @@ func NewQaStartRequestWithBody(server string, key string, contentType string, bo
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewQaStartOptionsRequest constructs an http.Request for the QaStartOptions method
+func NewQaStartOptionsRequest(server string, key string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "key", key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/qa/tickets/%s/start-options", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -6638,7 +7158,7 @@ type ClientWithResponsesInterface interface {
 
 	// QaListWithResponse List the QA queue
 	//
-	// The queue as the QA page's sections: In testing, Re-check (a Linked PR head moved since its approval), Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals and exemptions; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
+	// The queue as the QA page's sections: In testing, Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals, rejections and exemptions, plus the latest rejection of every still-rejected Ticket the window does not list, under its own cap; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -6825,6 +7345,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /qa/tickets/{key}/comments (the `QaComment` operationId).
 	QaCommentWithResponse(ctx context.Context, key string, body QaCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*QaCommentResponse, error)
 
+	// QaCarryOverPullRequestWithBodyWithResponse Carry a pull request over from an approval
+	//
+	// Only for an uncovered Linked PR whose head has the same tree as a commit an unrevoked approval's deployment ran for that repository. Every registration row of the forge PR is carried in one call. Records a carry-over bound to that approval, so revoking or rejecting it withdraws the carry. A closed PR, a different tree, an uncached tree (stack check pending) or an already-covered PR is a 409; a PR not linked to the Ticket is a 404.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/tickets/{key}/pull-requests/{pullRequestId}/carry-over (the `QaCarryOverPullRequest` operationId).
+	QaCarryOverPullRequestWithBodyWithResponse(ctx context.Context, key string, pullRequestId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*QaCarryOverPullRequestResponse, error)
+
+	// QaCarryOverPullRequestWithResponse Carry a pull request over from an approval
+	//
+	// Only for an uncovered Linked PR whose head has the same tree as a commit an unrevoked approval's deployment ran for that repository. Every registration row of the forge PR is carried in one call. Records a carry-over bound to that approval, so revoking or rejecting it withdraws the carry. A closed PR, a different tree, an uncached tree (stack check pending) or an already-covered PR is a 409; a PR not linked to the Ticket is a 404.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /qa/tickets/{key}/pull-requests/{pullRequestId}/carry-over (the `QaCarryOverPullRequest` operationId).
+	QaCarryOverPullRequestWithResponse(ctx context.Context, key string, pullRequestId openapi_types.UUID, body QaCarryOverPullRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*QaCarryOverPullRequestResponse, error)
+
 	// QaSendWithResponse Send a ticket to QA
 	//
 	// Queues the move back to the project's queue status. Refused as a 409 when drift's last-synced view already has the Ticket in the queue, approved or Done — retry after the next sync.
@@ -6851,6 +7389,15 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with POST /qa/tickets/{key}/sessions (the `QaStart` operationId).
 	QaStartWithResponse(ctx context.Context, key string, body QaStartJSONRequestBody, reqEditors ...RequestEditorFn) (*QaStartResponse, error)
+
+	// QaStartOptionsWithResponse Get a QA ticket's start options
+	//
+	// The Ticket's free partitions — those no active session holds — and, per partition, every environment that may seat it with `eligible`, the `missing` unit labels, the reason it cannot (`pending` when a relation is still unknown, `missing` otherwise) and, when it is to-spec only through containment, the `followsLabel` PR and its Ticket. Runs a bounded relation refresh (20 lookups, skipped within 60 s of the last one for the same Ticket), which also stops after 5 s or at the first failed lookup, leaving the rest `pending` (`stack check pending` in the dialog).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /qa/tickets/{key}/start-options (the `QaStartOptions` operationId).
+	QaStartOptionsWithResponse(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*QaStartOptionsResponse, error)
 
 	// QaRetryTrackerWriteWithResponse Retry a failed tracker write
 	//
@@ -10829,6 +11376,124 @@ func (r QaCommentResponse) ContentType() string {
 	return ""
 }
 
+// QaCarryOverPullRequestResponse429Headers the declared response headers of an HTTP 429 response for QaCarryOverPullRequest
+type QaCarryOverPullRequestResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaCarryOverPullRequestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaStackCarryOverOutcome
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON502 the response for an HTTP 502 `application/json` response
+	JSON502 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaCarryOverPullRequestResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaCarryOverPullRequestResponse) GetJSON200() *QaStackCarryOverOutcome {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaCarryOverPullRequestResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaCarryOverPullRequestResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaCarryOverPullRequestResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaCarryOverPullRequestResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r QaCarryOverPullRequestResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r QaCarryOverPullRequestResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaCarryOverPullRequestResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaCarryOverPullRequestResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON502 returns the response for an HTTP 502 `application/json` response
+func (r QaCarryOverPullRequestResponse) GetJSON502() *ApiProblem {
+	return r.JSON502
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaCarryOverPullRequestResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaCarryOverPullRequestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaCarryOverPullRequestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaCarryOverPullRequestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaCarryOverPullRequestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // QaSendResponse429Headers the declared response headers of an HTTP 429 response for QaSend
 type QaSendResponse429Headers struct {
 	RetryAfter int
@@ -11045,6 +11710,103 @@ func (r QaStartResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r QaStartResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// QaStartOptionsResponse429Headers the declared response headers of an HTTP 429 response for QaStartOptions
+type QaStartOptionsResponse429Headers struct {
+	RetryAfter int
+}
+
+type QaStartOptionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *QaStartOptions
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *QaStartOptionsResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r QaStartOptionsResponse) GetJSON200() *QaStartOptions {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r QaStartOptionsResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r QaStartOptionsResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r QaStartOptionsResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r QaStartOptionsResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r QaStartOptionsResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r QaStartOptionsResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r QaStartOptionsResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r QaStartOptionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r QaStartOptionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r QaStartOptionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r QaStartOptionsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -12645,7 +13407,7 @@ func (c *ClientWithResponses) EnvironmentsStatusWithResponse(ctx context.Context
 
 // QaListWithResponse List the QA queue
 //
-// The queue as the QA page's sections: In testing, Re-check (a Linked PR head moved since its approval), Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals and exemptions; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
+// The queue as the QA page's sections: In testing, Ready for QA (oldest entry first), Upcoming, Decided (14 days, approvals, rejections and exemptions, plus the latest rejection of every still-rejected Ticket the window does not list, under its own cap; collapsed in the UI) and — for an approver — the carry-over candidates. Each card carries its Linked PRs, the `drift/qa` state per head, its open session and the failed tracker writes with the ids Retry needs.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -12958,6 +13720,36 @@ func (c *ClientWithResponses) QaCommentWithResponse(ctx context.Context, key str
 	return ParseQaCommentResponse(rsp)
 }
 
+// QaCarryOverPullRequestWithBodyWithResponse Carry a pull request over from an approval
+//
+// Only for an uncovered Linked PR whose head has the same tree as a commit an unrevoked approval's deployment ran for that repository. Every registration row of the forge PR is carried in one call. Records a carry-over bound to that approval, so revoking or rejecting it withdraws the carry. A closed PR, a different tree, an uncached tree (stack check pending) or an already-covered PR is a 409; a PR not linked to the Ticket is a 404.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/tickets/{key}/pull-requests/{pullRequestId}/carry-over (the `QaCarryOverPullRequest` operationId).
+func (c *ClientWithResponses) QaCarryOverPullRequestWithBodyWithResponse(ctx context.Context, key string, pullRequestId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*QaCarryOverPullRequestResponse, error) {
+	rsp, err := c.QaCarryOverPullRequestWithBody(ctx, key, pullRequestId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaCarryOverPullRequestResponse(rsp)
+}
+
+// QaCarryOverPullRequestWithResponse Carry a pull request over from an approval
+//
+// Only for an uncovered Linked PR whose head has the same tree as a commit an unrevoked approval's deployment ran for that repository. Every registration row of the forge PR is carried in one call. Records a carry-over bound to that approval, so revoking or rejecting it withdraws the carry. A closed PR, a different tree, an uncached tree (stack check pending) or an already-covered PR is a 409; a PR not linked to the Ticket is a 404.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /qa/tickets/{key}/pull-requests/{pullRequestId}/carry-over (the `QaCarryOverPullRequest` operationId).
+func (c *ClientWithResponses) QaCarryOverPullRequestWithResponse(ctx context.Context, key string, pullRequestId openapi_types.UUID, body QaCarryOverPullRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*QaCarryOverPullRequestResponse, error) {
+	rsp, err := c.QaCarryOverPullRequest(ctx, key, pullRequestId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaCarryOverPullRequestResponse(rsp)
+}
+
 // QaSendWithResponse Send a ticket to QA
 //
 // Queues the move back to the project's queue status. Refused as a 409 when drift's last-synced view already has the Ticket in the queue, approved or Done — retry after the next sync.
@@ -13001,6 +13793,21 @@ func (c *ClientWithResponses) QaStartWithResponse(ctx context.Context, key strin
 		return nil, err
 	}
 	return ParseQaStartResponse(rsp)
+}
+
+// QaStartOptionsWithResponse Get a QA ticket's start options
+//
+// The Ticket's free partitions — those no active session holds — and, per partition, every environment that may seat it with `eligible`, the `missing` unit labels, the reason it cannot (`pending` when a relation is still unknown, `missing` otherwise) and, when it is to-spec only through containment, the `followsLabel` PR and its Ticket. Runs a bounded relation refresh (20 lookups, skipped within 60 s of the last one for the same Ticket), which also stops after 5 s or at the first failed lookup, leaving the rest `pending` (`stack check pending` in the dialog).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /qa/tickets/{key}/start-options (the `QaStartOptions` operationId).
+func (c *ClientWithResponses) QaStartOptionsWithResponse(ctx context.Context, key string, reqEditors ...RequestEditorFn) (*QaStartOptionsResponse, error) {
+	rsp, err := c.QaStartOptions(ctx, key, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseQaStartOptionsResponse(rsp)
 }
 
 // QaRetryTrackerWriteWithResponse Retry a failed tracker write
@@ -16747,6 +17554,115 @@ func ParseQaCommentResponse(rsp *http.Response) (*QaCommentResponse, error) {
 	return response, nil
 }
 
+// ParseQaCarryOverPullRequestResponse parses an HTTP response from a QaCarryOverPullRequestWithResponse call
+func ParseQaCarryOverPullRequestResponse(rsp *http.Response) (*QaCarryOverPullRequestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaCarryOverPullRequestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaStackCarryOverOutcome
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 502:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON502 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaCarryOverPullRequestResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
 // ParseQaSendResponse parses an HTTP response from a QaSendWithResponse call
 func ParseQaSendResponse(rsp *http.Response) (*QaSendResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -16938,6 +17854,94 @@ func ParseQaStartResponse(rsp *http.Response) (*QaStartResponse, error) {
 	switch {
 	case rsp.StatusCode == 429:
 		var headers QaStartResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseQaStartOptionsResponse parses an HTTP response from a QaStartOptionsWithResponse call
+func ParseQaStartOptionsResponse(rsp *http.Response) (*QaStartOptionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &QaStartOptionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest QaStartOptions
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers QaStartOptionsResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {

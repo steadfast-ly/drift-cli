@@ -330,7 +330,7 @@ func qaSawChange(ctx context.Context, app *App, id uuid.UUID) bool {
 		return false
 	}
 	queue := *resp.JSON200
-	for _, cards := range [][]api.QaTicketCard{queue.ReadyForQa, queue.InTesting, queue.Recheck, queue.Upcoming} {
+	for _, cards := range [][]api.QaTicketCard{queue.ReadyForQa, queue.InTesting, queue.Upcoming} {
 		for _, c := range cards {
 			for _, s := range c.ActiveSessions {
 				if s.Id == id {
@@ -1679,7 +1679,7 @@ func resolveQueuedPR(ctx context.Context, sess *Session, ref, hint string) (qaPR
 	}
 	q := *resp.JSON200
 	all := make([]qaQueuePR, 0, 16)
-	for _, cards := range [][]api.QaTicketCard{q.ReadyForQa, q.InTesting, q.Recheck, q.Upcoming} {
+	for _, cards := range [][]api.QaTicketCard{q.ReadyForQa, q.InTesting, q.Upcoming} {
 		for _, c := range cards {
 			all = append(all, qaCardRows(c.Key, c.PullRequests)...)
 		}

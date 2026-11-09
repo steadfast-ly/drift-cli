@@ -29,7 +29,7 @@ The page is one list of rows split into sections, spaced to read calmly rather
 than to fit one screen. The section bar stays pinned under the page title and
 links each section with its count; a section the server capped adds `+N more`
 beside the count. An empty section keeps its heading and puts one muted phrase
-beside it: "In testing — nobody right now", "Re-check — nothing to re-check",
+beside it: "In testing — nobody right now",
 "Ready for QA — nothing ready for QA", "Upcoming — nothing upcoming", "No
 ticket — every open pull request has a ticket or an exemption". Under
 **Mine** the phrase reads "— none of yours", or "— none of yours among the
@@ -39,7 +39,6 @@ heading appends the cap's `+N more`, because the cap counts everyone's rows.
 | Section | What is in it |
 | ------- | ------------- |
 | **In testing** | Tickets with an active Test Session (preparing or open). A Ticket stays here while any partition is still free. |
-| **Re-check** | Tickets with an unrevoked approval whose pull request head has moved, where nothing covers the new head. |
 | **Ready for QA** | Tickets in the ready-for-QA status whose open Linked PRs are all review-approved or exempt, and Tickets in the approved status with no current drift completion (for example after an approval was revoked), oldest first. |
 | **Upcoming** | Tickets in the queue status still waiting on code review, and Tickets in the upcoming statuses. |
 | **No ticket** | Open pull requests with no live ticket link and no exemption. See [No ticket](#no-ticket). |
@@ -156,7 +155,7 @@ Otherwise a row in In testing gets **Review**, which opens the detail; a row in
 any other section shows no primary unless it has a warning, a free partition,
 or is a Ready for QA row on the Carry-over list.
 
-**Start testing** is filled on a Ready for QA or Re-check row and outlined in
+**Start testing** is filled on a Ready for QA row and outlined in
 **Upcoming**, where QA may start before code review; the behaviour is the same.
 A Ready for QA row the tracker approved but drift has not has no **Start
 testing** primary, because starting it would test what the tracker already
@@ -589,9 +588,8 @@ drift qa unexempt <exemption-id>
 --approval <id>`, withdraws a drift approval. The gate goes pending again; a
 Ticket still in the approved tracker status shows in **Ready for QA** with the
 **Tested in Jira** badge, and you can approve it again or move it back to the
-queue in the tracker. A push is different: the approval stays but no longer
-covers the head, so the gate reads "changed since QA approval" and the Ticket
-shows under **Re-check**.
+queue in the tracker. A push is different: an approval stands across pushes,
+covering the pull request at every later head until it is revoked or rejected.
 
 Moving a Ticket in the tracker also matters:
 
@@ -654,7 +652,6 @@ granted. A tree drift has not checked yet refuses with a message ending
 | pending | `QA testing in progress (<name>) — pushes redeploy QA's env` | Wait for the session to end, or start one. |
 | pending | `QA approved — recording in tracker (<key>)` | Wait; drift is writing the comment and status move. |
 | pending | `awaiting code review` | Get the PR review-approved. |
-| pending | `changed since QA approval` | The head moved; start a new session on the new revision. |
 | pending | `pending — stacked on <repo>#n; Awaiting QA: <key> (<status name>)` | The pull request is stacked on the one above it; test the stack in one session, or this pull request on its own. The ticket and its status follow the stack position. |
 | pending | `Awaiting QA: <key> (<status name>)` | The Ticket is in the queue; test it. |
 | pending | `waiting on <other ticket key>` | A shared PR also belongs to another Ticket that is not complete; finish that one too. |
@@ -687,7 +684,7 @@ drift qa list --json section,key,status,prs
 drift qa show PROJ-123
 ```
 
-`list` prints a `section` column: `ready`, `testing`, `recheck`, `upcoming`,
+`list` prints a `section` column: `ready`, `testing`, `upcoming`,
 then a **No ticket** table of the open pull requests with no live ticket link
 and no exemption (PR, title, author, updated). A capped section ends with a
 `+N more` row; the machine formats carry the counts under `truncated` and the
@@ -698,11 +695,14 @@ of verdicts travel as `carry_over` and `recently_decided`.
 
 `show` prints the Linked PRs, sessions, changes, approvals and exemptions.
 Machine output also carries `rejections`, `tracker_writes`, `failed_writes` and
-`partitions`; each session carries `events`, `verified` and `saw_change`. A
-partition's machine form lists its pull request ids only — the stack grouping,
-the `stacked on` chip and the per-pull-request coverage listing are on the
-**/qa** page — and `qa approve` sends the revision alone, so the
-heads-and-coverage fence is the page dialog's.
+`partitions`; each session carries `events`, `verified` and `saw_change`, and
+each Linked PR carries `approved_at_head`, true when a standing approval
+covers its head. In `-o wide` the **Approved** column reads `no`, `head` (a
+standing approval covers this head) or `carried`. A partition's machine form
+lists its pull request ids only —
+the stack grouping, the `stacked on` chip and the per-pull-request coverage
+listing are on the **/qa** page — and `qa approve` sends the revision alone, so
+the heads-and-coverage fence is the page dialog's.
 
 Session and Ticket actions:
 

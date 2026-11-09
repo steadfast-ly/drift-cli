@@ -66,9 +66,9 @@ type qaServer struct {
 	// ambiguousPR adds a second linked PR with another repo and the same
 	// number, so a bare repo name matches both.
 	ambiguousPR bool
-	// prApprovedAtOtherHead and prGateFailure shape the linked PR's card.
-	prApprovedAtOtherHead bool
-	prGateFailure         bool
+	// prApprovedAtHead and prGateFailure shape the linked PR's card.
+	prApprovedAtHead bool
+	prGateFailure    bool
 	// staleCompletion marks the card's completion non-current.
 	staleCompletion bool
 	// endReason ends the session with that reason.
@@ -120,8 +120,8 @@ type qaServer struct {
 	// both the queue's card and the ticket detail.
 	sessionSawChange bool
 	sessionVerified  bool
-	// truncatedRecheck is the recheck section's omitted count on the queue.
-	truncatedRecheck int
+	// truncatedTesting is the in-testing section's omitted count on the queue.
+	truncatedTesting int
 	// noTicket adds the No ticket section: an open PR no Ticket links.
 	noTicket bool
 	// noTicketRegistrations and noTicketBlocked shape that PR's registration
@@ -498,8 +498,7 @@ func qaPRCardJSON() map[string]any {
 		"gate": map[string]any{
 			"state": "success", "description": "QA passed", "targetUrl": nil,
 		},
-		"approvedAtHead": false, "approvedAtOtherHead": false,
-		"carriedAtHead": false, "mergedBeforeQa": false,
+		"approvedAtHead": false, "carriedAtHead": false, "mergedBeforeQa": false,
 	}
 }
 
@@ -554,8 +553,8 @@ func (s *qaServer) cardJSON(key, summary, category string) map[string]any {
 		other["headBranch"] = "fix-flaky-suite"
 		prs = append(prs, other)
 	}
-	if s.prApprovedAtOtherHead {
-		prs[0]["approvedAtOtherHead"] = true
+	if s.prApprovedAtHead {
+		prs[0]["approvedAtHead"] = true
 	}
 	if s.prGateFailure {
 		prs[0]["gate"] = map[string]any{"state": "failure", "description": "QA failed", "targetUrl": nil}
@@ -578,14 +577,14 @@ func qaNoTicketJSON() map[string]any {
 
 func (s *qaServer) queueJSON() map[string]any {
 	s.mu.Lock()
-	sawChange, verified, truncated := s.sessionSawChange, s.sessionVerified, s.truncatedRecheck
+	sawChange, verified, truncated := s.sessionSawChange, s.sessionVerified, s.truncatedTesting
 	noTicket, registrations, blocked := s.noTicket, s.noTicketRegistrations, s.noTicketBlocked
 	truncatedNoTicket, legacy := s.truncatedNoTicket, s.legacyQueue
 	monorepo, partly := s.noTicketMonorepo, s.partlyLinkedPR
 	emptyBlocked := s.noTicketEmptyBlocked
 	s.mu.Unlock()
 	truncatedCounts := map[string]any{
-		"readyForQa": 0, "inTesting": 0, "recheck": truncated, "upcoming": 0,
+		"readyForQa": 0, "inTesting": truncated, "upcoming": 0,
 	}
 	q := map[string]any{
 		"readyForQa": []map[string]any{s.cardJSON("DT-1", "Ship the widget", "ready")},
@@ -606,7 +605,6 @@ func (s *qaServer) queueJSON() map[string]any {
 				"banners": []any{},
 			}},
 		}},
-		"recheck":   []any{},
 		"upcoming":  []map[string]any{s.cardJSON("DT-3", "Awaiting review", "upcoming")},
 		"truncated": truncatedCounts,
 		"carryOver": []map[string]any{{
@@ -627,6 +625,12 @@ func (s *qaServer) queueJSON() map[string]any {
 		},
 	}
 	if legacy {
+		// A 0.33.1 server also sends a recheck section and marks PRs approved
+		// at another head; both are unknown to this CLI and must be ignored.
+		card := qaCardJSON("DT-4", "Recheck the gadget", "ready")
+		card["pullRequests"].([]map[string]any)[0]["approvedAtOtherHead"] = true
+		q["recheck"] = []map[string]any{card}
+		truncatedCounts["recheck"] = 1
 		return q
 	}
 	items := []map[string]any{}
@@ -886,7 +890,7 @@ func TestQaListTableAndJSON(t *testing.T) {
 // JSON carries the counts under `truncated` rather than a pseudo-row.
 func TestQaListMarksTruncatedSections(t *testing.T) {
 	srv := newQaServer(t)
-	srv.truncatedRecheck = 7
+	srv.truncatedTesting = 7
 	h := newQaHarness(t, srv)
 
 	out, errOut, code := h.run("qa", "list")
@@ -894,7 +898,7 @@ func TestQaListMarksTruncatedSections(t *testing.T) {
 		t.Fatalf("exit %d\n%s", code, errOut)
 	}
 	if !strings.Contains(out, "+7 more") {
-		t.Fatalf("the truncated recheck section is not marked:\n%s", out)
+		t.Fatalf("the truncated in-testing section is not marked:\n%s", out)
 	}
 	if strings.Contains(out, "+0 more") {
 		t.Fatalf("a section with nothing omitted is marked anyway:\n%s", out)
@@ -911,18 +915,32 @@ func TestQaListMarksTruncatedSections(t *testing.T) {
 		Truncated struct {
 			Ready    int `json:"ready"`
 			Testing  int `json:"testing"`
-			Recheck  int `json:"recheck"`
 			Upcoming int `json:"upcoming"`
 		} `json:"truncated"`
 	}
 	if err := json.Unmarshal([]byte(out), &payload); err != nil {
 		t.Fatalf("not JSON: %s\n%s", err, out)
 	}
-	if payload.Truncated.Recheck != 7 {
-		t.Fatalf("truncated.recheck = %d, want 7", payload.Truncated.Recheck)
+	if payload.Truncated.Testing != 7 {
+		t.Fatalf("truncated.testing = %d, want 7", payload.Truncated.Testing)
 	}
-	if payload.Truncated.Ready != 0 || payload.Truncated.Testing != 0 || payload.Truncated.Upcoming != 0 {
-		t.Fatalf("truncated = %+v, want only recheck set", payload.Truncated)
+	if payload.Truncated.Ready != 0 || payload.Truncated.Upcoming != 0 {
+		t.Fatalf("truncated = %+v, want only testing set", payload.Truncated)
+	}
+	var raw struct {
+		Truncated map[string]any `json:"truncated"`
+	}
+	if err := json.Unmarshal([]byte(out), &raw); err != nil {
+		t.Fatalf("not JSON: %s\n%s", err, out)
+	}
+	wantKeys := []string{"ready", "testing", "upcoming", "no_ticket"}
+	if len(raw.Truncated) != len(wantKeys) {
+		t.Fatalf("truncated keys = %v, want exactly %v", raw.Truncated, wantKeys)
+	}
+	for _, k := range wantKeys {
+		if _, ok := raw.Truncated[k]; !ok {
+			t.Fatalf("truncated is missing %q: %v", k, raw.Truncated)
+		}
 	}
 	for _, item := range payload.Items {
 		if strings.Contains(item.Key, "more") {
@@ -1061,6 +1079,9 @@ func TestQaListLegacyQueue(t *testing.T) {
 	if strings.Contains(out, "NO TICKET") {
 		t.Fatalf("a server without the section grew one:\n%s", out)
 	}
+	if strings.Contains(strings.ToLower(out), "recheck") || strings.Contains(out, "DT-4") {
+		t.Fatalf("an unknown recheck section reached the table:\n%s", out)
+	}
 	for _, want := range []string{"DT-1", "DT-3", "CARRY-OVER"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("missing %q:\n%s", want, out)
@@ -1083,6 +1104,20 @@ func TestQaListLegacyQueue(t *testing.T) {
 	if len(payload.NoTicket) != 0 || payload.Truncated.NoTicket != 0 {
 		t.Fatalf("no_ticket = %v, truncated.no_ticket = %d, want both empty",
 			payload.NoTicket, payload.Truncated.NoTicket)
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(out), &raw); err != nil {
+		t.Fatalf("not JSON: %s\n%s", err, out)
+	}
+	if _, ok := raw["recheck"]; ok {
+		t.Fatalf("an unknown recheck section passed through to the JSON:\n%s", out)
+	}
+	var truncatedRaw map[string]json.RawMessage
+	if err := json.Unmarshal(raw["truncated"], &truncatedRaw); err != nil {
+		t.Fatalf("not JSON: %s\n%s", err, out)
+	}
+	if _, ok := truncatedRaw["recheck"]; ok {
+		t.Fatalf("an unknown truncated.recheck passed through to the JSON:\n%s", out)
 	}
 
 	_, errOut, code = h.run("qa", "exempt", "--pr", "acme/widget#77", "--reason", "docs only", "--yes")
@@ -1236,6 +1271,7 @@ func TestQaExemptPartlyLinkedPR(t *testing.T) {
 
 func TestQaShowRendersDetail(t *testing.T) {
 	srv := newQaServer(t)
+	srv.prApprovedAtHead = true
 	h := newQaHarness(t, srv)
 
 	out, errOut, code := h.run("qa", "show", "DT-1")
@@ -1256,8 +1292,10 @@ func TestQaShowRendersDetail(t *testing.T) {
 		Key          string `json:"key"`
 		VerdictEpoch int    `json:"verdict_epoch"`
 		PullRequests []struct {
-			Repo   string `json:"repo"`
-			Number int    `json:"number"`
+			Repo                string `json:"repo"`
+			Number              int    `json:"number"`
+			ApprovedAtHead      *bool  `json:"approved_at_head"`
+			ApprovedAtOtherHead *bool  `json:"approved_at_other_head"`
 		} `json:"pull_requests"`
 		Sessions []struct {
 			Id    string `json:"id"`
@@ -1272,6 +1310,12 @@ func TestQaShowRendersDetail(t *testing.T) {
 	}
 	if payload.Key != "DT-1" || len(payload.PullRequests) != 1 || payload.PullRequests[0].Number != 42 {
 		t.Fatalf("payload = %+v", payload)
+	}
+	if payload.PullRequests[0].ApprovedAtHead == nil || !*payload.PullRequests[0].ApprovedAtHead {
+		t.Fatalf("approved_at_head = %v, want true: a standing approval covers this head", payload.PullRequests[0].ApprovedAtHead)
+	}
+	if payload.PullRequests[0].ApprovedAtOtherHead != nil {
+		t.Fatal("approved_at_other_head is no longer part of the contract")
 	}
 	if payload.VerdictEpoch != 2 {
 		t.Fatalf("verdict_epoch = %d, want the card's 2", payload.VerdictEpoch)
@@ -1853,25 +1897,67 @@ func TestQaListUnknownJSONField(t *testing.T) {
 // --- review regressions -----------------------------------------------------
 
 func TestQaShowWideRendersVerdictDetail(t *testing.T) {
-	srv := newQaServer(t)
-	srv.prApprovedAtOtherHead = true
-	srv.prGateFailure = true
-	srv.endReason = "slept"
-	srv.staleCompletion = true
-	h := newQaHarness(t, srv)
+	cases := []struct {
+		name     string
+		approved bool
+		want     string
+	}{
+		{"approved at head", true, "head"},
+		{"no approval", false, "no"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := newQaServer(t)
+			srv.prApprovedAtHead = tc.approved
+			srv.prGateFailure = true
+			srv.endReason = "slept"
+			srv.staleCompletion = true
+			h := newQaHarness(t, srv)
 
-	out, errOut, code := h.run("qa", "show", "DT-1", "-o", "wide")
-	if code != cliexit.OK {
-		t.Fatalf("exit %d\n%s", code, errOut)
+			out, errOut, code := h.run("qa", "show", "DT-1", "-o", "wide")
+			if code != cliexit.OK {
+				t.Fatalf("exit %d\n%s", code, errOut)
+			}
+			for _, want := range []string{"failure", "slept", "ended", "done (stale)"} {
+				if !strings.Contains(out, want) {
+					t.Fatalf("missing %q:\n%s", want, out)
+				}
+			}
+			if got := qaWideApprovedCell(t, out); got != tc.want {
+				t.Fatalf("Approved cell = %q, want %q:\n%s", got, tc.want, out)
+			}
+			if strings.Contains(out, "0xc0") {
+				t.Fatalf("a pointer leaked into the table:\n%s", out)
+			}
+		})
 	}
-	for _, want := range []string{"other head", "failure", "slept", "ended", "done (stale)"} {
-		if !strings.Contains(out, want) {
-			t.Fatalf("missing %q:\n%s", want, out)
+}
+
+// qaWideApprovedCell slices the Approved cell out of the LINKED PRS row of a
+// wide `qa show`, using the header's column offsets so neighbouring cells
+// cannot satisfy the assertion.
+func qaWideApprovedCell(t *testing.T, out string) string {
+	t.Helper()
+	lines := strings.Split(out, "\n")
+	for i, line := range lines {
+		if !strings.HasPrefix(line, "REPO") || !strings.Contains(line, "APPROVED") {
+			continue
 		}
+		start, end := strings.Index(line, "APPROVED"), strings.Index(line, "EXEMPT")
+		if end < start || i+1 >= len(lines) {
+			break
+		}
+		row := lines[i+1]
+		if start > len(row) {
+			t.Fatalf("the APPROVED column starts at %d but the row is %d bytes: %q", start, len(row), row)
+		}
+		if end > len(row) {
+			end = len(row)
+		}
+		return strings.TrimSpace(row[start:end])
 	}
-	if strings.Contains(out, "0xc0") {
-		t.Fatalf("a pointer leaked into the table:\n%s", out)
-	}
+	t.Fatalf("no LINKED PRS row with an APPROVED column:\n%s", out)
+	return ""
 }
 
 func TestQaListRendersStaleCompletion(t *testing.T) {

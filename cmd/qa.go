@@ -79,8 +79,8 @@ func newQaListCommand(app *App) *cobra.Command {
 		Use:     "list",
 		Aliases: []string{"ls", "queue"},
 		Short:   "List the QA queue",
-		Long: "List the QA queue: ready for QA (oldest entry first), in testing,\n" +
-			"re-check and upcoming, with the linked PR count and any active\n" +
+		Long: "List the QA queue: ready for QA (oldest entry first), in testing\n" +
+			"and upcoming, with the linked PR count and any active\n" +
 			"session per Ticket.\n\n" +
 			"A section the server capped says how many it held back: a `+N more`\n" +
 			"row in the table, `truncated` in the machine formats.\n\n" +
@@ -122,11 +122,10 @@ func runQaList(ctx context.Context, app *App) error {
 	}{
 		{"ready", queue.ReadyForQa, queue.Truncated.ReadyForQa},
 		{"testing", queue.InTesting, queue.Truncated.InTesting},
-		{"recheck", queue.Recheck, queue.Truncated.Recheck},
 		{"upcoming", queue.Upcoming, queue.Truncated.Upcoming},
 	}
 	format := app.Out.EffectiveFormat()
-	rows := make([]output.Row, 0, len(queue.ReadyForQa)+len(queue.InTesting)+len(queue.Recheck)+len(queue.Upcoming))
+	rows := make([]output.Row, 0, len(queue.ReadyForQa)+len(queue.InTesting)+len(queue.Upcoming))
 	for _, s := range sections {
 		for _, c := range s.cards {
 			rows = append(rows, qaTicketRow(s.name, c))
@@ -182,7 +181,6 @@ func runQaList(ctx context.Context, app *App) error {
 			"truncated": map[string]any{
 				"ready":     queue.Truncated.ReadyForQa,
 				"testing":   queue.Truncated.InTesting,
-				"recheck":   queue.Truncated.Recheck,
 				"upcoming":  queue.Truncated.Upcoming,
 				"no_ticket": omittedNoTicket,
 			},
@@ -551,11 +549,8 @@ func qaPRRows(in []api.QaPullRequestCard) []output.Row {
 			gate = string(p.Gate.State)
 		}
 		approved := "no"
-		switch {
-		case p.ApprovedAtHead:
+		if p.ApprovedAtHead {
 			approved = "head"
-		case p.ApprovedAtOtherHead:
-			approved = "other head"
 		}
 		if p.CarriedAtHead {
 			approved = "carried"
@@ -576,23 +571,22 @@ func qaPRRows(in []api.QaPullRequestCard) []output.Row {
 
 func qaPRPayload(p api.QaPullRequestCard) map[string]any {
 	m := map[string]any{
-		"repo":                   p.ForgeRepo,
-		"number":                 p.Number,
-		"title":                  p.Title,
-		"head_branch":            p.HeadBranch,
-		"head_sha":               p.HeadSha,
-		"merge_head_sha":         p.MergeHeadSha,
-		"review_state":           string(p.ReviewState),
-		"open":                   p.IsOpen,
-		"merged_at":              p.MergedAt,
-		"merged_before_qa":       p.MergedBeforeQa,
-		"approved_at_head":       p.ApprovedAtHead,
-		"approved_at_other_head": p.ApprovedAtOtherHead,
-		"carried_at_head":        p.CarriedAtHead,
-		"exempt_reason":          p.ExemptReason,
-		"url":                    p.Url,
-		"pull_request_id":        p.PullRequestId.String(),
-		"repository_id":          p.RepositoryId.String(),
+		"repo":             p.ForgeRepo,
+		"number":           p.Number,
+		"title":            p.Title,
+		"head_branch":      p.HeadBranch,
+		"head_sha":         p.HeadSha,
+		"merge_head_sha":   p.MergeHeadSha,
+		"review_state":     string(p.ReviewState),
+		"open":             p.IsOpen,
+		"merged_at":        p.MergedAt,
+		"merged_before_qa": p.MergedBeforeQa,
+		"approved_at_head": p.ApprovedAtHead,
+		"carried_at_head":  p.CarriedAtHead,
+		"exempt_reason":    p.ExemptReason,
+		"url":              p.Url,
+		"pull_request_id":  p.PullRequestId.String(),
+		"repository_id":    p.RepositoryId.String(),
 	}
 	if p.Gate != nil {
 		m["gate"] = map[string]any{
