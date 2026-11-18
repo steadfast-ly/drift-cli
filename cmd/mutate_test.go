@@ -86,6 +86,32 @@ type mutServer struct {
 	// test needs the capability present, and one of them forgetting to add it
 	// would fail for the wrong reason.
 	noCancelFeature bool
+	// noAutoSleepFeature REMOVES `environments.auto-sleep` from the served
+	// discovery document, for the capability-gate tests (refreshDiscoveryDoc
+	// must be called after setting it). Inverted for the same reason as
+	// noCancelFeature.
+	noAutoSleepFeature bool
+	// autoSleepAlreadySet makes the auto-sleep endpoint answer the 409 the
+	// server raises when the row already holds the requested value.
+	autoSleepAlreadySet bool
+	// autoSleepRefused makes the auto-sleep endpoint answer the 409 the server
+	// raises when the lifecycle machine refuses the event.
+	autoSleepRefused bool
+	// autoSleepRouteMissing makes the auto-sleep endpoint answer a bare 404,
+	// which is what a pod whose router predates the route does during a
+	// rolling upgrade.
+	autoSleepRouteMissing bool
+	// autoSleepEnvNotFound makes the auto-sleep endpoint answer the
+	// environment-not-found envelope, which must keep its own exit code.
+	autoSleepEnvNotFound bool
+	// envAutoSleep is the autoSleep the GET handler reports; nil omits the
+	// field, as a pod that predates it does. Defaults to false.
+	envAutoSleep *bool
+	// autoSleepBody is the decoded body of the last auto-sleep request, so a
+	// test can tell the two directions apart.
+	autoSleepBody map[string]any
+	// createBody is the decoded body of the last create request.
+	createBody map[string]any
 	// discoveryDoc is the served `/.well-known/drift.json` body, rebuilt by
 	// refreshDiscoveryDoc from the capability flags above.
 	discoveryDoc []byte
@@ -149,6 +175,20 @@ func (s *mutServer) cancelReason() (string, bool) {
 	return reason, true
 }
 
+// autoSleepRequest returns the decoded body of the last auto-sleep request.
+func (s *mutServer) autoSleepRequest() map[string]any {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.autoSleepBody
+}
+
+// lastCreateBody returns the decoded body of the last create request.
+func (s *mutServer) lastCreateBody() map[string]any {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.createBody
+}
+
 // refreshDiscoveryDoc rebuilds the served discovery document from the
 // server's capability flags. Capabilities like `e2e-tests-branch` are
 // profile-conditional on a real server, so a test that exercises them flips
@@ -163,6 +203,9 @@ func (s *mutServer) refreshDiscoveryDoc() {
 	}
 	if !s.noCancelFeature {
 		features = append(features, "promotions.cancel")
+	}
+	if !s.noAutoSleepFeature {
+		features = append(features, "environments.auto-sleep")
 	}
 	if s.e2eTestsBranch {
 		features = append(features, "e2e-tests-branch")
@@ -190,7 +233,8 @@ func writeProblem(w http.ResponseWriter, status int, code, msg, ptype, detail st
 
 func newMutServer(t *testing.T) *mutServer {
 	t.Helper()
-	s := &mutServer{rateLimitAfter: -1, retryAfter: 1}
+	autoSleep := false
+	s := &mutServer{rateLimitAfter: -1, retryAfter: 1, envAutoSleep: &autoSleep}
 	s.refreshDiscoveryDoc()
 	mux := http.NewServeMux()
 
@@ -250,6 +294,9 @@ func newMutServer(t *testing.T) *mutServer {
 			return
 		}
 		body, _ := readJSON(r)
+		s.mu.Lock()
+		s.createBody = body
+		s.mu.Unlock()
 		s.record("create:" + fmt.Sprint(body["slug"]))
 		if repos, ok := body["repos"].([]any); ok {
 			for _, r := range repos {
@@ -276,6 +323,7 @@ func newMutServer(t *testing.T) *mutServer {
 			status := s.nextStatus()
 			s.mu.Lock()
 			builds := append([]string(nil), s.builds...)
+			autoSleep := s.envAutoSleep
 			s.mu.Unlock()
 			buildRows := make([]map[string]any, 0, len(builds))
 			for _, b := range builds {
@@ -285,14 +333,18 @@ func newMutServer(t *testing.T) *mutServer {
 					"startedAt": nil, "createdAt": "2026-07-26T10:00:00Z",
 				})
 			}
+			env := map[string]any{
+				"id": envID, "slug": "proof-alpha", "ticketId": "PROJ-1001",
+				"namespace": "pr-proof-alpha", "status": status,
+				"expiresAt": "2026-07-28T10:00:00Z", "ttlHours": 48,
+				"sleptAt": nil, "isPublic": false,
+			}
+			if autoSleep != nil {
+				env["autoSleep"] = *autoSleep
+			}
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"environment": map[string]any{
-					"id": envID, "slug": "proof-alpha", "ticketId": "PROJ-1001",
-					"namespace": "pr-proof-alpha", "status": status,
-					"expiresAt": "2026-07-28T10:00:00Z", "ttlHours": 48,
-					"sleptAt": nil, "isPublic": false,
-				},
+				"environment": env,
 				"services": []map[string]any{{
 					"id": svcID, "repositoryId": repoID, "branch": "topic",
 					"prNumber": nil, "imageTag": nil,
@@ -310,6 +362,41 @@ func newMutServer(t *testing.T) *mutServer {
 			action = strings.Join(parts[1:], "/")
 		}
 		s.record(action)
+		if action == "auto-sleep" {
+			body, _ := readJSON(r)
+			s.mu.Lock()
+			s.autoSleepBody = body
+			alreadySet := s.autoSleepAlreadySet
+			refused := s.autoSleepRefused
+			missingRoute := s.autoSleepRouteMissing
+			envGone := s.autoSleepEnvNotFound
+			s.mu.Unlock()
+			switch {
+			case envGone:
+				writeProblem(w, 404, "NOT_FOUND", "Environment not found",
+					"urn:drift:problem:not-found", "No such environment.")
+				return
+			case missingRoute:
+				// An old pod's catch-all: the same problem type as a real
+				// env-not-found, but not a procedure-declared error.
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusNotFound)
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"defined": false, "code": "NOT_FOUND", "status": 404,
+					"message": "No such operation",
+					"data":    map[string]any{"type": "urn:drift:problem:not-found"},
+				})
+				return
+			case refused:
+				writeProblem(w, 409, "CONFLICT", "Cannot set auto-sleep in this state",
+					"urn:drift:problem:invalid-transition", "")
+				return
+			case alreadySet:
+				writeProblem(w, 409, "CONFLICT", "Environment auto-sleep is already set",
+					"urn:drift:problem:conflict", "autoSleep already has the requested value")
+				return
+			}
+		}
 		if action == "conflict" {
 			writeProblem(w, 409, "CONFLICT", "Cannot sleep environment in building state",
 				"urn:drift:problem:invalid-transition", "")
@@ -864,6 +951,235 @@ func TestRedeployConflictSurfacesTheRefusal(t *testing.T) {
 	}
 }
 
+// --- auto-sleep opt-out -----------------------------------------------------
+
+// keep-awake and allow-sleep set the same property in opposite directions, and
+// the body is the whole request: the server reads nothing else.
+func TestAutoSleepCommandsSendTheRequestedValue(t *testing.T) {
+	cases := []struct {
+		command string
+		want    bool
+	}{
+		{"keep-awake", false},
+		{"allow-sleep", true},
+	}
+	for _, c := range cases {
+		t.Run(c.command, func(t *testing.T) {
+			s := newMutServer(t)
+			h := newMutHarness(t, s)
+
+			if _, errOut, code := h.run("env", c.command, "proof-alpha"); code != cliexit.OK {
+				t.Fatalf("exit %d\n%s", code, errOut)
+			}
+			if s.seen("auto-sleep") != 1 {
+				t.Fatalf("expected exactly one auto-sleep call; calls: %v", s.calls)
+			}
+			body := s.autoSleepRequest()
+			got, ok := body["autoSleep"].(bool)
+			if !ok || got != c.want {
+				t.Fatalf("autoSleep = %#v (present %v), want %v", body["autoSleep"], ok, c.want)
+			}
+		})
+	}
+}
+
+// Both 409s on the auto-sleep route are exit 5, the CLI-wide rule for a
+// conflict: the value is already set, or a state that refuses the change (for
+// example, one that is destroying). Neither is retried and neither is a
+// usage error.
+func TestAutoSleepConflictIsExitFive(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(*mutServer)
+		want  string
+	}{
+		{"already set", func(s *mutServer) { s.autoSleepAlreadySet = true }, "already set"},
+		{"refused state", func(s *mutServer) { s.autoSleepRefused = true }, "Cannot set auto-sleep"},
+	}
+	for _, c := range cases {
+		for _, command := range []string{"keep-awake", "allow-sleep"} {
+			t.Run(c.name+"/"+command, func(t *testing.T) {
+				s := newMutServer(t)
+				c.setup(s)
+				h := newMutHarness(t, s)
+
+				_, errOut, code := h.run("env", command, "proof-alpha")
+				if code != cliexit.Conflict {
+					t.Fatalf("exit %d, want %d\n%s", code, cliexit.Conflict, errOut)
+				}
+				if !strings.Contains(errOut, c.want) {
+					t.Fatalf("the refusal message was not surfaced: %s", errOut)
+				}
+			})
+		}
+	}
+}
+
+// A rolling upgrade can serve discovery from a new pod while the write lands on
+// one whose router predates the route. That bare 404 is not "no such
+// environment", and saying so would send the operator looking for a deleted
+// environment.
+func TestAutoSleepMissingRouteIsReportedAsNotUpgraded(t *testing.T) {
+	s := newMutServer(t)
+	s.autoSleepRouteMissing = true
+	h := newMutHarness(t, s)
+
+	_, errOut, code := h.run("env", "keep-awake", "proof-alpha")
+	if code != cliexit.Error {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.Error, errOut)
+	}
+	checkGolden(t, "env_keep_awake_not_upgraded_stderr.golden", errOut)
+}
+
+// The environment-not-found envelope keeps its own exit code: the route exists,
+// the environment does not.
+func TestAutoSleepEnvironmentNotFoundKeepsItsExitCode(t *testing.T) {
+	s := newMutServer(t)
+	s.autoSleepEnvNotFound = true
+	h := newMutHarness(t, s)
+
+	_, errOut, code := h.run("env", "keep-awake", "proof-alpha")
+	if code != cliexit.NotFound {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.NotFound, errOut)
+	}
+	if !strings.Contains(errOut, "Environment not found") {
+		t.Fatalf("the not-found message was not surfaced: %s", errOut)
+	}
+}
+
+// A server that does not advertise the capability has neither the endpoint nor
+// the field, so both directions are refused before any write.
+func TestAutoSleepCommandsAreGatedOnTheAdvertisedFeature(t *testing.T) {
+	s := newMutServer(t)
+	s.noAutoSleepFeature = true
+	s.refreshDiscoveryDoc()
+	h := newMutHarness(t, s)
+
+	for _, command := range []string{"keep-awake", "allow-sleep"} {
+		_, errOut, code := h.run("env", command, "proof-alpha")
+		if code != cliexit.Error {
+			t.Fatalf("%s: exit %d, want %d\n%s", command, code, cliexit.Error, errOut)
+		}
+		if !strings.Contains(errOut, "environments.auto-sleep") {
+			t.Fatalf("%s: the missing capability was not named: %s", command, errOut)
+		}
+	}
+	if s.seen("auto-sleep") != 0 {
+		t.Fatalf("an auto-sleep write reached a server without the capability: %v", s.calls)
+	}
+}
+
+// The generated field is a plain bool, so a pod that omits autoSleep would
+// otherwise render "false". The row and `--json auto_sleep` therefore follow
+// the response, not discovery: a server can advertise the capability while a
+// pod mid-rollout still answers without the field.
+func TestEnvGetAutoSleepRowFollowsTheResponse(t *testing.T) {
+	on, off := true, false
+	cases := []struct {
+		name      string
+		noFeature bool
+		value     *bool
+		wantRow   bool
+		wantGap   string
+	}{
+		{"advertised and on", false, &on, true, ""},
+		{"advertised and off", false, &off, true, ""},
+		{"advertised but omitted", false, nil, false, "does not carry autoSleep"},
+		{"capability absent", true, nil, false, "environments.auto-sleep"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			s := newMutServer(t)
+			s.noAutoSleepFeature = c.noFeature
+			s.envAutoSleep = c.value
+			s.refreshDiscoveryDoc()
+			h := newMutHarness(t, s)
+
+			out, errOut, code := h.run("env", "get", "proof-alpha")
+			if code != cliexit.OK {
+				t.Fatalf("exit %d\n%s", code, errOut)
+			}
+			var row string
+			for _, line := range strings.Split(out, "\n") {
+				if strings.HasPrefix(line, "Auto-sleep:") {
+					row = line
+				}
+			}
+			if got := row != ""; got != c.wantRow {
+				t.Fatalf("auto-sleep row shown = %v, want %v:\n%s", got, c.wantRow, out)
+			}
+			if c.wantRow && !strings.HasSuffix(row, fmt.Sprintf("%t", *c.value)) {
+				t.Fatalf("auto-sleep row does not report the response's value: %q", row)
+			}
+
+			jsonOut, _, _ := h.run("env", "get", "proof-alpha", "-o", "json")
+			var parsed map[string]any
+			if err := json.Unmarshal([]byte(jsonOut), &parsed); err != nil {
+				t.Fatalf("stdout is not parseable JSON: %v\n%s", err, jsonOut)
+			}
+			got, ok := parsed["auto_sleep"]
+			if !c.wantRow {
+				if ok {
+					t.Fatalf("auto_sleep was emitted for a response that omits it: %#v", got)
+				}
+				// The field is in the CLI's own contract; the server is the one
+				// that cannot answer, which is a capability gap (exit 1) rather
+				// than a malformed invocation. Which gap decides the message:
+				// an absent capability is named, an advertised one is a
+				// half-rolled-out deployment.
+				_, errOut, code := h.run("env", "get", "proof-alpha", "--json", "auto_sleep")
+				if code != cliexit.Error {
+					t.Fatalf("--json auto_sleep exit %d, want %d\n%s", code, cliexit.Error, errOut)
+				}
+				if !strings.Contains(errOut, c.wantGap) {
+					t.Fatalf("the server gap was not reported as %q: %s", c.wantGap, errOut)
+				}
+				return
+			}
+			// The machine formats carry the raw bool, like their `public` sibling.
+			if !ok || got != *c.value {
+				t.Fatalf("auto_sleep = %#v (present %v), want %v", got, ok, *c.value)
+			}
+			selected, errOut, code := h.run("env", "get", "proof-alpha", "--json", "auto_sleep")
+			if code != cliexit.OK {
+				t.Fatalf("--json auto_sleep exit %d\n%s", code, errOut)
+			}
+			var selectedDoc map[string]any
+			if err := json.Unmarshal([]byte(selected), &selectedDoc); err != nil {
+				t.Fatalf("stdout is not parseable JSON: %v\n%s", err, selected)
+			}
+			if got := selectedDoc["auto_sleep"]; got != *c.value || len(selectedDoc) != 1 {
+				t.Fatalf("--json auto_sleep = %#v, want only auto_sleep:%v", selectedDoc, *c.value)
+			}
+		})
+	}
+}
+
+// A --json typo is decided from the CLI's own field contract, so it stays a
+// usage error rather than becoming a lookup failure on a server that cannot
+// answer.
+func TestEnvGetUnknownJSONFieldFailsBeforeAnyRequest(t *testing.T) {
+	s := newMutServer(t)
+	var requests int
+	base := s.Config.Handler
+	s.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		base.ServeHTTP(w, r)
+	})
+	h := newMutHarness(t, s)
+
+	_, errOut, code := h.run("env", "get", "proof-alpha", "--json", "slugg")
+	if code != cliexit.Usage {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.Usage, errOut)
+	}
+	if requests != 0 {
+		t.Fatalf("%d request(s) were made before the typo was refused", requests)
+	}
+	if !strings.Contains(errOut, "unknown field") {
+		t.Fatalf("the unknown field was not named: %s", errOut)
+	}
+}
+
 // --- rate limiting ----------------------------------------------------------
 
 func TestRateLimitedMutationIsExitSevenWithTheRetryInterval(t *testing.T) {
@@ -977,6 +1293,79 @@ func TestCreateResolvesRepositoryNamesToIds(t *testing.T) {
 	// `owner/name`.
 	if !strings.Contains(errOut, "known services: widget") {
 		t.Fatalf("the known services were not listed: %s", errOut)
+	}
+}
+
+// --keep-awake is the create-time opt-out. Sent, it is autoSleep:false; omitted,
+// the field is absent so the server default (auto-sleep on) stays the server's.
+func TestCreateKeepAwakeSendsAutoSleepOff(t *testing.T) {
+	cases := []struct {
+		name      string
+		keepAwake bool
+	}{
+		{"keep awake", true},
+		{"default", false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			s := newMutServer(t)
+			h := newMutHarness(t, s)
+			args := []string{"env", "create", "--slug", "proof-alpha",
+				"--repo", "widget:topic", "--yes", "--no-wait"}
+			if c.keepAwake {
+				args = append(args, "--keep-awake")
+			}
+			_, errOut, code := h.run(args...)
+			if code != cliexit.OK {
+				t.Fatalf("exit %d\n%s", code, errOut)
+			}
+			// The plan is the operator's chance to see the choice before the
+			// write, so the flag has to reach it.
+			if shows := strings.Contains(errOut, "auto-sleep  off"); shows != c.keepAwake {
+				t.Fatalf("plan shows auto-sleep off = %v, want %v:\n%s", shows, c.keepAwake, errOut)
+			}
+			// --keep-awake rides on the create request; a follow-up write would
+			// be a second mutation the operator never asked for.
+			if s.seen("auto-sleep") != 0 {
+				t.Fatalf("create issued an auto-sleep write; calls: %v", s.calls)
+			}
+			got, ok := s.lastCreateBody()["autoSleep"]
+			if !c.keepAwake {
+				if ok {
+					t.Fatalf("autoSleep was sent without --keep-awake: %#v", got)
+				}
+				return
+			}
+			if !ok || got != false {
+				t.Fatalf("autoSleep = %#v (present %v), want false", got, ok)
+			}
+		})
+	}
+}
+
+// The flag is refused where the server cannot honour it; omission still needs no
+// capability, so a plain create keeps working against an older server.
+func TestCreateKeepAwakeIsGatedOnTheAdvertisedFeature(t *testing.T) {
+	s := newMutServer(t)
+	s.noAutoSleepFeature = true
+	s.refreshDiscoveryDoc()
+	h := newMutHarness(t, s)
+
+	_, errOut, code := h.run("env", "create", "--slug", "proof-alpha",
+		"--repo", "widget:topic", "--keep-awake", "--yes", "--no-wait")
+	if code != cliexit.Error {
+		t.Fatalf("exit %d, want %d\n%s", code, cliexit.Error, errOut)
+	}
+	if !strings.Contains(errOut, "environments.auto-sleep") {
+		t.Fatalf("the missing capability was not named: %s", errOut)
+	}
+	if s.seen("create:proof-alpha") != 0 {
+		t.Fatalf("a create was sent to a server without the capability: %v", s.calls)
+	}
+
+	if _, errOut, code := h.run("env", "create", "--slug", "proof-alpha",
+		"--repo", "widget:topic", "--yes", "--no-wait"); code != cliexit.OK {
+		t.Fatalf("plain create against a server without auto-sleep: exit %d\n%s", code, errOut)
 	}
 }
 
@@ -2025,6 +2414,8 @@ func TestGoldenOutput(t *testing.T) {
 		{"env_rm_wide", []string{"env", "rm", "proof-alpha", "--yes", "-o", "wide"}, []string{"destroying"}, nil},
 		{"env_extend_table", []string{"env", "extend", "proof-alpha", "--hours", "12"}, []string{"running"}, nil},
 		{"env_share_table", []string{"env", "share", "proof-alpha"}, []string{"running"}, nil},
+		{"env_keep_awake_table", []string{"env", "keep-awake", "proof-alpha"}, []string{"running"}, nil},
+		{"env_allow_sleep_table", []string{"env", "allow-sleep", "proof-alpha"}, []string{"running"}, nil},
 		{"release_status_table", []string{"release", "status"}, nil, nil},
 		{"release_status_json", []string{"release", "status", "-o", "json"}, nil, nil},
 		{"release_history_table", []string{"release", "history"}, nil, nil},

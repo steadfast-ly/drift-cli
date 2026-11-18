@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"unicode"
@@ -45,6 +47,8 @@ func newEnvCommand(app *App) *cobra.Command {
 		newEnvExtendCommand(app),
 		newEnvVisibilityCommand(app, true),
 		newEnvVisibilityCommand(app, false),
+		newEnvAutoSleepCommand(app, true),
+		newEnvAutoSleepCommand(app, false),
 		newEnvAddServiceCommand(app),
 		newEnvRemoveServiceCommand(app),
 		newEnvSwapBranchCommand(app),
@@ -94,14 +98,34 @@ func envRow(e api.Environment) output.Row {
 	}
 }
 
+// autoSleepField reports the auto-sleep property actually carried by an
+// environment response. Nil means the server omitted it: an older pod strips
+// the unknown field, and the generated plain bool would decode that as false.
+func autoSleepField(body []byte) *bool {
+	var payload struct {
+		Environment struct {
+			AutoSleep *bool `json:"autoSleep"`
+		} `json:"environment"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil
+	}
+	return payload.Environment.AutoSleep
+}
+
 // envGetColumns is the single-environment detail column set: envColumns minus
-// the owner column. Owner is the `env list` filter aid, not shown in the
-// detail view.
-func envGetColumns() []output.Column {
-	cols := envColumns()
-	for i, c := range cols {
+// the owner column, plus auto-sleep when the response carries it. Owner is the
+// `env list` filter aid, not shown in the detail view.
+func envGetColumns(autoSleep bool) []output.Column {
+	src := envColumns()
+	cols := make([]output.Column, 0, len(src))
+	for _, c := range src {
 		if c.Name == "owner" {
-			return append(cols[:i:i], cols[i+1:]...)
+			continue
+		}
+		cols = append(cols, c)
+		if c.Name == "expires" && autoSleep {
+			cols = append(cols, output.Column{Name: "auto_sleep", Header: "Auto-sleep"})
 		}
 	}
 	return cols
@@ -378,7 +402,9 @@ func newEnvGetCommand(app *App) *cobra.Command {
 		Long: "Show one environment, with its services and builds.\n\n" +
 			"The reference is a slug or a UUID; the SERVER resolves both, so there\n" +
 			"is no client-side list-and-filter that could disagree with it about\n" +
-			"which environment a reused slug names.\n\n" + cliexit.Help,
+			"which environment a reused slug names.\n\n" +
+			"`--json auto_sleep` exits 1 when this server cannot report auto-sleep:\n" +
+			"it either predates the feature or is mid-upgrade.\n\n" + cliexit.Help,
 		Args: exactArgs(1, "the environment slug or id"),
 		RunE: func(c *cobra.Command, args []string) error {
 			return runEnvGet(c.Context(), app, args[0])
@@ -387,8 +413,10 @@ func newEnvGetCommand(app *App) *cobra.Command {
 }
 
 func runEnvGet(ctx context.Context, app *App, ref string) error {
-	cols := envGetColumns()
-	if err := output.ValidateFields(app.Out.JSONFields, cols); err != nil {
+	// The field contract is CLI-known, so a typo is a usage error before any
+	// request. Whether the server sends auto_sleep is the one server-side
+	// question, answered from the response below.
+	if err := output.ValidateFields(app.Out.JSONFields, envGetColumns(true)); err != nil {
 		return usageErrorf("%s", err.Error())
 	}
 
@@ -396,7 +424,6 @@ func runEnvGet(ctx context.Context, app *App, ref string) error {
 	if err != nil {
 		return err
 	}
-
 	resp, err := sess.API.EnvironmentsGetWithResponse(ctx, ref)
 	if err != nil {
 		return client.Transport(err, sess.Resolved.Endpoint)
@@ -410,11 +437,30 @@ func runEnvGet(ctx context.Context, app *App, ref string) error {
 		return e
 	}
 
+	autoSleep := autoSleepField(resp.Body)
+	if autoSleep == nil && slices.Contains(app.Out.JSONFields, "auto_sleep") {
+		// Not a usage error: the field is in the CLI's contract and the server
+		// is the one that cannot answer. Which side is behind decides the
+		// message — a server that never advertises the capability is one to
+		// upgrade, while one that advertises it and still omits the field is
+		// mid-rollout.
+		if !sess.Discovery.Document.HasFeature(FeatureEnvironmentsAutoSleep) {
+			return missingFeatureError(FeatureEnvironmentsAutoSleep, sess.Resolved, sess.Discovery.Document)
+		}
+		return autoSleepNotUpgraded(
+			"this server's environment response does not carry autoSleep")
+	}
+	cols := envGetColumns(autoSleep != nil)
+
 	detail := *resp.JSON200
+	row := envRow(detail.Environment)
+	if autoSleep != nil {
+		row["auto_sleep"] = *autoSleep
+	}
 	doc := &output.Doc{
 		Columns: cols,
 		Single:  true,
-		Rows:    []output.Row{envRow(detail.Environment)},
+		Rows:    []output.Row{row},
 		Extra: map[string]any{
 			"services": servicePayload(detail.Services),
 			"builds":   buildPayload(detail.Builds),

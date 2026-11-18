@@ -108,6 +108,12 @@ func CodeOf(err error) int {
 // the exit-code decision is the only consumer, and the mapping is the contract.
 const ElevationRequiredType = "urn:drift:problem:elevation-required"
 
+// NotFoundType is the problem URN for a resolved route whose resource does not
+// exist. The catch-all that answers a route an older pod does not serve uses
+// the same URN but is not a procedure-declared error (`defined:false`), so a
+// command that must tell the two apart reads `defined` as well.
+const NotFoundType = "urn:drift:problem:not-found"
+
 // FromProblem maps a server error envelope onto the exit-code contract.
 //
 // `problemType` is the URN from the envelope's `data.type` field. Two cases

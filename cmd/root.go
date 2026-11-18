@@ -16,6 +16,11 @@ import (
 const (
 	FeatureEnvironmentsRead  = "environments.read"
 	FeatureEnvironmentsWrite = "environments.write"
+	// FeatureEnvironmentsAutoSleep gates the per-environment opt-out from the
+	// hourly auto-sleep. A server without it has neither the field on an
+	// environment nor the endpoint, so the commands refuse and `env get` omits
+	// the row rather than reporting a decoded zero.
+	FeatureEnvironmentsAutoSleep = "environments.auto-sleep"
 	// FeatureEnvironmentsMigrationSource is profile-conditional: the server
 	// advertises it only for Installs whose profile has a database-migration
 	// block. An explicit --migration-source requires it; an omitted source

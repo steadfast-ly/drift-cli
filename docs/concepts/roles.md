@@ -34,7 +34,7 @@ release, and neither implies the other. Someone who needs both is `admin`.
 | View the audit log | `preview` | Web: **Audit Log**. CLI: `drift audit list` |
 | View KPIs, when the module is enabled | `preview` | Web: **KPIs** |
 | View the QA queue, when the module is enabled | `preview` | Web: **QA**. CLI: `drift qa list`, `drift qa show` |
-| Create, extend, sleep, wake, destroy, relaunch, redeploy or retry a preview environment; swap its branch; add or remove a service; cancel its build; change its visibility | `preview` | Web: **Previews**. CLI: `drift env create`, `extend`, `sleep`, `wake`, `rm`, `relaunch`, `redeploy`, `retry-build`, `swap-branch`, `add-service`, `remove-service`, `cancel`, `share`, `unshare` |
+| Create, extend, sleep, wake, destroy, relaunch, redeploy or retry a preview environment; swap its branch; add or remove a service; cancel its build; change its visibility or auto-sleep opt-out | `preview` | Web: **Previews**. CLI: `drift env create`, `extend`, `sleep`, `wake`, `rm`, `relaunch`, `redeploy`, `retry-build`, `swap-branch`, `add-service`, `remove-service`, `cancel`, `share`, `unshare`, `keep-awake`, `allow-sleep` |
 | Trigger an end-to-end run | `preview` | Web: **Run E2E** on an environment. CLI: `drift env e2e` |
 | Promote to `rc`; hotfix to `rc`; cancel an in-flight promotion | `release` | Web: **Releases**. CLI: `drift release promote rc`, `drift release promote hotfix`, `drift release cancel` |
 | Promote to `prd`; `prd` hotfix | `release` | Web: **Releases**, **Promote to Production**. CLI: `drift release promote prd`, `drift release promote prd hotfix` -- the CLI call also needs an elevated credential scoped to `promote:prd` |

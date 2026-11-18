@@ -1415,6 +1415,7 @@ type E2eRunStatus string
 
 // Environment defines model for Environment.
 type Environment struct {
+	AutoSleep                    bool               `json:"autoSleep"`
 	CreatedBy                    *string            `json:"createdBy"`
 	ExpiresAt                    time.Time          `json:"expiresAt"`
 	Id                           openapi_types.UUID `json:"id"`
@@ -2353,6 +2354,7 @@ type EnvironmentsListParamsStatus string
 
 // EnvironmentsCreateJSONBody defines parameters for EnvironmentsCreate.
 type EnvironmentsCreateJSONBody struct {
+	AutoSleep                    *bool   `json:"autoSleep,omitempty"`
 	IsPublic                     *bool   `json:"isPublic,omitempty"`
 	MigrationSourceEcrRepository *string `json:"migrationSourceEcrRepository,omitempty"`
 	Repos                        []struct {
@@ -2365,6 +2367,11 @@ type EnvironmentsCreateJSONBody struct {
 	Slug     *string `json:"slug,omitempty"`
 	TicketId *string `json:"ticketId,omitempty"`
 	TtlHours *int    `json:"ttlHours,omitempty"`
+}
+
+// EnvironmentsSetAutoSleepJSONBody defines parameters for EnvironmentsSetAutoSleep.
+type EnvironmentsSetAutoSleepJSONBody struct {
+	AutoSleep bool `json:"autoSleep"`
 }
 
 // EnvironmentsTriggerE2eJSONBody defines parameters for EnvironmentsTriggerE2e.
@@ -2544,6 +2551,9 @@ type RepositoriesBranchesParams struct {
 
 // EnvironmentsCreateJSONRequestBody defines body for EnvironmentsCreate for application/json ContentType.
 type EnvironmentsCreateJSONRequestBody EnvironmentsCreateJSONBody
+
+// EnvironmentsSetAutoSleepJSONRequestBody defines body for EnvironmentsSetAutoSleep for application/json ContentType.
+type EnvironmentsSetAutoSleepJSONRequestBody EnvironmentsSetAutoSleepJSONBody
 
 // EnvironmentsTriggerE2eJSONRequestBody defines body for EnvironmentsTriggerE2e for application/json ContentType.
 type EnvironmentsTriggerE2eJSONRequestBody EnvironmentsTriggerE2eJSONBody
@@ -2791,6 +2801,24 @@ type ClientInterface interface {
 	// Corresponds with DELETE /environments/{environmentId} (the `EnvironmentsDestroy` operationId).
 	EnvironmentsDestroy(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// EnvironmentsSetAutoSleepWithBody Set an environment's auto-sleep opt-out
+	//
+	// FALSE keeps the environment awake: the hourly auto-sleep cron never sleeps it, while expiry, manual sleep and wake are unchanged. Switching it back on credits one idle window before the cron may sleep it again. Setting the value it already has is a 409, so this is safe to retry but not to use as an assertion.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /environments/{environmentId}/auto-sleep (the `EnvironmentsSetAutoSleep` operationId).
+	EnvironmentsSetAutoSleepWithBody(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsSetAutoSleep Set an environment's auto-sleep opt-out
+	//
+	// FALSE keeps the environment awake: the hourly auto-sleep cron never sleeps it, while expiry, manual sleep and wake are unchanged. Switching it back on credits one idle window before the cron may sleep it again. Setting the value it already has is a 409, so this is safe to retry but not to use as an assertion.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /environments/{environmentId}/auto-sleep (the `EnvironmentsSetAutoSleep` operationId).
+	EnvironmentsSetAutoSleep(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsSetAutoSleepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// EnvironmentsCancel Cancel a building environment
 	//
 	// Only valid while the environment is building or has failed to build. Cancelling does not tear anything down — destroy the environment to release its namespace.
@@ -2850,7 +2878,7 @@ type ClientInterface interface {
 
 	// EnvironmentsRelaunch Relaunch a terminal environment
 	//
-	// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL and visibility into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
+	// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL, visibility and auto-sleep setting into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
 	//
 	// Corresponds with POST /environments/{environmentId}/relaunch (the `EnvironmentsRelaunch` operationId).
 	EnvironmentsRelaunch(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3435,6 +3463,44 @@ func (c *Client) EnvironmentsDestroy(ctx context.Context, environmentId openapi_
 	return c.Client.Do(req)
 }
 
+// EnvironmentsSetAutoSleepWithBody Set an environment's auto-sleep opt-out
+//
+// FALSE keeps the environment awake: the hourly auto-sleep cron never sleeps it, while expiry, manual sleep and wake are unchanged. Switching it back on credits one idle window before the cron may sleep it again. Setting the value it already has is a 409, so this is safe to retry but not to use as an assertion.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /environments/{environmentId}/auto-sleep (the `EnvironmentsSetAutoSleep` operationId).
+func (c *Client) EnvironmentsSetAutoSleepWithBody(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsSetAutoSleepRequestWithBody(c.Server, environmentId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsSetAutoSleep Set an environment's auto-sleep opt-out
+//
+// FALSE keeps the environment awake: the hourly auto-sleep cron never sleeps it, while expiry, manual sleep and wake are unchanged. Switching it back on credits one idle window before the cron may sleep it again. Setting the value it already has is a 409, so this is safe to retry but not to use as an assertion.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /environments/{environmentId}/auto-sleep (the `EnvironmentsSetAutoSleep` operationId).
+func (c *Client) EnvironmentsSetAutoSleep(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsSetAutoSleepJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsSetAutoSleepRequest(c.Server, environmentId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // EnvironmentsCancel Cancel a building environment
 //
 // Only valid while the environment is building or has failed to build. Cancelling does not tear anything down — destroy the environment to release its namespace.
@@ -3564,7 +3630,7 @@ func (c *Client) EnvironmentsRedeploy(ctx context.Context, environmentId openapi
 
 // EnvironmentsRelaunch Relaunch a terminal environment
 //
-// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL and visibility into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
+// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL, visibility and auto-sleep setting into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
 //
 // Corresponds with POST /environments/{environmentId}/relaunch (the `EnvironmentsRelaunch` operationId).
 func (c *Client) EnvironmentsRelaunch(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -4986,6 +5052,53 @@ func NewEnvironmentsDestroyRequest(server string, environmentId openapi_types.UU
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewEnvironmentsSetAutoSleepRequest calls the generic EnvironmentsSetAutoSleep builder with application/json body
+func NewEnvironmentsSetAutoSleepRequest(server string, environmentId openapi_types.UUID, body EnvironmentsSetAutoSleepJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewEnvironmentsSetAutoSleepRequestWithBody(server, environmentId, "application/json", bodyReader)
+}
+
+// NewEnvironmentsSetAutoSleepRequestWithBody constructs an http.Request for the EnvironmentsSetAutoSleep method, with any body, and a specified content type
+func NewEnvironmentsSetAutoSleepRequestWithBody(server string, environmentId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "environmentId", environmentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/environments/%s/auto-sleep", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -6967,6 +7080,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with DELETE /environments/{environmentId} (the `EnvironmentsDestroy` operationId).
 	EnvironmentsDestroyWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsDestroyResponse, error)
 
+	// EnvironmentsSetAutoSleepWithBodyWithResponse Set an environment's auto-sleep opt-out
+	//
+	// FALSE keeps the environment awake: the hourly auto-sleep cron never sleeps it, while expiry, manual sleep and wake are unchanged. Switching it back on credits one idle window before the cron may sleep it again. Setting the value it already has is a 409, so this is safe to retry but not to use as an assertion.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /environments/{environmentId}/auto-sleep (the `EnvironmentsSetAutoSleep` operationId).
+	EnvironmentsSetAutoSleepWithBodyWithResponse(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EnvironmentsSetAutoSleepResponse, error)
+
+	// EnvironmentsSetAutoSleepWithResponse Set an environment's auto-sleep opt-out
+	//
+	// FALSE keeps the environment awake: the hourly auto-sleep cron never sleeps it, while expiry, manual sleep and wake are unchanged. Switching it back on credits one idle window before the cron may sleep it again. Setting the value it already has is a 409, so this is safe to retry but not to use as an assertion.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /environments/{environmentId}/auto-sleep (the `EnvironmentsSetAutoSleep` operationId).
+	EnvironmentsSetAutoSleepWithResponse(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsSetAutoSleepJSONRequestBody, reqEditors ...RequestEditorFn) (*EnvironmentsSetAutoSleepResponse, error)
+
 	// EnvironmentsCancelWithResponse Cancel a building environment
 	//
 	// Only valid while the environment is building or has failed to build. Cancelling does not tear anything down — destroy the environment to release its namespace.
@@ -7032,7 +7163,7 @@ type ClientWithResponsesInterface interface {
 
 	// EnvironmentsRelaunchWithResponse Relaunch a terminal environment
 	//
-	// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL and visibility into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
+	// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL, visibility and auto-sleep setting into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -8116,6 +8247,117 @@ func (r EnvironmentsDestroyResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r EnvironmentsDestroyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+// EnvironmentsSetAutoSleepResponse429Headers the declared response headers of an HTTP 429 response for EnvironmentsSetAutoSleep
+type EnvironmentsSetAutoSleepResponse429Headers struct {
+	RetryAfter int
+}
+
+type EnvironmentsSetAutoSleepResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *EnvironmentMutation
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *ApiProblem
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *ApiProblem
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *ApiProblem
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *ApiProblem
+	// JSON409 the response for an HTTP 409 `application/json` response
+	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
+	// JSON429 the response for an HTTP 429 `application/json` response
+	JSON429 *ApiProblem
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *ApiProblem
+	// JSON503 the response for an HTTP 503 `application/json` response
+	JSON503 *ApiProblem
+	// Headers429 the parsed response headers for an HTTP 429 response
+	Headers429 *EnvironmentsSetAutoSleepResponse429Headers
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EnvironmentsSetAutoSleepResponse) GetJSON200() *EnvironmentMutation {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r EnvironmentsSetAutoSleepResponse) GetJSON400() *ApiProblem {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r EnvironmentsSetAutoSleepResponse) GetJSON401() *ApiProblem {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r EnvironmentsSetAutoSleepResponse) GetJSON403() *ApiProblem {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r EnvironmentsSetAutoSleepResponse) GetJSON404() *ApiProblem {
+	return r.JSON404
+}
+
+// GetJSON409 returns the response for an HTTP 409 `application/json` response
+func (r EnvironmentsSetAutoSleepResponse) GetJSON409() *ApiProblem {
+	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r EnvironmentsSetAutoSleepResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
+}
+
+// GetJSON429 returns the response for an HTTP 429 `application/json` response
+func (r EnvironmentsSetAutoSleepResponse) GetJSON429() *ApiProblem {
+	return r.JSON429
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r EnvironmentsSetAutoSleepResponse) GetJSON500() *ApiProblem {
+	return r.JSON500
+}
+
+// GetJSON503 returns the response for an HTTP 503 `application/json` response
+func (r EnvironmentsSetAutoSleepResponse) GetJSON503() *ApiProblem {
+	return r.JSON503
+}
+
+// GetBody returns the raw response body bytes
+func (r EnvironmentsSetAutoSleepResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EnvironmentsSetAutoSleepResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnvironmentsSetAutoSleepResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnvironmentsSetAutoSleepResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -13090,6 +13332,36 @@ func (c *ClientWithResponses) EnvironmentsDestroyWithResponse(ctx context.Contex
 	return ParseEnvironmentsDestroyResponse(rsp)
 }
 
+// EnvironmentsSetAutoSleepWithBodyWithResponse Set an environment's auto-sleep opt-out
+//
+// FALSE keeps the environment awake: the hourly auto-sleep cron never sleeps it, while expiry, manual sleep and wake are unchanged. Switching it back on credits one idle window before the cron may sleep it again. Setting the value it already has is a 409, so this is safe to retry but not to use as an assertion.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /environments/{environmentId}/auto-sleep (the `EnvironmentsSetAutoSleep` operationId).
+func (c *ClientWithResponses) EnvironmentsSetAutoSleepWithBodyWithResponse(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EnvironmentsSetAutoSleepResponse, error) {
+	rsp, err := c.EnvironmentsSetAutoSleepWithBody(ctx, environmentId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsSetAutoSleepResponse(rsp)
+}
+
+// EnvironmentsSetAutoSleepWithResponse Set an environment's auto-sleep opt-out
+//
+// FALSE keeps the environment awake: the hourly auto-sleep cron never sleeps it, while expiry, manual sleep and wake are unchanged. Switching it back on credits one idle window before the cron may sleep it again. Setting the value it already has is a 409, so this is safe to retry but not to use as an assertion.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /environments/{environmentId}/auto-sleep (the `EnvironmentsSetAutoSleep` operationId).
+func (c *ClientWithResponses) EnvironmentsSetAutoSleepWithResponse(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsSetAutoSleepJSONRequestBody, reqEditors ...RequestEditorFn) (*EnvironmentsSetAutoSleepResponse, error) {
+	rsp, err := c.EnvironmentsSetAutoSleep(ctx, environmentId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsSetAutoSleepResponse(rsp)
+}
+
 // EnvironmentsCancelWithResponse Cancel a building environment
 //
 // Only valid while the environment is building or has failed to build. Cancelling does not tear anything down — destroy the environment to release its namespace.
@@ -13197,7 +13469,7 @@ func (c *ClientWithResponses) EnvironmentsRedeployWithResponse(ctx context.Conte
 
 // EnvironmentsRelaunchWithResponse Relaunch a terminal environment
 //
-// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL and visibility into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
+// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL, visibility and auto-sleep setting into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -14561,6 +14833,108 @@ func ParseEnvironmentsDestroyResponse(rsp *http.Response) (*EnvironmentsDestroyR
 	switch {
 	case rsp.StatusCode == 429:
 		var headers EnvironmentsDestroyResponse429Headers
+		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
+			var value int
+			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			}
+			headers.RetryAfter = value
+		}
+		response.Headers429 = &headers
+	}
+
+	return response, nil
+}
+
+// ParseEnvironmentsSetAutoSleepResponse parses an HTTP response from a EnvironmentsSetAutoSleepWithResponse call
+func ParseEnvironmentsSetAutoSleepResponse(rsp *http.Response) (*EnvironmentsSetAutoSleepResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnvironmentsSetAutoSleepResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnvironmentMutation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 503:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON503 = &dest
+
+	}
+
+	switch {
+	case rsp.StatusCode == 429:
+		var headers EnvironmentsSetAutoSleepResponse429Headers
 		if values := rsp.Header.Values("Retry-After"); len(values) > 0 {
 			var value int
 			if err := runtime.BindStyledParameterWithOptions("simple", "Retry-After", values[0], &value, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "integer", Format: ""}); err != nil {
