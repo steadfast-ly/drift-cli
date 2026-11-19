@@ -4,6 +4,8 @@ drift ships a **skill file** that teaches an LLM coding agent how to drive the
 CLI: guardrails for destructive operations, the JSON output contract, exit
 codes and their meaning, wait semantics, and common recipes.
 
+The full file is on the [Agent skill file](agent-skill.md) page.
+
 ## What the skill encodes
 
 - **Guardrails** -- destructive and irreversible commands require human

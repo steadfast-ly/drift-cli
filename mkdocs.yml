@@ -33,6 +33,11 @@ markdown_extensions:
   - tables
   - toc:
       permalink: true
+  # The agent skill page embeds skills/drift-cli/SKILL.md (outside docs/), so
+  # the site always shows the shipped file; a missing path fails the build.
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
 
 validation:
   nav:
@@ -70,6 +75,7 @@ nav:
   - Automation:
       - CI and automation: guides/automation.md
       - LLM agents: guides/agents.md
+      - Agent skill file: guides/agent-skill.md
       - Updating: guides/updating.md
   - Reference:
       - Configuration: reference/configuration.md
