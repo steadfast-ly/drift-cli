@@ -3,10 +3,10 @@ name: drift-cli
 description: >
   Drive the drift CLI for managing preview environments and promoting releases.
   Use when: creating or managing preview environments, promoting to rc or prd,
-  extending an environment, checking release status, working the QA queue,
-  "create a preview env", "promote to rc", "promote to prd", "extend an
-  environment", "approve the QA session", "what is ready for QA", drift CLI
-  usage.
+  extending an environment, keeping an environment awake, checking release
+  status, working the QA queue, "create a preview env", "promote to rc",
+  "promote to prd", "extend an environment", "keep the env awake", "approve
+  the QA session", "what is ready for QA", drift CLI usage.
 ---
 
 # drift CLI -- agent skill
@@ -51,6 +51,8 @@ drift env wake <ref>         Bring a sleeping environment back
 drift env extend <ref>       Add hours to TTL (--hours, additive, 120h cap)
 drift env share <ref>        Make publicly reachable
 drift env unshare <ref>      Revert to private
+drift env keep-awake <ref>   Opt out of the hourly auto-sleep (expiry still applies)
+drift env allow-sleep <ref>  Put it back under the hourly auto-sleep
 drift env add-service <ref> <repo>:<branch>
 drift env remove-service <ref> <repo>
 drift env swap-branch <ref> <repo>:<new-branch>
@@ -224,6 +226,30 @@ not trigger a migration warning.
 ```bash
 drift env extend my-feature --hours 24
 ```
+
+### Keep an environment awake
+
+```bash
+drift env keep-awake my-feature
+drift env get my-feature --json slug,status,auto_sleep
+drift env allow-sleep my-feature
+```
+
+The server's hourly auto-sleep sleeps a running environment that has been
+idle for a while. Keep-awake opts one environment out; it is not a TTL
+extension (the environment still expires), and manual `sleep`/`wake` are
+unaffected. It does not wake a sleeping environment -- run `drift env wake`
+for that. `drift env create --keep-awake` sets it at creation, and relaunch
+carries it over. `auto_sleep` is `false` while keep-awake is set.
+
+A kept-awake environment holds cluster capacity until it expires: set it only
+when the human asks, and `allow-sleep` it when they are done. Setting a value
+the environment already has exits 5 (conflict) -- for a script that only
+wants the end state, re-read `auto_sleep` rather than treating every exit 5
+as success, since a state that refuses the change (e.g. destroying) also
+exits 5. Both commands require the server to advertise the
+`environments.auto-sleep` capability; against an older server they refuse
+before the request (exit 1, feature-unsupported).
 
 ### Swap a branch
 
