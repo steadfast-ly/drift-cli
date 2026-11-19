@@ -29,6 +29,7 @@ type createFlags struct {
 	repos           []string
 	ttlHours        int
 	public          bool
+	keepAwake       bool
 	prNumber        int
 	prTitle         string
 	prURL           string
@@ -90,6 +91,8 @@ func newEnvCreateCommand(app *App) *cobra.Command {
 	fl.StringArrayVar(&f.repos, "repo", nil, "`name:branch` or `name:branch:pr` to include; repeat for multi-service")
 	fl.IntVar(&f.ttlHours, "ttl", 0, "lifetime in hours (server default 48, maximum 120)")
 	fl.BoolVar(&f.public, "public", false, "make the environment reachable without the VPN")
+	fl.BoolVar(&f.keepAwake, "keep-awake", false,
+		"keep the environment awake past the hourly auto-sleep (expiry still applies)")
 	fl.IntVar(&f.prNumber, "pr", 0, "pull request number for a single-repo plan (inferred via gh); use name:branch:pr for multi-service")
 	fl.StringVar(&f.prTitle, "pr-title", "", "pull request title (inferred via gh)")
 	fl.StringVar(&f.prURL, "pr-url", "", "pull request URL (inferred via gh)")
@@ -103,11 +106,12 @@ func newEnvCreateCommand(app *App) *cobra.Command {
 
 // plan is what will be created, after inference and overrides.
 type plan struct {
-	Slug   string
-	Ticket string
-	TTL    int
-	Public bool
-	Repos  []planRepo
+	Slug      string
+	Ticket    string
+	TTL       int
+	Public    bool
+	KeepAwake bool
+	Repos     []planRepo
 	// MigrationSource is the explicitly chosen ECR repository of the
 	// database-migration service, if any. Empty means "let the server apply
 	// its profile default" — the CLI never infers or prompts for it.
@@ -181,6 +185,12 @@ func runEnvCreate(ctx context.Context, app *App, f *createFlags) error {
 	if f.migrationSource != "" {
 		features = append(features, FeatureEnvironmentsMigrationSource)
 	}
+	// Same rule for --keep-awake: a server that does not know the field drops
+	// it, creating an environment the hourly auto-sleep may sleep — the
+	// opposite of what was asked.
+	if f.keepAwake {
+		features = append(features, FeatureEnvironmentsAutoSleep)
+	}
 	sess, err := app.Connect(ctx, features...)
 	if err != nil {
 		return err
@@ -251,6 +261,12 @@ func (p *plan) body() api.EnvironmentsCreateJSONRequestBody {
 		public := true
 		body.IsPublic = &public
 	}
+	// Sent only when asked for: omission leaves the server default (auto-sleep
+	// on), which is also what an old server understands.
+	if p.KeepAwake {
+		autoSleep := false
+		body.AutoSleep = &autoSleep
+	}
 
 	body.Repos = grow(body.Repos, len(p.Repos))
 	for i, r := range p.Repos {
@@ -281,7 +297,10 @@ func grow[S ~[]E, E any](s S, n int) S { return append(s, make(S, n)...) }
 
 // buildPlan merges inference with flags and refuses anything the contract will.
 func buildPlan(f *createFlags, d infer.Result, inferring bool) (*plan, error) {
-	p := &plan{TTL: f.ttlHours, Public: f.public, MigrationSource: f.migrationSource, Inferred: map[string]bool{}}
+	p := &plan{
+		TTL: f.ttlHours, Public: f.public, KeepAwake: f.keepAwake,
+		MigrationSource: f.migrationSource, Inferred: map[string]bool{},
+	}
 
 	switch {
 	case f.slug != "":
@@ -443,6 +462,9 @@ func (p *plan) summary() string {
 	}
 	if p.Public {
 		b.WriteString("  access   public — reachable without the VPN\n")
+	}
+	if p.KeepAwake {
+		b.WriteString("  auto-sleep  off — the hourly sleep will not sleep it\n")
 	}
 	return strings.TrimRight(b.String(), "\n")
 }

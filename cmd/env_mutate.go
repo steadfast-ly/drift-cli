@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sort"
 	"strings"
 	"time"
@@ -197,16 +198,18 @@ func writeMutation(app *App, action string, e *envRef, status api.EnvironmentSta
 // `mutate` performs the call and returns the id the server acknowledged;
 // everything else — resolution, the optional wait, the final read, the output
 // — is identical across the family and lives here so that it cannot drift
-// between twelve commands.
+// between commands. `features` are capabilities the command needs on top
+// of the shared write surface.
 func runMutation(
 	ctx context.Context, app *App, action, ref string,
 	policy waitPolicy, flags *waitFlags,
 	mutate func(ctx context.Context, sess *Session, e *envRef) error,
+	features ...string,
 ) error {
 	if err := flags.validate(); err != nil {
 		return err
 	}
-	sess, err := app.Connect(ctx, FeatureEnvironmentsWrite)
+	sess, err := app.Connect(ctx, append([]string{FeatureEnvironmentsWrite}, features...)...)
 	if err != nil {
 		return err
 	}
@@ -548,6 +551,90 @@ func newEnvVisibilityCommand(app *App, public bool) *cobra.Command {
 	}
 	flags.cmd = cmd
 	return cmd
+}
+
+// newEnvAutoSleepCommand builds the keep-awake / allow-sleep pair. Both set the
+// same property; only the direction differs, exactly like share / unshare.
+func newEnvAutoSleepCommand(app *App, keepAwake bool) *cobra.Command {
+	use, short := "allow-sleep <slug-or-id>", "Let the hourly auto-sleep sleep this environment again"
+	action := "allow-sleep"
+	autoSleep := true
+	long := "Allow auto-sleep to sleep this environment again.\n\n" +
+		"The environment becomes eligible at its next idle window; it is not\n" +
+		"put to sleep immediately. Manual sleep and wake are unaffected.\n\n" +
+		"Setting a value the environment already has is a conflict (exit 5).\n\n" + cliexit.Help
+	if keepAwake {
+		use, short = "keep-awake <slug-or-id>", "Keep this environment awake past the hourly auto-sleep"
+		action = "keep-awake"
+		autoSleep = false
+		long = "Keep this environment awake: the hourly auto-sleep never sleeps it\n" +
+			"while this is set.\n\n" +
+			"Expiry still applies — keep-awake is not a TTL extension, and manual\n" +
+			"sleep and wake are unaffected.\n\n" +
+			"A sleeping environment stays asleep; keep-awake only exempts this\n" +
+			"environment from the hourly job, so run `drift env wake` to start it\n" +
+			"again.\n\n" +
+			"Setting a value the environment already has is a conflict (exit 5).\n\n" + cliexit.Help
+	}
+	flags := &waitFlags{}
+	cmd := &cobra.Command{
+		Use:   use,
+		Short: short,
+		Long:  long,
+		Args:  exactArgs(1, "the environment slug or id"),
+		RunE: func(c *cobra.Command, args []string) error {
+			return runMutation(c.Context(), app, action, args[0], waitPolicy{}, flags,
+				func(ctx context.Context, sess *Session, e *envRef) error {
+					return setAutoSleep(ctx, sess, e.ID, autoSleep)
+				},
+				FeatureEnvironmentsAutoSleep)
+		},
+	}
+	flags.cmd = cmd
+	return cmd
+}
+
+// setAutoSleep writes the opt-out. Shared by the keep-awake / allow-sleep pair,
+// so a bare 404 from a pod that predates the route means the same thing to both.
+func setAutoSleep(ctx context.Context, sess *Session, id uuid.UUID, autoSleep bool) error {
+	resp, err := sess.API.EnvironmentsSetAutoSleepWithResponse(ctx, id,
+		api.EnvironmentsSetAutoSleepJSONRequestBody{AutoSleep: autoSleep})
+	if err != nil {
+		return client.Transport(err, sess.Resolved.Endpoint)
+	}
+	if resp.JSON200 != nil {
+		return nil
+	}
+	return autoSleepFailure(resp)
+}
+
+// autoSleepFailure maps the auto-sleep write's failures. A 404 here usually
+// means an older pod's router: during a rolling upgrade discovery is served by
+// a new pod while the write lands on one that predates the route. That pod's
+// catch-all answers with the same not-found problem type as an env-not-found,
+// but with `defined:false`; a procedure-declared 404 carries `defined:true`.
+func autoSleepFailure(resp *api.EnvironmentsSetAutoSleepResponse) *cliexit.ExitError {
+	e := client.Fail(resp, resp.Headers429)
+	if resp.StatusCode() != http.StatusNotFound {
+		return e
+	}
+	if p := resp.JSON404; p != nil && p.Defined && p.Data != nil && p.Data.Type == cliexit.NotFoundType {
+		return e
+	}
+	return autoSleepNotUpgraded(
+		"the server advertises environments.auto-sleep, but answered 404 for the auto-sleep route")
+}
+
+// autoSleepNotUpgraded reports the half-rolled-out deployment the capability
+// gate cannot see: discovery and the write surface are different pods.
+func autoSleepNotUpgraded(detail string) *cliexit.ExitError {
+	return &cliexit.ExitError{
+		Code:    cliexit.Error,
+		Message: "this server does not support the auto-sleep opt-out yet (not upgraded)",
+		Detail:  detail,
+		Hint: "retry once the deployment has finished rolling out, or run `drift doctor` " +
+			"to see what the server advertises",
+	}
 }
 
 func newEnvAddServiceCommand(app *App) *cobra.Command {

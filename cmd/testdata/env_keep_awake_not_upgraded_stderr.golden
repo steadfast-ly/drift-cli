@@ -1,0 +1,4 @@
+Error: this server does not support the auto-sleep opt-out yet (not upgraded)
+  the server advertises environments.auto-sleep, but answered 404 for the auto-sleep route
+
+Hint: retry once the deployment has finished rolling out, or run `drift doctor` to see what the server advertises

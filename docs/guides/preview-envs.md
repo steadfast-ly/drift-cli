@@ -140,6 +140,7 @@ produces one.
 | `--ticket PROJ-1234` | Issue key |
 | `--ttl 72` | Lifetime in hours (default 48, max 120) |
 | `--public` | Make the environment reachable without the VPN |
+| `--keep-awake` | Opt this environment out of the hourly auto-sleep (expiry still applies) |
 | `--migration-source <repo>` | ECR repository of the database service whose selected tag supplies the migration image (server profile default when omitted) |
 | `--pr` | Pull request number (single-repo plan only; use `name:branch:pr` for multi-service) |
 | `--pr-title`, `--pr-url` | Pull request title and URL (companions to `--pr`) |
@@ -193,6 +194,32 @@ The cumulative lifetime cap is **120 hours** (creation + all extensions).
 page. The dialog shows **Current expiry**, an **Extend by** choice of **6h**,
 **12h**, **24h** or **48h**, and the resulting **New expiry**. **Extend**
 applies it.
+
+## Keep an environment awake
+
+```bash
+drift env keep-awake my-env
+drift env allow-sleep my-env
+```
+
+Auto-sleep sleeps a running environment that has been idle for a while.
+**Keep-awake** opts this environment out: while it is set, auto-sleep never
+sleeps it. **Allow-sleep** puts it back under auto-sleep.
+
+Keep-awake is **not** a TTL extension. Expiry still applies, and manual
+`drift env sleep` and `drift env wake` are unaffected. A conflict exits 5, both
+when the environment already has the value and when its state refuses the
+change (for example, while it is destroying). Keep-awake on an environment that
+is already sleeping does not wake it; run `drift env wake` for that.
+
+`drift env create --keep-awake` sets it at creation time.
+
+While the drift server is being upgraded, a server that predates keep-awake may
+ignore `--keep-awake` or omit the Auto-sleep row; once the upgrade finishes,
+check with `drift env get <slug>` and run `drift env keep-awake <slug>` if
+needed.
+
+**In the web UI:** the environment detail page has an **Auto-sleep** switch.
 
 ## Sleep and wake
 

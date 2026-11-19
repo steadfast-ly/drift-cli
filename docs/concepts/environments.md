@@ -67,6 +67,31 @@ lifetime from creation through all extensions.
 Sleeping **freezes** the TTL clock. Waking credits back the slept time, so a
 sleeping environment does not burn through its allowance.
 
+## Auto-sleep and keep awake
+
+An environment that has been idle for a while is **auto-slept** by an hourly
+server job: replicas scale to zero, data and TTL are kept, and the TTL clock
+freezes exactly as it does for a manual sleep.
+
+**Keep awake** is a per-environment opt-out from auto-sleep. While it is set,
+the job never sleeps that environment. It is **not** a TTL extension: the
+environment still expires at its TTL, and manual sleep and wake are unaffected.
+
+`drift env keep-awake` sets it, `drift env allow-sleep` clears it, and
+`drift env create --keep-awake` sets it at creation. Clearing it makes the
+environment eligible at its next idle window rather than sleeping it
+immediately. Keep-awake on an environment that is already sleeping does not
+wake it; run `drift env wake` for that. `drift env get` reports the current
+value as **Auto-sleep** `true`/`false`; `true` means the hourly auto-sleep may
+sleep the environment.
+
+Relaunching an environment carries keep-awake to the relaunched one.
+
+While the drift server is being upgraded, a server that predates keep-awake may
+ignore `--keep-awake` or omit the Auto-sleep row; once the upgrade finishes,
+check with `drift env get <slug>` and run `drift env keep-awake <slug>` if
+needed.
+
 ## Dependencies
 
 The server resolves transitive dependency repositories and application-group

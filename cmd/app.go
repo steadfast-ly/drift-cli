@@ -363,17 +363,7 @@ func (a *App) Connect(ctx context.Context, features ...string) (*Session, error)
 		if feature == "" || doc.HasFeature(feature) {
 			continue
 		}
-		where := r.Endpoint
-		if r.ContextName != "" {
-			where = fmt.Sprintf("%s (%s)", r.ContextName, r.Endpoint)
-		}
-		return nil, &cliexit.ExitError{
-			Code:    cliexit.Error,
-			Message: fmt.Sprintf("this server does not support %q", feature),
-			Detail: fmt.Sprintf("context %s is running drift %s, which advertises: %s",
-				where, doc.Version, strings.Join(doc.FeaturesSupported, ", ")),
-			Hint: "upgrade the server, or pick a context that has the feature",
-		}
+		return nil, missingFeatureError(feature, r, doc)
 	}
 
 	store, err := a.Store()
@@ -402,6 +392,23 @@ func (a *App) Connect(ctx context.Context, features ...string) (*Session, error)
 	return &Session{
 		API: c, Resolved: r, Discovery: disc, Credential: cred, BaseURL: base,
 	}, nil
+}
+
+// missingFeatureError reports a capability the deployment does not advertise.
+// Shared with commands that learn about the gap from a response rather than
+// from the declaration, so both name the same feature and the same remedy.
+func missingFeatureError(feature string, r *config.Resolved, doc *discovery.Document) *cliexit.ExitError {
+	where := r.Endpoint
+	if r.ContextName != "" {
+		where = fmt.Sprintf("%s (%s)", r.ContextName, r.Endpoint)
+	}
+	return &cliexit.ExitError{
+		Code:    cliexit.Error,
+		Message: fmt.Sprintf("this server does not support %q", feature),
+		Detail: fmt.Sprintf("context %s is running drift %s, which advertises: %s",
+			where, doc.Version, strings.Join(doc.FeaturesSupported, ", ")),
+		Hint: "upgrade the server, or pick a context that has the feature",
+	}
 }
 
 // BaseURL builds the API base and proves it still addresses the endpoint the
