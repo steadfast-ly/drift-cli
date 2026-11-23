@@ -1416,6 +1416,7 @@ type E2eRunStatus string
 // Environment defines model for Environment.
 type Environment struct {
 	AutoSleep                    bool               `json:"autoSleep"`
+	ChartRevision                *string            `json:"chartRevision"`
 	CreatedBy                    *string            `json:"createdBy"`
 	ExpiresAt                    time.Time          `json:"expiresAt"`
 	Id                           openapi_types.UUID `json:"id"`
@@ -2355,6 +2356,7 @@ type EnvironmentsListParamsStatus string
 // EnvironmentsCreateJSONBody defines parameters for EnvironmentsCreate.
 type EnvironmentsCreateJSONBody struct {
 	AutoSleep                    *bool   `json:"autoSleep,omitempty"`
+	ChartRevision                *string `json:"chartRevision,omitempty"`
 	IsPublic                     *bool   `json:"isPublic,omitempty"`
 	MigrationSourceEcrRepository *string `json:"migrationSourceEcrRepository,omitempty"`
 	Repos                        []struct {
@@ -2382,6 +2384,11 @@ type EnvironmentsTriggerE2eJSONBody struct {
 // EnvironmentsExtendJSONBody defines parameters for EnvironmentsExtend.
 type EnvironmentsExtendJSONBody struct {
 	AdditionalHours int `json:"additionalHours"`
+}
+
+// EnvironmentsRelaunchJSONBody defines parameters for EnvironmentsRelaunch.
+type EnvironmentsRelaunchJSONBody struct {
+	ChartRevision *string `json:"chartRevision,omitempty"`
 }
 
 // EnvironmentsAddServiceJSONBody defines parameters for EnvironmentsAddService.
@@ -2560,6 +2567,9 @@ type EnvironmentsTriggerE2eJSONRequestBody EnvironmentsTriggerE2eJSONBody
 
 // EnvironmentsExtendJSONRequestBody defines body for EnvironmentsExtend for application/json ContentType.
 type EnvironmentsExtendJSONRequestBody EnvironmentsExtendJSONBody
+
+// EnvironmentsRelaunchJSONRequestBody defines body for EnvironmentsRelaunch for application/json ContentType.
+type EnvironmentsRelaunchJSONRequestBody EnvironmentsRelaunchJSONBody
 
 // EnvironmentsAddServiceJSONRequestBody defines body for EnvironmentsAddService for application/json ContentType.
 type EnvironmentsAddServiceJSONRequestBody EnvironmentsAddServiceJSONBody
@@ -2876,12 +2886,23 @@ type ClientInterface interface {
 	// Corresponds with POST /environments/{environmentId}/redeploy (the `EnvironmentsRedeploy` operationId).
 	EnvironmentsRedeploy(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// EnvironmentsRelaunch Relaunch a terminal environment
+	// EnvironmentsRelaunchWithBody Relaunch a terminal environment
 	//
-	// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL, visibility and auto-sleep setting into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
+	// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL, visibility, auto-sleep setting and pinned chart revision into a NEW environment and dispatches its builds. Pass `chartRevision: null` to relaunch on the profile default instead of copying the source's ref. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
+	//
+	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with POST /environments/{environmentId}/relaunch (the `EnvironmentsRelaunch` operationId).
-	EnvironmentsRelaunch(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+	EnvironmentsRelaunchWithBody(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnvironmentsRelaunch Relaunch a terminal environment
+	//
+	// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL, visibility, auto-sleep setting and pinned chart revision into a NEW environment and dispatches its builds. Pass `chartRevision: null` to relaunch on the profile default instead of copying the source's ref. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /environments/{environmentId}/relaunch (the `EnvironmentsRelaunch` operationId).
+	EnvironmentsRelaunch(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsRelaunchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// EnvironmentsAddServiceWithBody Add a service to an environment
 	//
@@ -3628,13 +3649,34 @@ func (c *Client) EnvironmentsRedeploy(ctx context.Context, environmentId openapi
 	return c.Client.Do(req)
 }
 
-// EnvironmentsRelaunch Relaunch a terminal environment
+// EnvironmentsRelaunchWithBody Relaunch a terminal environment
 //
-// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL, visibility and auto-sleep setting into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
+// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL, visibility, auto-sleep setting and pinned chart revision into a NEW environment and dispatches its builds. Pass `chartRevision: null` to relaunch on the profile default instead of copying the source's ref. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
+//
+// Takes any type of body and a specified content type.
 //
 // Corresponds with POST /environments/{environmentId}/relaunch (the `EnvironmentsRelaunch` operationId).
-func (c *Client) EnvironmentsRelaunch(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewEnvironmentsRelaunchRequest(c.Server, environmentId)
+func (c *Client) EnvironmentsRelaunchWithBody(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsRelaunchRequestWithBody(c.Server, environmentId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EnvironmentsRelaunch Relaunch a terminal environment
+//
+// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL, visibility, auto-sleep setting and pinned chart revision into a NEW environment and dispatches its builds. Pass `chartRevision: null` to relaunch on the profile default instead of copying the source's ref. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /environments/{environmentId}/relaunch (the `EnvironmentsRelaunch` operationId).
+func (c *Client) EnvironmentsRelaunch(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsRelaunchJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEnvironmentsRelaunchRequest(c.Server, environmentId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5306,8 +5348,19 @@ func NewEnvironmentsRedeployRequest(server string, environmentId openapi_types.U
 	return req, nil
 }
 
-// NewEnvironmentsRelaunchRequest constructs an http.Request for the EnvironmentsRelaunch method
-func NewEnvironmentsRelaunchRequest(server string, environmentId openapi_types.UUID) (*http.Request, error) {
+// NewEnvironmentsRelaunchRequest calls the generic EnvironmentsRelaunch builder with application/json body
+func NewEnvironmentsRelaunchRequest(server string, environmentId openapi_types.UUID, body EnvironmentsRelaunchJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewEnvironmentsRelaunchRequestWithBody(server, environmentId, "application/json", bodyReader)
+}
+
+// NewEnvironmentsRelaunchRequestWithBody constructs an http.Request for the EnvironmentsRelaunch method, with any body, and a specified content type
+func NewEnvironmentsRelaunchRequestWithBody(server string, environmentId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -5332,10 +5385,12 @@ func NewEnvironmentsRelaunchRequest(server string, environmentId openapi_types.U
 		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -7161,14 +7216,23 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /environments/{environmentId}/redeploy (the `EnvironmentsRedeploy` operationId).
 	EnvironmentsRedeployWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsRedeployResponse, error)
 
-	// EnvironmentsRelaunchWithResponse Relaunch a terminal environment
+	// EnvironmentsRelaunchWithBodyWithResponse Relaunch a terminal environment
 	//
-	// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL, visibility and auto-sleep setting into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
+	// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL, visibility, auto-sleep setting and pinned chart revision into a NEW environment and dispatches its builds. Pass `chartRevision: null` to relaunch on the profile default instead of copying the source's ref. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
 	//
-	// Returns a wrapper object for the known response body format(s).
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with POST /environments/{environmentId}/relaunch (the `EnvironmentsRelaunch` operationId).
-	EnvironmentsRelaunchWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsRelaunchResponse, error)
+	EnvironmentsRelaunchWithBodyWithResponse(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EnvironmentsRelaunchResponse, error)
+
+	// EnvironmentsRelaunchWithResponse Relaunch a terminal environment
+	//
+	// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL, visibility, auto-sleep setting and pinned chart revision into a NEW environment and dispatches its builds. Pass `chartRevision: null` to relaunch on the profile default instead of copying the source's ref. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /environments/{environmentId}/relaunch (the `EnvironmentsRelaunch` operationId).
+	EnvironmentsRelaunchWithResponse(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsRelaunchJSONRequestBody, reqEditors ...RequestEditorFn) (*EnvironmentsRelaunchResponse, error)
 
 	// EnvironmentsAddServiceWithBodyWithResponse Add a service to an environment
 	//
@@ -8933,6 +8997,8 @@ type EnvironmentsRelaunchResponse struct {
 	JSON404 *ApiProblem
 	// JSON409 the response for an HTTP 409 `application/json` response
 	JSON409 *ApiProblem
+	// JSON413 the response for an HTTP 413 `application/json` response
+	JSON413 *ApiProblem
 	// JSON429 the response for an HTTP 429 `application/json` response
 	JSON429 *ApiProblem
 	// JSON500 the response for an HTTP 500 `application/json` response
@@ -8973,6 +9039,11 @@ func (r EnvironmentsRelaunchResponse) GetJSON404() *ApiProblem {
 // GetJSON409 returns the response for an HTTP 409 `application/json` response
 func (r EnvironmentsRelaunchResponse) GetJSON409() *ApiProblem {
 	return r.JSON409
+}
+
+// GetJSON413 returns the response for an HTTP 413 `application/json` response
+func (r EnvironmentsRelaunchResponse) GetJSON413() *ApiProblem {
+	return r.JSON413
 }
 
 // GetJSON429 returns the response for an HTTP 429 `application/json` response
@@ -13467,15 +13538,30 @@ func (c *ClientWithResponses) EnvironmentsRedeployWithResponse(ctx context.Conte
 	return ParseEnvironmentsRedeployResponse(rsp)
 }
 
-// EnvironmentsRelaunchWithResponse Relaunch a terminal environment
+// EnvironmentsRelaunchWithBodyWithResponse Relaunch a terminal environment
 //
-// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL, visibility and auto-sleep setting into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
+// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL, visibility, auto-sleep setting and pinned chart revision into a NEW environment and dispatches its builds. Pass `chartRevision: null` to relaunch on the profile default instead of copying the source's ref. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
 //
-// Returns a wrapper object for the known response body format(s).
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
 // Corresponds with POST /environments/{environmentId}/relaunch (the `EnvironmentsRelaunch` operationId).
-func (c *ClientWithResponses) EnvironmentsRelaunchWithResponse(ctx context.Context, environmentId openapi_types.UUID, reqEditors ...RequestEditorFn) (*EnvironmentsRelaunchResponse, error) {
-	rsp, err := c.EnvironmentsRelaunch(ctx, environmentId, reqEditors...)
+func (c *ClientWithResponses) EnvironmentsRelaunchWithBodyWithResponse(ctx context.Context, environmentId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EnvironmentsRelaunchResponse, error) {
+	rsp, err := c.EnvironmentsRelaunchWithBody(ctx, environmentId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnvironmentsRelaunchResponse(rsp)
+}
+
+// EnvironmentsRelaunchWithResponse Relaunch a terminal environment
+//
+// Clones a `destroyed` or `canceled` environment's repositories, branches, TTL, visibility, auto-sleep setting and pinned chart revision into a NEW environment and dispatches its builds. Pass `chartRevision: null` to relaunch on the profile default instead of copying the source's ref. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /environments/{environmentId}/relaunch (the `EnvironmentsRelaunch` operationId).
+func (c *ClientWithResponses) EnvironmentsRelaunchWithResponse(ctx context.Context, environmentId openapi_types.UUID, body EnvironmentsRelaunchJSONRequestBody, reqEditors ...RequestEditorFn) (*EnvironmentsRelaunchResponse, error) {
+	rsp, err := c.EnvironmentsRelaunch(ctx, environmentId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -15503,6 +15589,13 @@ func ParseEnvironmentsRelaunchResponse(rsp *http.Response) (*EnvironmentsRelaunc
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest ApiProblem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest ApiProblem

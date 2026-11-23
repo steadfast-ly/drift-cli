@@ -279,6 +279,16 @@
               }
             ]
           },
+          "chartRevision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "createdBy": {
             "anyOf": [
               {
@@ -303,6 +313,7 @@
           "isPublic",
           "autoSleep",
           "migrationSourceEcrRepository",
+          "chartRevision",
           "createdBy"
         ]
       },
@@ -5049,6 +5060,9 @@
                   "migrationSourceEcrRepository": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "chartRevision": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -5801,7 +5815,7 @@
       "post": {
         "operationId": "environments.relaunch",
         "summary": "Relaunch a terminal environment",
-        "description": "Clones a `destroyed` or `canceled` environment's repositories, branches, TTL, visibility and auto-sleep setting into a NEW environment and dispatches its builds. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.",
+        "description": "Clones a `destroyed` or `canceled` environment's repositories, branches, TTL, visibility, auto-sleep setting and pinned chart revision into a NEW environment and dispatches its builds. Pass `chartRevision: null` to relaunch on the profile default instead of copying the source's ref. `environmentId` addresses the SOURCE; the response carries the id of the environment that was created. Rejected with 409 if the slug is back in use.",
         "tags": [
           "environments"
         ],
@@ -5816,6 +5830,28 @@
             }
           }
         ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "chartRevision": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -5869,6 +5905,16 @@
           },
           "409": {
             "description": "409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body exceeds the mount's 10 MB limit, read from its declared Content-Length or measured for a chunked body.",
             "content": {
               "application/json": {
                 "schema": {
