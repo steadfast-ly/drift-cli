@@ -348,6 +348,21 @@ partition, or creates one:
   services that are behind the PR heads; the dialog says so.
 - A new environment is named after the Ticket in lowercase: `<key>`, then
   `qa-<key>`, `qa-<key>-2`, and so on.
+- A service of a monorepo pull request's repository whose directory does not
+  exist on the PR's head commit is left out of a created environment instead
+  of being built (a service added after the branch was cut, say), and the
+  environment's Activity log lists the services left out. In an atomic
+  application group the services ship together, so a member missing on the
+  branch refuses the create instead of being left out while another member of
+  its group ships. A service that another
+  service in the environment depends on is never silently left out: the
+  create is refused, naming the service and its dependent. When none of a
+  pull request's services can be built, **Start testing** is refused rather
+  than creating an environment that runs none of it.
+- An installation may configure a QA service set (Stack Profile
+  `qa.serviceEcrRepositories`): every environment **Start testing** creates
+  also carries those services from their default branch, so a pull request in
+  a service that cannot be tested alone gets the services around it.
 - **Start testing** always opens a dialog, which asks the server what it may
   offer: you pick a **Partition** and optionally a **Reuse environment** ("Let
   drift choose" by default). The dialog can name the stack behind a partition
@@ -364,7 +379,11 @@ no owner, so anyone may take one over.
 partition. Failing that, it reuses the oldest untagged environment that runs the
 partition, is running or sleeping, and has no other Ticket's test session. With
 none, it creates an environment. It never picks an environment tagged to
-another Ticket on its own: choose one from the list to take it over.
+another Ticket on its own: choose one from the list to take it over. With a QA
+service set configured, it reuses an environment only if that environment
+carries every service of the set, on any branch; one that does not is passed
+over and it finally creates an environment. Choosing an environment from the
+list is unchanged.
 
 An environment the Ticket owns but the selected partition does not run stays
 listed, disabled, and names what it misses: `my-env (running) — doesn't run
@@ -376,6 +395,10 @@ sync` and disables **Start testing**. The server refuses the same way on the
 page and from the CLI, before it touches any environment. An environment you
 name that misses a PR is refused with `Environment my-env does not run
 acme/app#42 (feature/x)`.
+
+Creating an environment by hand or from the CLI refuses a named service whose
+directory is missing on its branch: `<service> cannot be built from <branch>:
+its directory <dir>/ does not exist there`.
 
 With no open Linked PRs there is nothing to test, so the row has no **Start
 testing** action and its detail says "No linked PR yet — link one or test in
