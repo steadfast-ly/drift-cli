@@ -348,10 +348,12 @@ partition, or creates one:
   services that are behind the PR heads; the dialog says so.
 - A new environment is named after the Ticket in lowercase: `<key>`, then
   `qa-<key>`, `qa-<key>-2`, and so on.
-- A service of a monorepo pull request's repository whose directory does not
-  exist on the PR's head commit is left out of a created environment instead
-  of being built (a service added after the branch was cut, say), and the
-  environment's Activity log lists the services left out. In an atomic
+- In a monorepo the installation lists as building each service from its own
+  directory (Stack Profile `forge.serviceDirectoryRepositories`), a service of
+  the pull request's repository whose directory does not exist on the PR's
+  head commit is left out of a created environment instead of being built (a
+  service added after the branch was cut, say), and the environment's
+  Activity log lists the services left out. In an atomic
   application group the services ship together, so a member missing on the
   branch refuses the create instead of being left out while another member of
   its group ships. A service that another
@@ -396,9 +398,11 @@ page and from the CLI, before it touches any environment. An environment you
 name that misses a PR is refused with `Environment my-env does not run
 acme/app#42 (feature/x)`.
 
-Creating an environment by hand or from the CLI refuses a named service whose
-directory is missing on its branch: `<service> cannot be built from <branch>:
-its directory <dir>/ does not exist there`.
+In a repository the installation lists that way, creating an environment by
+hand or from the CLI refuses a named service whose directory is missing on its
+branch: `<service> cannot be built from <branch>: its directory <dir>/ does
+not exist there`. Repositories that build every service from their root are
+never checked.
 
 With no open Linked PRs there is nothing to test, so the row has no **Start
 testing** action and its detail says "No linked PR yet — link one or test in
